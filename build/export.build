@@ -1,0 +1,6 @@
+$out_root/
+{
+  include convertible/
+}
+
+export $out_root/convertible/$import.target

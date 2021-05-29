@@ -1,0 +1,9 @@
+# Generated version header.
+#
+version.hxx
+
+# Unit test executables and Testscript output directories
+# (can be symlinks).
+#
+*.test
+test-*.test
