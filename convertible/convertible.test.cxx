@@ -1,5 +1,6 @@
-#include <convertible/convertible.hpp>
+#include <convertible/convertible.hxx>
 
+#define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
 #include <array>
