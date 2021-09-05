@@ -2,10 +2,10 @@
 name: convertible
 version: 0.1.0-a.0.z
 summary: convertible C++ library
-license: other: proprietary ; Not free/open source.
+license: MIT
 description-file: README.md
 url: https://example.org/convertible
 email: helmesjo@gmail.com
 depends: * build2 >= 0.13.0
 depends: * bpkg >= 0.13.0
-#depends: libhello ^1.0.0
+depends: catch2 ^2.13.6

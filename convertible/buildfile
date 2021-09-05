@@ -1,6 +1,7 @@
 intf_libs = # Interface dependencies.
 impl_libs = # Implementation dependencies.
 #import impl_libs += libhello%lib{hello}
+import test_libs += catch2%lib{catch2}
 
 ./: lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{** -**.test... -version} \
   hxx{version} $impl_libs $intf_libs
@@ -18,7 +19,7 @@ for t: cxx{**.test...}
   d = $directory($t)
   n = $name($t)...
 
-  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n}
+  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n} $test_libs
   $d/exe{$n}: libul{convertible}: bin.whole = false
 }
 
