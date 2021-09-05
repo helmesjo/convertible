@@ -8,8 +8,10 @@
 ...
 ```
 
-## Build & Install
-1. `mkdir build && cd build`
-2. `cmake .. && cmake --build .`
-    - Run tests: `ctest .`
-3. `cmake --build . --target install`
+## Build & Run Tests
+_Using [build2](https://build2.org/install.xhtml)_
+```
+> b                                             <--- Build
+> b test                                        <--- Build & run tests
+> b install config.install.root=./build/out     <--- Install to dir './build/out'
+```

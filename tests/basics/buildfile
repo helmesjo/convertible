@@ -1,3 +1,0 @@
-import libs = convertible%lib{convertible}
-
-exe{driver}: {hxx ixx txx cxx}{**} $libs testscript{**}
