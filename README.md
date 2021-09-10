@@ -4,14 +4,15 @@
 ...
 ## TL;DR:
 ```c++
-#include <convertible/convertible.hpp>
+#include <convertible/convertible.hxx>
 ...
 ```
 
 ## Build & Run Tests
 _Using [build2](https://build2.org/install.xhtml)_
-```
-> b                                             <--- Build
-> b test                                        <--- Build & run tests
-> b install config.install.root=./build/out     <--- Install to dir './build/out'
+```c
+> bdep init --config-create @gcc cc config.cxx=g++  // Init in a new configuration @gcc|clang|msvc
+> b                                                 // Build
+> b test                                            // Run tests
+> b install config.install.root=../out              // Install
 ```

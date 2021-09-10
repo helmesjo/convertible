@@ -3,11 +3,14 @@ impl_libs = # Implementation dependencies.
 #import impl_libs += libhello%lib{hello}
 import test_libs += catch2%lib{catch2}
 
-./: lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{** -**.test... -version} \
+./: lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{** -**.test... -catch2_define_main -version} \
   hxx{version} $impl_libs $intf_libs
 
 # Unit tests.
-#
+# Create precompiled catch_main lib
+
+lib{catch_main}: cxx{catch2_define_main} $test_libs
+
 exe{*.test}:
 {
   test = true
@@ -19,7 +22,7 @@ for t: cxx{**.test...}
   d = $directory($t)
   n = $name($t)...
 
-  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n} $test_libs
+  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n} lib{catch_main} $test_libs
   $d/exe{$n}: libul{convertible}: bin.whole = false
 }
 
