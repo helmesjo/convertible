@@ -1,6 +1,6 @@
 #include <convertible/convertible.hxx>
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <array>
 #include <optional>
