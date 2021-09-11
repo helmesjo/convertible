@@ -179,6 +179,14 @@ namespace convertible
 
     namespace concepts
     {
+        namespace cpp20
+        {
+            template <typename lhs_t, typename rhs_t, typename converter_t>
+            concept assignable = requires(lhs_t lhs, rhs_t rhs, converter_t converter)
+            {
+                {lhs = converter(rhs)};
+            };
+        }
         template<bool is_true, typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
         using assignable = std::enable_if_t<traits::is_assignable_v<lhs_t, rhs_t, converter_t> == is_true, tag_t<lhs_t, rhs_t>>;
 
@@ -200,8 +208,8 @@ namespace convertible
         /*!
         Direct assignment: `lhs = converter(rhs)`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>,
-            concepts::assignable<true, lhs_t, rhs_t, converter_t> = nullptr>
+        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
+            requires concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>
         inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
         {
             FWD(lhs) = FWD(converter)(FWD(rhs));

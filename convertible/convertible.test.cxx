@@ -161,6 +161,15 @@ SCENARIO("convertible_tests: Compile-time validation")
     }
 }
 
+SCENARIO("convertible_tests: Compile-time concept validation")
+{
+    int a = 1;
+    int b = 2;
+    std::string c;
+
+    //convertible::values::cpp20::assign(a, b);
+}
+
 SCENARIO("convertible_tests: Assignment & Equality")
 {
     GIVEN("int -> int")
