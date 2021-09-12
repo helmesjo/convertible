@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <type_traits>
 #include <utility>
 
@@ -57,7 +58,7 @@ namespace convertible
         constexpr bool is_iterable_v = is_detected_v<is_iterable_t, T>;
 
         template<typename T>
-        using element_type_t = std::conditional_t<is_iterable_v<T>, decltype(*std::begin(std::declval<T&>())), details::nonesuch>;
+        using element_type_t = decltype(*std::begin(std::declval<T&>()));
 
         template<typename T>
         using iterator_t = 
@@ -181,10 +182,19 @@ namespace convertible
     {
         namespace cpp20
         {
+            template<typename T>
+            concept iterable = requires(T t){ std::begin(std::declval<T&>()) == std::end(std::declval<T&>()); };
+
+            template<typename T>
+            concept dereferenceable = requires(T t){ *t; };
+
             template <typename lhs_t, typename rhs_t, typename converter_t>
-            concept assignable = requires(lhs_t lhs, rhs_t rhs, converter_t converter)
+            concept assignable = requires(lhs_t lhs, rhs_t rhs, converter_t converter){ {lhs = converter(rhs)}; };
+
+            template <typename lhs_t, typename rhs_t, typename converter_t>
+            concept comparable = requires(lhs_t lhs, rhs_t rhs, converter_t converter)
             {
-                {lhs = converter(rhs)};
+                {lhs == converter(rhs)};
             };
         }
         template<bool is_true, typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
@@ -218,9 +228,10 @@ namespace convertible
         /*!
         Assignment by dereference: `if(rhs){ lhs = converter(*rhs) }`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, traits::dereferenced_t<rhs_t>>,
-            concepts::assignable<false, lhs_t, rhs_t, converter_t> = nullptr,
-            concepts::assignable<true, lhs_t, traits::dereferenced_t<rhs_t>, converter_t> = nullptr>
+        template<typename lhs_t, concepts::cpp20::dereferenceable rhs_t, typename converter_t = details::static_cast_converter<lhs_t, traits::dereferenced_t<rhs_t>>>
+            requires 
+                 (!concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>)
+                && concepts::cpp20::assignable<lhs_t, traits::dereferenced_t<rhs_t>, converter_t>
         inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
         {
             if (rhs)
@@ -232,9 +243,10 @@ namespace convertible
         /*!
         Assignment by dereference: `if(lhs){ *lhs = converter(rhs) }`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<traits::dereferenced_t<lhs_t>, rhs_t>,
-            concepts::assignable<false, lhs_t, rhs_t, converter_t> = nullptr,
-            concepts::assignable<true, traits::dereferenced_t<lhs_t>, rhs_t, converter_t> = nullptr>
+        template<concepts::cpp20::dereferenceable lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<traits::dereferenced_t<lhs_t>, rhs_t>>
+            requires 
+                 (!concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>)
+                && concepts::cpp20::assignable<traits::dereferenced_t<lhs_t>, rhs_t, converter_t>
         inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
         {
             if (lhs)
@@ -246,8 +258,8 @@ namespace convertible
         /*!
         Direct comparison: `lhs == converter(rhs)`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>,
-            concepts::comparable<true, lhs_t, rhs_t, converter_t> = nullptr>
+        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
+            requires concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>
         inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
         {
             return lhs == FWD(converter)(rhs);
@@ -256,9 +268,10 @@ namespace convertible
         /*!
         Comparison by dereference: `if(rhs){ lhs == converter(*rhs) }`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, traits::dereferenced_t<rhs_t>>,
-            concepts::comparable<false, lhs_t, rhs_t, converter_t> = nullptr,
-            concepts::comparable<true, lhs_t, traits::dereferenced_t<rhs_t>, converter_t> = nullptr>
+        template<typename lhs_t, concepts::cpp20::dereferenceable rhs_t, typename converter_t = details::static_cast_converter<lhs_t, traits::dereferenced_t<rhs_t>>>
+            requires 
+                 (!concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>)
+                && concepts::cpp20::comparable<lhs_t, traits::dereferenced_t<rhs_t>, converter_t>
         inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
         {
             return rhs && equal(FWD(lhs), *FWD(rhs), FWD(converter));
@@ -267,9 +280,10 @@ namespace convertible
         /*!
         Comparison by dereference: `if(lhs){ *lhs == converter(rhs) }`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<traits::dereferenced_t<lhs_t>, rhs_t>,
-            concepts::comparable<false, lhs_t, rhs_t, converter_t> = nullptr,
-            concepts::comparable<true, traits::dereferenced_t<lhs_t>, rhs_t, converter_t> = nullptr>
+        template<concepts::cpp20::dereferenceable lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<traits::dereferenced_t<lhs_t>, rhs_t>>
+            requires 
+                 (!concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>)
+                && concepts::cpp20::comparable<traits::dereferenced_t<lhs_t>, rhs_t, converter_t>
         inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
         {
             return lhs && equal(*FWD(lhs), FWD(rhs), FWD(converter));
@@ -278,7 +292,10 @@ namespace convertible
         /*!
         Element-wise assignment: `lhs[i] = converter(rhs[i])`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::by_element_static_cast_converter_t<lhs_t, rhs_t>,
+        template<concepts::cpp20::iterable lhs_t, concepts::cpp20::iterable rhs_t, typename converter_t = details::by_element_static_cast_converter_t<lhs_t, rhs_t>,
+            // requires 
+            //      (!concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>)
+            //     && concepts::cpp20::assignable<traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t>
             concepts::assignable<false, lhs_t, rhs_t> = nullptr,
             concepts::assignable<true, traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t> = nullptr>
         inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
@@ -305,7 +322,10 @@ namespace convertible
         /*!
         Element-wise comparison: `lhs[i] == converter(rhs[i])`
         */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::by_element_static_cast_converter_t<lhs_t, rhs_t>,
+        template<concepts::cpp20::iterable lhs_t, concepts::cpp20::iterable rhs_t, typename converter_t = details::by_element_static_cast_converter_t<lhs_t, rhs_t>,
+            // requires 
+            //      (!concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>)
+            //     && concepts::cpp20::comparable<traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t>
             concepts::comparable<false, lhs_t, rhs_t> = nullptr,
             concepts::comparable<true, traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t> = nullptr>
         inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
