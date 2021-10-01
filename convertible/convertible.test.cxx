@@ -3,6 +3,7 @@
 #include <doctest/doctest.h>
 
 #include <array>
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>
@@ -168,6 +169,89 @@ SCENARIO("convertible_tests: Compile-time concept validation")
     std::string c;
 
     //convertible::values::cpp20::assign(a, b);
+}
+
+struct adapter
+{
+    explicit adapter(std::uint32_t& inst): inst_(inst){}
+
+    std::uint32_t& inst_;
+
+    operator std::uint32_t() const
+    {
+        return inst_;
+    }
+
+    adapter& operator=(std::uint32_t val)
+    {
+        inst_ = val;
+        return *this;
+    }
+
+    bool operator==(std::uint32_t val) const
+    {
+        return inst_ == val;
+    }
+};
+
+enum class direction
+{
+    lhs_to_rhs,
+    rhs_to_lhs
+};
+
+template<typename lhs_adapter_t, typename rhs_adapter_t>
+struct mapping
+{
+    template<direction dir, typename lhs_t, typename rhs_t>
+        requires 
+            convertible::concepts::cpp20::mappable<lhs_adapter_t, lhs_t, rhs_adapter_t, rhs_t>
+    void assign(lhs_t&& lhs, rhs_t&& rhs)
+    {
+        lhs_adapter_t l(lhs);
+        rhs_adapter_t r(rhs);
+        if constexpr(dir == direction::lhs_to_rhs)
+        {
+            r = static_cast<std::decay_t<lhs_t>>(l);
+        }
+        else
+        {
+            l = static_cast<std::decay_t<rhs_t>>(r);
+        }
+    }
+
+    template<typename lhs_t, typename rhs_t>
+        requires 
+            convertible::concepts::cpp20::mappable<lhs_adapter_t, lhs_t, rhs_adapter_t, rhs_t>
+    bool equals(lhs_t&& lhs, rhs_t&& rhs)
+    {
+        return lhs_adapter_t(lhs) == static_cast<std::decay_t<rhs_t>>(rhs_adapter_t(rhs));
+    }
+};
+
+static_assert(convertible::concepts::cpp20::adaptable<adapter, std::int32_t>, "SADSAD");
+
+SCENARIO("convertible_tests: Value adapters")
+{
+    std::vector<std::uint8_t> data;
+
+    mapping<adapter, adapter> m;
+
+    std::uint32_t a1=1, a2=2;
+    m.assign<direction::lhs_to_rhs>(a1, a2);
+
+    REQUIRE(a1 == 1);
+    REQUIRE(a2 == 1);
+    REQUIRE(m.equals(a1, a2));
+
+    a1=1;
+    a2=2;
+
+    m.assign<direction::rhs_to_lhs>(a1, a2);
+
+    REQUIRE(a1 == 2);
+    REQUIRE(a2 == 2);
+    REQUIRE(m.equals(a1, a2));
 }
 
 SCENARIO("convertible_tests: Assignment & Equality")
