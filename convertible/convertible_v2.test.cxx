@@ -74,7 +74,7 @@ namespace adapters
     {
         using value_t = traits::member_value_t<member_ptr_t>;
 
-        instance_t inst_;
+        instance_t& inst_;
         member_ptr_t ptr_;
 
         constexpr explicit member(instance_t& inst, member_ptr_t ptr): inst_(inst), ptr_(ptr){}
@@ -89,7 +89,9 @@ namespace adapters
             return *this = static_cast<value_t>(val);
         }
 
-        auto operator=(const value_t& val)
+        template<typename arg_t>
+            requires std::convertible_to<arg_t, value_t>
+        auto operator=(const arg_t& val)
         {
             return FWD(inst_).*ptr_ = val;
         }
@@ -99,7 +101,9 @@ namespace adapters
             return *this == static_cast<value_t>(val);
         }
 
-        auto operator==(const value_t& val) const
+        template<typename arg_t>
+            requires std::convertible_to<arg_t, value_t>
+        auto operator==(const arg_t& val) const
         {
             return FWD(inst_).*ptr_ == val;
         }
@@ -190,6 +194,22 @@ SCENARIO("playground2")
     REQUIRE_FALSE(op2.exec(adapter1, adapter2));
     REQUIRE(op1.exec(adapter1, adapter2) == 5);
     REQUIRE(op2.exec(adapter1, adapter2));
+}
+
+SCENARIO("playground3")
+{
+    struct dummy
+    {
+        int val = 0;
+    } obj;
+    adapters::member mbrAdptr(obj, &dummy::val);
+
+    std::uint32_t val1 = 1;
+    adapters::object objAdptr(val1);
+
+    operators::compare comp;
+
+    REQUIRE_FALSE(comp.exec(objAdptr, mbrAdptr));
 }
 
 // SCENARIO("playground3")
