@@ -69,15 +69,17 @@ namespace adapters
         }
     };
 
-    template<typename instance_t, typename member_ptr_t>
+    template<typename member_ptr_t>
+        requires std::is_member_pointer_v<member_ptr_t>
     struct member
     {
+        using instance_t = traits::member_class_t<member_ptr_t>;
         using value_t = traits::member_value_t<member_ptr_t>;
 
         instance_t& inst_;
         member_ptr_t ptr_;
 
-        constexpr explicit member(instance_t& inst, member_ptr_t ptr): inst_(inst), ptr_(ptr){}
+        explicit member(instance_t& inst, member_ptr_t ptr): inst_(inst), ptr_(ptr){}
 
         operator auto() const
         {
