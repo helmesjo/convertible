@@ -2,6 +2,7 @@
 
 #include <doctest/doctest.h>
 
+#include <iostream>
 #include <cstdint>
 #include <vector>
 
@@ -34,80 +35,84 @@ namespace traits
     using member_value_t = std::conditional_t<std::is_rvalue_reference_v<class_t>, value_t&&, value_t>;
 }
 
+template<typename T>
+struct detect;
+
 namespace adapters
 {
-    template<typename obj_t>
+    struct any{};
+
+    template<typename obj_t = any>
     struct object
     {
-        obj_t& obj_;
+        auto create(auto&& obj) const
+        {
+            return object<decltype(obj)>{FWD(obj)};
+        }
 
-        explicit object(obj_t& obj): obj_(obj){}
+        object() = default;
+        explicit object(auto&& obj): obj_(FWD(obj))
+        {
+        }
 
-        operator auto() const
+        operator decltype(auto)() const
         {
             return obj_;
         }
 
-        auto operator=(const object& val)
-        {
-            return *this = static_cast<obj_t>(val);
-        }
-
-        auto operator=(const obj_t& val)
+        auto operator=(auto&& val)
         {
             return obj_ = val;
         }
 
-        auto operator==(const object& val) const
-        {
-            return *this == static_cast<obj_t>(val);
-        }
-
-        auto operator==(const obj_t& val) const
+        auto operator==(const auto& val) const
         {
             return obj_ == val;
         }
+
+        obj_t obj_;
     };
 
-    template<typename member_ptr_t>
+    template<typename member_ptr_t, typename instance_t = any, bool is_rval = std::is_rvalue_reference_v<instance_t>>
         requires std::is_member_pointer_v<member_ptr_t>
     struct member
     {
-        using instance_t = traits::member_class_t<member_ptr_t>;
         using value_t = traits::member_value_t<member_ptr_t>;
 
-        instance_t& inst_;
         member_ptr_t ptr_;
+        std::decay_t<instance_t>* inst_;
 
-        explicit member(instance_t& inst, member_ptr_t ptr): inst_(inst), ptr_(ptr){}
-
-        operator auto() const
+        auto create(auto&& obj) const
         {
-            return FWD(inst_).*ptr_;
+            return member<member_ptr_t, decltype(obj)>(ptr_, FWD(obj));
         }
 
-        auto operator=(const member& val)
+        explicit member(member_ptr_t ptr): ptr_(ptr){}
+        explicit member(member_ptr_t ptr, auto&& inst): ptr_(ptr), inst_(&inst)
         {
-            return *this = static_cast<value_t>(val);
         }
 
-        template<typename arg_t>
-            requires std::convertible_to<arg_t, value_t>
-        auto operator=(const arg_t& val)
+        operator decltype(auto)() const
         {
-            return FWD(inst_).*ptr_ = val;
+            if constexpr(is_rval)
+            {
+                std::cout << "Moved from\n";
+                return std::move(inst_->*ptr_);
+            }
+            else
+            {
+                return inst_->*ptr_;
+            }
         }
 
-        auto operator==(const member& val) const
+        auto operator=(auto&& val)
         {
-            return *this == static_cast<value_t>(val);
+            return inst_->*ptr_ = FWD(val);
         }
 
-        template<typename arg_t>
-            requires std::convertible_to<arg_t, value_t>
-        auto operator==(const arg_t& val) const
+        auto operator==(const auto& val) const
         {
-            return FWD(inst_).*ptr_ == val;
+            return inst_->*ptr_ == val;
         }
     };
 }
@@ -116,8 +121,7 @@ namespace operators
 {
     struct assign
     {
-        template<typename lhs_t, typename rhs_t>
-        decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs)
+        decltype(auto) exec(auto&& lhs, auto&& rhs)
         {
             return FWD(lhs) = FWD(rhs);
         }
@@ -125,8 +129,7 @@ namespace operators
 
     struct compare
     {
-        template<typename lhs_t, typename rhs_t>
-        decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs)
+        decltype(auto) exec(auto&& lhs, auto&& rhs)
         {
             return FWD(lhs) == FWD(rhs);
         }
@@ -170,49 +173,98 @@ namespace operators
 
 //static_assert(convertible::concepts::cpp20::adaptable<adapter, std::int32_t>, "SADSAD");
 
+auto assign(auto&& lhsAdapter, auto&& lhs, auto&& rhsAdapter, auto&& rhs)
+{
+    operators::assign op1;
+    return op1.exec(lhsAdapter.create(FWD(lhs)), rhsAdapter.create(FWD(rhs)));
+}
+
+auto compare(auto&& lhsAdapter, auto&& lhs, auto&& rhsAdapter, auto&& rhs)
+{
+    operators::compare op1;
+    return op1.exec(lhsAdapter.create(FWD(lhs)), rhsAdapter.create(FWD(rhs)));
+}
+
 SCENARIO("playground1")
 {
     std::uint32_t val1, val2 = 0;
-    adapters::object adapter1(val1);
-    adapters::object adapter2(val2);
+    adapters::object adapter1;
+    adapters::object adapter2;
 
     operators::assign op1;
     operators::compare op2;
 
-    op1.exec(adapter1, adapter2);
-    op2.exec(adapter1, adapter2);
-}
+    val1 = 1;
+    val2 = 2;
+    assign(adapter1, val1, adapter2, 2);
+    REQUIRE(val1 == 2);
+    REQUIRE(compare(adapter1, val1, adapter2, 2));
 
-SCENARIO("playground2")
-{
-    std::uint32_t val1, val2 = 0;
-    adapters::object adapter1(val1);
-    adapters::object adapter2(val2);
+    //op1.exec(adapter1, 1, adapter2, 2);
+    // op2.exec(adapter1, adapter2);
 
-    operators::assign op1;
-    operators::compare op2;
+    // mapping = map(member(&type::mbr), converter, int);
 
-    val2 = 5;
-    REQUIRE_FALSE(op2.exec(adapter1, adapter2));
-    REQUIRE(op1.exec(adapter1, adapter2) == 5);
-    REQUIRE(op2.exec(adapter1, adapter2));
-}
+    // op1.exec(mapping, type, int);
 
-SCENARIO("playground3")
-{
     struct dummy
     {
         int val = 0;
-    } obj;
-    adapters::member mbrAdptr(obj, &dummy::val);
+    } obj1, obj2;
+    adapters::member mbr1(&dummy::val);
+    adapters::member mbr2(&dummy::val);
 
-    std::uint32_t val1 = 1;
-    adapters::object objAdptr(val1);
+    obj1.val = 1;
+    obj2.val = 2;
+    assign(mbr1, obj1, mbr2, std::move(obj2));
+    REQUIRE(obj1.val == obj2.val);
+    REQUIRE(compare(mbr1, obj1, mbr2, std::move(obj2)));
 
-    operators::compare comp;
-
-    REQUIRE_FALSE(comp.exec(objAdptr, mbrAdptr));
 }
+
+// SCENARIO("playground1.1")
+// {
+//     std::uint32_t val1, val2 = 0;
+//     adapters::object_v2 adapter1;
+//     adapters::object_v2 adapter2;
+
+//     operators::assign_v2 op1;
+//     operators::compare_v2 op2;
+
+//     op1.exec(adapter1, adapter2);
+//     op2.exec(adapter1, adapter2);
+// }
+
+// SCENARIO("playground2")
+// {
+//     std::uint32_t val1, val2 = 0;
+//     adapters::object adapter1(val1);
+//     adapters::object adapter2(val2);
+
+//     operators::assign op1;
+//     operators::compare op2;
+
+//     val2 = 5;
+//     REQUIRE_FALSE(op2.exec(adapter1, adapter2));
+//     REQUIRE(op1.exec(adapter1, adapter2) == 5);
+//     REQUIRE(op2.exec(adapter1, adapter2));
+// }
+
+// SCENARIO("playground3")
+// {
+//     struct dummy
+//     {
+//         int val = 0;
+//     } obj;
+//     adapters::member mbrAdptr(obj, &dummy::val);
+
+//     std::uint32_t val1 = 1;
+//     adapters::object objAdptr(val1);
+
+//     operators::compare comp;
+
+//     REQUIRE_FALSE(comp.exec(objAdptr, mbrAdptr));
+// }
 
 // SCENARIO("playground3")
 // {
