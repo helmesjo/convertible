@@ -2,633 +2,128 @@
 
 #include <doctest/doctest.h>
 
-#include <array>
-#include <cstddef>
-#include <optional>
-#include <string>
+#include <iostream>
+#include <cstdint>
 #include <vector>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
-namespace
-{    
-    template<typename destination_t, typename source_t, typename converter_t = int>
-    void ASSIGN_AND_VERIFY(destination_t&& destination, source_t&& source, converter_t&& converter)
+template<typename T>
+struct detect;
+
+SCENARIO("playground1")
+{
+    using namespace convertible;
+
+    std::uint32_t val1, val2 = 0;
+    adapters::object adapter1;
+    adapters::object adapter2;
+
+    // operators::assign op1;
+    // operators::compare op2;
+
+    // val1 = 1;
+    // val2 = 2;
+    // assign(adapter1, val1, adapter2, 2);
+    // REQUIRE(val1 == 2);
+    // REQUIRE(compare(adapter1, val1, adapter2, 2));
+
+    //op1.exec(adapter1, 1, adapter2, 2);
+    // op2.exec(adapter1, adapter2);
+
+    // mapping = map(member(&type::mbr), converter, int);
+
+    // op1.exec(mapping, type, int);
+
+    struct dummy
     {
-        auto sourceCopy = source;
+        int val = 0;
+    } obj1, obj2;
+    adapters::member mbr1(&dummy::val);
+    adapters::member mbr2(&dummy::val);
 
-        if constexpr(!std::is_same_v<std::decay_t<converter_t>, int>)
-        {
-            convertible::values::assign(FWD(destination), FWD(source), converter);
-            REQUIRE(convertible::values::equal(destination, sourceCopy, converter));
-        }
-        else
-        {
-            convertible::values::assign(FWD(destination), FWD(source));
-            REQUIRE(convertible::values::equal(destination, sourceCopy));
-        }
-    }
+    obj1.val = 1;
+    obj2.val = 2;
+    // assign(mbr1, obj1, mbr2, std::move(obj2));
+    // assign(mbr1, obj1, adapter2, 2);
+    // REQUIRE(obj1.val == obj2.val);
+    // REQUIRE(compare(mbr1, obj1, mbr2, std::move(obj2)));
 
-    template<typename destination_t, typename source_t, typename converter_t = int>
-    void TEST_COPY_ASSIGNMENT(destination_t&& dest, source_t source, converter_t converter = {})
-    {
-        WHEN("copy assigned")
-        {
-            // Verify assignment
-            THEN("destination is assigned")
-            {
-                auto sourceCopy = source;
-                ASSIGN_AND_VERIFY(FWD(dest), source, converter);
+    mapping m(mbr1, adapter2);
 
-                // Verify perfect forwarding
-                AND_THEN("source is NOT 'moved from'")
-                {
-                    REQUIRE(source == sourceCopy);
-                }
-            }
-        }
-    }
+    m.assign<direction::rhs_to_lhs>(obj1, 5);
+    REQUIRE(obj1.val == 5);
+    m.assign<direction::lhs_to_rhs>(obj1, val1);
+    REQUIRE(val1 == 5);
+    REQUIRE(m.compare(obj1, 5));
 
-    template<typename destination_t, typename source_t, typename converter_t = int>
-    void TEST_COPY_ASSIGNMENT(source_t source, converter_t converter = {})
-    {
-        destination_t dest;
-        TEST_COPY_ASSIGNMENT(dest, source, converter);
-    }
-
-    template<typename destination_t, typename source_t, typename converter_t = int>
-    void TEST_MOVE_ASSIGNMENT(source_t source, converter_t converter = {})
-    {
-        WHEN("move assigned")
-        {
-            THEN("destination is assigned")
-            {
-                destination_t dest;
-                ASSIGN_AND_VERIFY(dest, std::move(source), converter);
-
-                // Verify perfect forwarding
-                using source_decayed_t = std::decay_t<source_t>;
-                AND_THEN("source is 'moved from'")
-                {
-                    REQUIRE(source == source_decayed_t{});
-                }
-            }
-        }
-    }
-
-    struct int_string_converter_t
-    {
-        int operator()(std::string in)
-        {
-            return std::atoi(in.c_str());
-        }
-        std::string operator()(int in)
-        {
-            return std::to_string(in);
-        }
-    } int_string_converter;
-
-    constexpr auto int_to_string_converter = [](int input) -> std::string
-    {
-        return std::to_string(input);
-    };
-    using int_to_string_converter_t = decltype(int_to_string_converter);
+    mapping m2(adapter1, mbr2);
+    REQUIRE(m2.compare(val1, obj1));
 }
 
-SCENARIO("convertible_tests: Compile-time validation")
-{
-    GIVEN("misc traits")
-    {
-        static_assert(convertible::traits::is_dereferencable_v<int*>);
-        static_assert(convertible::traits::is_dereferencable_v<std::optional<int>>);
-        static_assert(!convertible::traits::is_dereferencable_v<int>);
-    }
-    GIVEN("conversion")
-    {
-        // True:
-        static_assert(std::is_same_v<std::string, convertible::traits::converted_t<int_to_string_converter_t, int>>);
-        static_assert(convertible::traits::is_convertible_v<int_to_string_converter_t, int>);
-        static_assert(convertible::traits::is_convertible_v<int_to_string_converter_t, int&>);
-        static_assert(convertible::traits::is_convertible_v<int_to_string_converter_t, float>);
+// SCENARIO("playground1.1")
+// {
+//     std::uint32_t val1, val2 = 0;
+//     adapters::object_v2 adapter1;
+//     adapters::object_v2 adapter2;
 
-        // False:
-        static_assert(!convertible::traits::is_convertible_v<int_to_string_converter_t, std::string>);
-    }
-    GIVEN("direct assignment")
-    {
-        // True:
-        // Without converter
-        static_assert(convertible::traits::is_assignable_v<int&, int>);
-        static_assert(convertible::traits::is_assignable_v<int&, int&>);
-        static_assert(convertible::traits::is_assignable_v<int&, float>);
-        static_assert(convertible::traits::is_assignable_v<float&, int>);
-        static_assert(convertible::traits::is_assignable_v<std::string, std::string>);
-        static_assert(convertible::traits::is_assignable_v<std::vector<int>, std::vector<int>>);
-        // With converter
-        static_assert(convertible::traits::is_assignable_v<std::string&, int, int_to_string_converter_t>);
+//     operators::assign_v2 op1;
+//     operators::compare_v2 op2;
 
-        // False:
-        // Without converter
-        static_assert(!convertible::traits::is_assignable_v<int, int>);
-        static_assert(!convertible::traits::is_assignable_v<int, int&>);
-        static_assert(!convertible::traits::is_assignable_v<std::string, int>);
-        static_assert(!convertible::traits::is_assignable_v<std::vector<int>, std::vector<float>>);
-        // With converter
-        static_assert(!convertible::traits::is_assignable_v<std::vector<int>, std::vector<float>, int_to_string_converter_t>);
-        static_assert(!convertible::traits::is_assignable_v<int&, std::string, int_to_string_converter_t>);
-    }
-    GIVEN("direct comparison")
-    {
-        // True:
-        // Without converter
-        static_assert(convertible::traits::is_comparable_v<int, int>);
-        static_assert(convertible::traits::is_comparable_v<int, int&>);
-        static_assert(convertible::traits::is_comparable_v<int&, int>);
-        static_assert(convertible::traits::is_comparable_v<int&, int&>);
-        static_assert(convertible::traits::is_comparable_v<int&, float>);
-        static_assert(convertible::traits::is_comparable_v<float&, int>);
-        static_assert(convertible::traits::is_comparable_v<std::string, std::string>);
-        static_assert(convertible::traits::is_comparable_v<std::vector<int>, std::vector<int>>);
-        // With converter
-        static_assert(convertible::traits::is_comparable_v<std::string&, int, int_to_string_converter_t>);
+//     op1.exec(adapter1, adapter2);
+//     op2.exec(adapter1, adapter2);
+// }
 
-        // False:
-        // Without converter
-        static_assert(!convertible::traits::is_comparable_v<std::string, int>);
-        static_assert(!convertible::traits::is_comparable_v<std::vector<int>, std::vector<float>>);
-        // With converter
-        static_assert(!convertible::traits::is_comparable_v<std::vector<int>, std::vector<float>, int_to_string_converter_t>);
-        static_assert(!convertible::traits::is_comparable_v<int&, std::string, int_to_string_converter_t>);
-    }
-}
+// SCENARIO("playground2")
+// {
+//     std::uint32_t val1, val2 = 0;
+//     adapters::object adapter1(val1);
+//     adapters::object adapter2(val2);
 
-SCENARIO("convertible_tests: Compile-time concept validation")
-{
-    int a = 1;
-    int b = 2;
-    std::string c;
+//     operators::assign op1;
+//     operators::compare op2;
 
-    //convertible::values::cpp20::assign(a, b);
-}
+//     val2 = 5;
+//     REQUIRE_FALSE(op2.exec(adapter1, adapter2));
+//     REQUIRE(op1.exec(adapter1, adapter2) == 5);
+//     REQUIRE(op2.exec(adapter1, adapter2));
+// }
 
-struct adapter
-{
-    explicit adapter(std::uint32_t& inst): inst_(inst){}
+// SCENARIO("playground3")
+// {
+//     struct dummy
+//     {
+//         int val = 0;
+//     } obj;
+//     adapters::member mbrAdptr(obj, &dummy::val);
 
-    std::uint32_t& inst_;
+//     std::uint32_t val1 = 1;
+//     adapters::object objAdptr(val1);
 
-    operator std::uint32_t() const
-    {
-        return inst_;
-    }
+//     operators::compare comp;
 
-    adapter& operator=(std::uint32_t val)
-    {
-        inst_ = val;
-        return *this;
-    }
+//     REQUIRE_FALSE(comp.exec(objAdptr, mbrAdptr));
+// }
 
-    bool operator==(std::uint32_t val) const
-    {
-        return inst_ == val;
-    }
-};
+// SCENARIO("playground3")
+// {
+//     std::vector<std::uint8_t> data;
 
-enum class direction
-{
-    lhs_to_rhs,
-    rhs_to_lhs
-};
+//     mapping<adapter, adapter> m;
 
-template<typename lhs_adapter_t, typename rhs_adapter_t>
-struct mapping
-{
-    template<direction dir, typename lhs_t, typename rhs_t>
-        requires 
-            convertible::concepts::cpp20::mappable<lhs_adapter_t, lhs_t, rhs_adapter_t, rhs_t>
-    void assign(lhs_t&& lhs, rhs_t&& rhs)
-    {
-        lhs_adapter_t l(lhs);
-        rhs_adapter_t r(rhs);
-        if constexpr(dir == direction::lhs_to_rhs)
-        {
-            r = static_cast<std::decay_t<lhs_t>>(l);
-        }
-        else
-        {
-            l = static_cast<std::decay_t<rhs_t>>(r);
-        }
-    }
+//     std::uint32_t a1=1, a2=2;
+//     m.assign<direction::lhs_to_rhs>(a1, a2);
 
-    template<typename lhs_t, typename rhs_t>
-        requires 
-            convertible::concepts::cpp20::mappable<lhs_adapter_t, lhs_t, rhs_adapter_t, rhs_t>
-    bool equals(lhs_t&& lhs, rhs_t&& rhs)
-    {
-        return lhs_adapter_t(lhs) == static_cast<std::decay_t<rhs_t>>(rhs_adapter_t(rhs));
-    }
-};
+//     REQUIRE(a1 == 1);
+//     REQUIRE(a2 == 1);
+//     REQUIRE(m.equals(a1, a2));
 
-static_assert(convertible::concepts::cpp20::adaptable<adapter, std::int32_t>, "SADSAD");
+//     a1=1;
+//     a2=2;
 
-SCENARIO("convertible_tests: Value adapters")
-{
-    std::vector<std::uint8_t> data;
+//     m.assign<direction::rhs_to_lhs>(a1, a2);
 
-    mapping<adapter, adapter> m;
-
-    std::uint32_t a1=1, a2=2;
-    m.assign<direction::lhs_to_rhs>(a1, a2);
-
-    REQUIRE(a1 == 1);
-    REQUIRE(a2 == 1);
-    REQUIRE(m.equals(a1, a2));
-
-    a1=1;
-    a2=2;
-
-    m.assign<direction::rhs_to_lhs>(a1, a2);
-
-    REQUIRE(a1 == 2);
-    REQUIRE(a2 == 2);
-    REQUIRE(m.equals(a1, a2));
-}
-
-SCENARIO("convertible_tests: Assignment & Equality")
-{
-    GIVEN("int -> int")
-    {
-        WHEN("assigning")
-        {
-            using dest_t = int;
-            using source_t = int;
-            TEST_COPY_ASSIGNMENT<dest_t, source_t>(10);
-        }
-        WHEN("comparing")
-        {
-            using lhs_t = int;
-            using rhs_t = int;
-            REQUIRE(convertible::values::equal(lhs_t{1}, rhs_t{1}));
-            REQUIRE_FALSE(convertible::values::equal(lhs_t{1}, rhs_t{2}));
-        }
-    }
-    GIVEN("int <-> int*")
-    {
-        WHEN("assigning")
-        {
-            AND_WHEN("int -> int*")
-            {
-                using dest_t = int*;
-                using source_t = int;
-
-                int val;
-                dest_t dest = &val;
-                TEST_COPY_ASSIGNMENT(dest, source_t{10});
-            }
-            AND_WHEN("int -> int* (nullptr)")
-            {
-                using dest_t = int*;
-                using source_t = int;
-
-                dest_t destination = nullptr;
-                REQUIRE_NOTHROW(convertible::values::assign(destination, source_t{10}));
-                REQUIRE(destination == nullptr);
-            }
-            AND_WHEN("int <- int*")
-            {
-                using dest_t = int;
-                using source_t = int*;
-                int source = 10;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>(&source);
-            }
-            AND_WHEN("int <- int* (nullptr)")
-            {
-                using dest_t = int;
-                using source_t = int*;
-                int destination = 10;
-                REQUIRE_NOTHROW(convertible::values::assign(destination, source_t{ nullptr }));
-                REQUIRE(destination == 10);
-            }
-        }
-        WHEN("comparing")
-        {
-            AND_WHEN("int == int*")
-            {
-                using lhs_t = int;
-                using rhs_t = int*;
-
-                int rhs = 12;
-                REQUIRE(convertible::values::equal(lhs_t{12}, &rhs));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{2}, &rhs));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{2}, rhs_t{nullptr}));
-            }
-            AND_WHEN("int* == int")
-            {
-                using lhs_t = int*;
-                using rhs_t = int;
-                int lhs = 12;
-                REQUIRE(convertible::values::equal(&lhs, rhs_t{12}));
-                REQUIRE_FALSE(convertible::values::equal(&lhs, rhs_t{2}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{nullptr}, rhs_t{2}));
-            }
-        }
-    }
-    GIVEN("int <-> float")
-    {
-        WHEN("assigning")
-        {
-            AND_WHEN("float -> int")
-            {
-                using dest_t = int;
-                using source_t = float;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>(10.3f);
-            }
-            AND_WHEN("float <- int")
-            {
-                using dest_t = float;
-                using source_t = int;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>(10);
-            }
-        }
-        WHEN("comparing")
-        {
-            AND_WHEN("int == float")
-            {
-                using lhs_t = int;
-                using rhs_t = float;
-                REQUIRE(convertible::values::equal(lhs_t{1}, rhs_t{1.0f}));
-                REQUIRE(convertible::values::equal(lhs_t{1}, rhs_t{1.4f}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{1}, rhs_t{2.0f}));
-            }
-            AND_WHEN("float == int")
-            {
-                using lhs_t = float;
-                using rhs_t = int;
-                REQUIRE(convertible::values::equal(lhs_t{1.0f}, rhs_t{1}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{1.4f}, rhs_t{1}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{2.0f}, rhs_t{1}));
-            }
-        }
-    }
-    GIVEN("string -> string")
-    {
-        WHEN("assigning")
-        {
-            using dest_t = std::string;
-            using source_t = std::string;
-            TEST_COPY_ASSIGNMENT<dest_t, source_t>("source");
-            TEST_MOVE_ASSIGNMENT<dest_t, source_t>("source");
-        }
-        WHEN("comparing")
-        {
-            using lhs_t = std::string;
-            using rhs_t = std::string;
-            REQUIRE(convertible::values::equal(lhs_t{"hello"}, rhs_t{"hello"}));
-            REQUIRE_FALSE(convertible::values::equal(lhs_t{"hello"}, rhs_t{"world"}));
-        }
-    }
-    GIVEN("array<int, 3> -> array<int, 3>")
-    {
-        WHEN("assigning")
-        {
-            using dest_t = std::array<int, 3>;
-            using source_t = std::array<int, 3>;
-            TEST_COPY_ASSIGNMENT<dest_t, source_t>({1, 2, 3});
-        }
-        WHEN("comparing")
-        {
-            using lhs_t = std::array<int, 3>;
-            using rhs_t = std::array<int, 3>;
-            REQUIRE(convertible::values::equal(lhs_t{1, 2}, rhs_t{1, 2}));
-            REQUIRE_FALSE(convertible::values::equal(lhs_t{1, 2}, rhs_t{3, 4}));
-        }
-    }
-    GIVEN("array<int, 3> <-> array<float, 3>")
-    {
-        WHEN("assigning")
-        {
-            AND_WHEN("array<int, 3> -> array<float, 3>")
-            {
-                using dest_t = std::array<float, 3>;
-                using source_t = std::array<int, 3>;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>({1, 2, 3});
-            }
-            AND_WHEN("array<int, 3> <- array<float, 3>")
-            {
-                using dest_t = std::array<int, 3>;
-                using source_t = std::array<float, 3>;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>({1.1f, 2.2f, 3.3f});
-            }
-        }
-        WHEN("comparing")
-        {
-            AND_WHEN("array<int, 3> == array<float, 3>")
-            {
-                using lhs_t = std::array<int, 3>;
-                using rhs_t = std::array<float, 3>;
-                REQUIRE(convertible::values::equal(lhs_t{1, 2, 3}, rhs_t{1.0f, 2.0f, 3.0f}));
-                REQUIRE(convertible::values::equal(lhs_t{1, 2, 3}, rhs_t{1.4f, 2.6f, 3.5f}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{1, 2, 3}, rhs_t{2.0f, 2.0f, 2.0f}));
-            }
-            AND_WHEN("array<float, 3> == array<int, 3>")
-            {
-                using lhs_t = std::array<float, 3>;
-                using rhs_t = std::array<int, 3>;
-                REQUIRE(convertible::values::equal(lhs_t{1.0f, 2.0f, 3.0f}, rhs_t{1, 2, 3}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{1.4f, 2.6f, 3.5f}, rhs_t{1, 2, 3}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{2.0f, 2.0f, 3}, rhs_t{1, 2, 3}));
-            }
-        }
-    }
-    GIVEN("array<int, 3> <-> vector<float, 3>")
-    {
-        WHEN("assigning")
-        {
-            AND_WHEN("array<int, 3> -> vector<float>")
-            {
-                using dest_t = std::vector<float>;
-                using source_t = std::array<int, 3>;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>({ 1, 2, 3 });
-                dest_t lhs;
-                convertible::values::assign(lhs, source_t{ 1, 2, 3 }); // Compile-time check that fixed-size source "moved from" isn't cleared (`rhs.clear()` called)
-            }
-            AND_WHEN("array<int, 3> <- vector<float>")
-            {
-                using dest_t = std::array<int, 3>;
-                using source_t = std::vector<float>;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>({ 1.1f, 2.2f, 3.3f });
-                TEST_MOVE_ASSIGNMENT<dest_t, source_t>({ 1.1f, 2.2f, 3.3f });
-            }
-        }
-        WHEN("comparing")
-        {
-            AND_WHEN("array<int, 3> == vector<float>")
-            {
-                using lhs_t = std::array<int, 3>;
-                using rhs_t = std::vector<float>;
-                REQUIRE(convertible::values::equal(lhs_t{ 1, 2, 3 }, rhs_t{ 1.0f, 2.0f, 3.0f }));
-                REQUIRE(convertible::values::equal(lhs_t{ 1, 2, 3 }, rhs_t{ 1.4f, 2.6f, 3.5f }));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{ 1, 2, 3 }, rhs_t{ 2.0f, 2.0f, 2.0f }));
-            }
-            AND_WHEN("vector<float> == array<int, 3>")
-            {
-                using lhs_t = std::vector<float>;
-                using rhs_t = std::array<int, 3>;
-                REQUIRE(convertible::values::equal(lhs_t{ 1.0f, 2.0f, 3.0f }, rhs_t{ 1, 2, 3 }));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{ 1.4f, 2.6f, 3.5f }, rhs_t{ 1, 2, 3 }));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{ 2.0f, 2.0f, 3 }, rhs_t{ 1, 2, 3 }));
-            }
-        }
-    }
-    GIVEN("vector<int> -> vector<int>")
-    {
-        WHEN("assigning")
-        {
-            using dest_t = std::vector<int>;
-            using source_t = std::vector<int>;
-            TEST_COPY_ASSIGNMENT<dest_t, source_t>({1, 2, 3});
-            TEST_MOVE_ASSIGNMENT<dest_t, source_t>({1, 2, 3});
-        }
-        WHEN("comparing")
-        {
-            using lhs_t = std::vector<int>;
-            using rhs_t = std::vector<int>;
-            REQUIRE(convertible::values::equal(lhs_t{1, 2}, rhs_t{1, 2}));
-            REQUIRE_FALSE(convertible::values::equal(lhs_t{1, 2}, rhs_t{3, 4}));
-        }
-    }
-    GIVEN("vector<int> <-> vector<float>")
-    {
-        WHEN("assigning")
-        {
-            AND_WHEN("vector<int> -> vector<float>")
-            {
-                using dest_t = std::vector<float>;
-                using source_t = std::vector<int>;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>({1, 2, 3});
-                TEST_MOVE_ASSIGNMENT<dest_t, source_t>({1, 2, 3});
-            }
-            AND_WHEN("vector<float> <- vector<int>")
-            {
-                using dest_t = std::vector<int>;
-                using source_t = std::vector<float>;
-                TEST_COPY_ASSIGNMENT<dest_t, source_t>({ 1.1f, 2.2f, 3.3f });
-                TEST_MOVE_ASSIGNMENT<dest_t, source_t>({ 1.1f, 2.2f, 3.3f });
-            }
-        }
-        WHEN("comparing")
-        {
-            AND_WHEN("vector<int> == vector<float>")
-            {
-                using lhs_t = std::vector<int>;
-                using rhs_t = std::vector<float>;
-                REQUIRE(convertible::values::equal(lhs_t{1, 2}, rhs_t{1.0f, 2.0f}));
-                REQUIRE(convertible::values::equal(lhs_t{1, 2}, rhs_t{1.4f, 2.6f}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{1, 2}, rhs_t{2.0f, 2.0f}));
-            }
-            AND_WHEN("vector<float> == vector<int>")
-            {
-                using lhs_t = std::vector<float>;
-                using rhs_t = std::vector<int>;
-                REQUIRE(convertible::values::equal(lhs_t{1.0f, 2.0f}, rhs_t{1, 2}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{1.4f, 2.6f}, rhs_t{1, 2}));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{2.0f, 2.0f}, rhs_t{1, 2}));
-            }
-        }
-    }
-}
-
-SCENARIO("convertible_tests: Assignment & Equality with converter")
-{
-    GIVEN("int <-> string")
-    {
-        WHEN("assigning")
-        {
-            AND_WHEN("int -> string")
-            {
-                using dest_t = std::string;
-                using source_t = int;
-                TEST_COPY_ASSIGNMENT<dest_t>(source_t{12}, int_string_converter);
-            }
-            AND_WHEN("int <- string")
-            {
-                using dest_t = int;
-                using source_t = std::string;
-                TEST_COPY_ASSIGNMENT<dest_t>(source_t{"12"}, int_string_converter);
-                TEST_MOVE_ASSIGNMENT<dest_t>(source_t{"12"}, int_string_converter);
-            }
-        }
-        WHEN("comparing")
-        {
-            AND_WHEN("int == string")
-            {
-                using lhs_t = int;
-                using rhs_t = std::string;
-                REQUIRE(convertible::values::equal(lhs_t{12}, rhs_t{"12"}, int_string_converter));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{12}, rhs_t{"34"}, int_string_converter));
-            }
-            AND_WHEN("string == int")
-            {
-                using lhs_t = std::string;
-                using rhs_t = int;
-                REQUIRE(convertible::values::equal(lhs_t{"12"}, rhs_t{12}, int_string_converter));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{"12"}, rhs_t{34}, int_string_converter));
-            }
-        }
-    }
-    GIVEN("vector<int> <-> vector<string>")
-    {
-        WHEN("assigning")
-        {
-            AND_WHEN("vector<int> -> vector<string>")
-            {
-                using dest_t = std::vector<std::string>;
-                using source_t = std::vector<int>;
-                TEST_COPY_ASSIGNMENT<dest_t>(source_t{12, 13}, int_string_converter);
-            }
-            AND_WHEN("vector<int> <- vector<string>")
-            {
-                using dest_t = std::vector<int>;
-                using source_t = std::vector<std::string>;
-                TEST_COPY_ASSIGNMENT<dest_t>(source_t{"12", "13"}, int_string_converter);
-                TEST_MOVE_ASSIGNMENT<dest_t>(source_t{"12", "13"}, int_string_converter);
-            }
-        }
-        WHEN("comparing")
-        {
-            AND_WHEN("vector<int> == vector<string>")
-            {
-                using lhs_t = std::vector<int>;
-                using rhs_t = std::vector<std::string>;
-                REQUIRE(convertible::values::equal(lhs_t{12, 13}, rhs_t{"12", "13"}, int_string_converter));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{12, 32}, rhs_t{"12", "13"}, int_string_converter));
-            }
-            AND_WHEN("vector<string> == vector<int>")
-            {
-                using lhs_t = std::vector<std::string>;
-                using rhs_t = std::vector<int>;
-                REQUIRE(convertible::values::equal(lhs_t{"12", "13"}, rhs_t{12, 13}, int_string_converter));
-                REQUIRE_FALSE(convertible::values::equal(lhs_t{"12", "32"}, rhs_t{12, 13}, int_string_converter));
-            }
-        }
-    }
-}
-
-SCENARIO("convertible_tests: Member binding")
-{
-    struct type_a
-    {
-        int member;
-    };
-
-    GIVEN("a binding to a member")
-    {
-        constexpr auto member = convertible::binding::class_member(&type_a::member);
-        THEN("value can be read")
-        {
-            type_a instance;
-            instance.member = 10;
-            REQUIRE(member.read(instance) == 10);
-        }
-    }
-}
+//     REQUIRE(a1 == 2);
+//     REQUIRE(a2 == 2);
+//     REQUIRE(m.equals(a1, a2));
+// }

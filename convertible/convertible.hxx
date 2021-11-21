@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <concepts>
 #include <type_traits>
 #include <utility>
@@ -9,373 +8,199 @@
 
 namespace convertible
 {
-    namespace details
-    {
-        struct nonesuch
-        {
-            ~nonesuch() = delete;
-            nonesuch(nonesuch const&) = delete;
-            void operator=(nonesuch const&) = delete;
-        };
-    }
     namespace traits
     {
-        namespace detection
+        namespace details
         {
-            // Detection idiom
-
-            template<typename... any_t>
-            struct tester{};
-
-            template <typename Default, typename AlwaysVoid,
-            template<class...> typename Op, typename... Args>
-            struct detector {
-                using value_t = std::false_type;
-                using type = Default;
-            };
-
-            template <typename Default, template<typename...> typename Op, typename... Args>
-            struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
-                using value_t = std::true_type;
-                using type = Op<Args...>;
-            };
-
-            template <template<typename...> typename Op, typename... Args>
-            using is_detected = typename detector<details::nonesuch, void, Op, Args...>::value_t;
-        }
-
-        template <template<typename...> typename Op, typename... Args>
-        constexpr bool is_detected_v = detection::is_detected<Op, Args...>::value;
-
-        template<typename to_t, typename from_t>
-        using is_static_castable_t = decltype(static_cast<to_t>(std::declval<from_t>()));
-        template<typename to_t, typename from_t>
-        constexpr bool is_static_castable_v = is_detected_v<is_static_castable_t, to_t, from_t>;
-
-        template<typename T>
-        using is_iterable_t = detection::tester<decltype(std::begin(std::declval<T&>()) == std::end(std::declval<T&>()))>;
-        template<typename T>
-        constexpr bool is_iterable_v = is_detected_v<is_iterable_t, T>;
-
-        template<typename T>
-        using element_type_t = decltype(*std::begin(std::declval<T&>()));
-
-        template<typename T>
-        using iterator_t = 
-            std::conditional_t<is_iterable_v<T>, 
-                std::conditional_t<std::is_rvalue_reference_v<T>, 
-                    decltype(std::move_iterator(std::declval<T>().begin())), 
-                    decltype(std::declval<T>().cbegin())>, 
-                details::nonesuch>;
-
-        template<typename T>
-        using is_dynamic_container_t = detection::tester<decltype(std::declval<T&>().resize(std::declval<std::size_t>()))>;
-        template<typename T>
-        constexpr bool is_dynamic_container_v = is_iterable_v<T> && is_detected_v<is_dynamic_container_t, T>;
-
-        template<typename converter_t, typename... arg_ts>
-        using converted_t = std::invoke_result_t<converter_t, arg_ts...>;
-        template<typename converter_t, typename... arg_ts>
-        constexpr bool is_convertible_v = is_detected_v<converted_t, converter_t, arg_ts...>;
-
-        template<typename T>
-        using is_dereferencable_t = decltype(*std::declval<T>());
-        template<typename T>
-        constexpr bool is_dereferencable_v = is_detected_v<is_dereferencable_t, T>;
-
-        template<typename T>
-        using dereferenced_t = std::conditional_t<is_dereferencable_v<T>, decltype(*std::declval<T>()), details::nonesuch>;
-    }
-    
-    namespace concepts
-    {
-        template<typename...>
-        struct tag{};
-
-        template<typename... ts>
-        using tag_t = tag<ts...>*;
-
-        template<bool is_true, typename to_t, typename from_t>
-        using static_castable = std::enable_if_t<traits::is_static_castable_v<to_t, from_t> == is_true, tag_t<to_t, from_t>>;
-    }
-
-    namespace details
-    {
-        template<typename to_t, typename from_t>
-        struct static_cast_converter
-        {
-            using result_t = std::decay_t<to_t>;
-
-            template<typename arg_t,
-                concepts::static_castable<true, result_t, arg_t> = nullptr>
-            inline constexpr decltype(auto) operator()(arg_t&& from) const
+            template<typename M>
+            struct member_ptr_meta
             {
-                return static_cast<result_t>(FWD(from));
-            }
-        };
+                template<typename R>
+                struct return_t{ using type = R; };
 
-        template<typename lhs_t, typename rhs_t>
-        constexpr auto try_make_by_element_converter()
-        {
-            if constexpr(traits::is_iterable_v<lhs_t> && traits::is_iterable_v<rhs_t>)
-            {
-                return static_cast_converter<traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>>{};
-            }
-            else
-            {
-                // Fall back to something that's not invocable with any argument (force SFINAE)
-                return []{};
-            }
-        }
+                template <typename C, typename R>
+                static return_t<C> get_class_type(R C::*);
 
-        template<typename lhs_t, typename rhs_t>
-        using by_element_static_cast_converter_t = decltype(details::try_make_by_element_converter<lhs_t, rhs_t>());
-    }
+                template <typename C, typename R>
+                static return_t<R> get_value_type(R C::*);
 
-    namespace traits
-    {        
-        // The two core type traits for two types that can be "bounded":
-        // 1. Can rhs_t be statically casted to `decay_t<lhs_t>`?
-        template<typename lhs_t, typename rhs_t, typename converter_t>
-        using is_assignable_t = detection::tester<decltype(std::declval<lhs_t>() = std::declval<converted_t<converter_t, rhs_t>>())>;
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
-        constexpr bool is_assignable_v = is_detected_v<is_assignable_t, lhs_t, rhs_t, converter_t>;
-
-        // 2. Is `lhs_t == rhs_t` defined?
-        template<typename lhs_t, typename rhs_t, typename converter_t>
-        using is_comparable_t = detection::tester<decltype(std::declval<lhs_t>() == std::declval<converted_t<converter_t, rhs_t>>())>;
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
-        constexpr bool is_comparable_v = is_detected_v<is_comparable_t, lhs_t, rhs_t, converter_t>;
-
-        namespace class_info
-        {
-            namespace details
-            {
-                template<typename M>
-                struct member_ptr_meta
-                {
-                    template<typename R>
-                    struct return_t
-                    {
-                        using type = R;
-                    };
-
-                    template <typename C, typename R>
-                    static return_t<C> get_class_type(R C::*);
-
-                    template <typename C, typename R>
-                    static return_t<R> get_value_type(R C::*);
-
-                    using class_t = typename decltype(get_class_type(std::declval<M>()))::type;
-                    using value_t = typename decltype(get_value_type(std::declval<M>()))::type;
-                };
-            }
-
-            template<typename member_ptr_t>
-            using member_class_t = typename details::member_ptr_meta<member_ptr_t>::class_t;
-            template<typename member_ptr_t, typename class_t = member_class_t<member_ptr_t>, typename value_t = typename details::member_ptr_meta<member_ptr_t>::value_t>
-            using member_value_t = std::conditional_t<std::is_rvalue_reference_v<class_t>, value_t&&, value_t>;
-        }
-    }
-
-    namespace concepts
-    {
-        namespace cpp20
-        {
-            template<typename T>
-            concept iterable = requires(T t){ std::begin(std::declval<T&>()) == std::end(std::declval<T&>()); };
-
-            template<typename T>
-            concept dereferenceable = requires(T t){ *t; };
-
-            template <typename lhs_t, typename rhs_t, typename converter_t>
-            concept assignable = requires(lhs_t lhs, rhs_t rhs, converter_t converter){ {lhs = converter(rhs)}; };
-
-            template <typename lhs_t, typename rhs_t, typename converter_t>
-            concept comparable = requires(lhs_t lhs, rhs_t rhs, converter_t converter){ {lhs == converter(rhs)}; };
-
-            template<typename T, typename U>
-            concept adaptable = requires(T t, U u)
-            {
-                requires std::is_convertible_v<T, std::remove_reference_t<U>>;
-                { t.operator=(u) };
-                { t.operator==(u) } -> std::convertible_to<bool>;
-            };
-
-            template<typename adapter1_t, typename arg1_t, typename adapter2_t, typename arg2_t>
-            concept mappable = requires(adapter1_t adpt1, arg1_t arg1, adapter2_t adpt2, arg2_t arg2)
-            {
-                requires adaptable<adapter1_t, arg1_t>;
-                requires adaptable<adapter2_t, arg2_t>;
-                requires std::convertible_to<arg1_t, arg2_t>;
+                using class_t = typename decltype(get_class_type(std::declval<M>()))::type;
+                using value_t = typename decltype(get_value_type(std::declval<M>()))::type;
             };
         }
-        template<bool is_true, typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
-        using assignable = std::enable_if_t<traits::is_assignable_v<lhs_t, rhs_t, converter_t> == is_true, tag_t<lhs_t, rhs_t>>;
-
-        template<bool is_true, typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
-        using comparable = std::enable_if_t<traits::is_comparable_v<lhs_t, rhs_t, converter_t> == is_true, tag_t<lhs_t, rhs_t>>;
-
-        template<bool is_true, typename callable_t, typename... arg_ts>
-        using invocable = std::enable_if_t<std::is_invocable_v<callable_t, arg_ts...> == is_true, tag_t<callable_t, arg_ts...>>;
-
-        template<bool is_true, typename base_t, typename derived_t>
-        using base_of = std::enable_if_t<std::is_base_of_v<base_t, std::decay_t<derived_t>> == is_true, tag_t<base_t, derived_t>>;
-
-        template<bool is_true, typename member_ptr_t>
-        using member_ptr = std::enable_if_t<std::is_member_pointer_v<member_ptr_t> == is_true, tag_t<member_ptr_t>>;
-    }
-
-    namespace values
-    {
-        /*!
-        Direct assignment: `lhs = converter(rhs)`
-        */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
-            requires concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>
-        inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
-        {
-            FWD(lhs) = FWD(converter)(FWD(rhs));
-        }
-
-        /*!
-        Assignment by dereference: `if(rhs){ lhs = converter(*rhs) }`
-        */
-        template<typename lhs_t, concepts::cpp20::dereferenceable rhs_t, typename converter_t = details::static_cast_converter<lhs_t, traits::dereferenced_t<rhs_t>>>
-            requires 
-                 (!concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>)
-                && concepts::cpp20::assignable<lhs_t, traits::dereferenced_t<rhs_t>, converter_t>
-        inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
-        {
-            if (rhs)
-            {
-                assign(FWD(lhs), *FWD(rhs), FWD(converter));
-            }
-        }
-
-        /*!
-        Assignment by dereference: `if(lhs){ *lhs = converter(rhs) }`
-        */
-        template<concepts::cpp20::dereferenceable lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<traits::dereferenced_t<lhs_t>, rhs_t>>
-            requires 
-                 (!concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>)
-                && concepts::cpp20::assignable<traits::dereferenced_t<lhs_t>, rhs_t, converter_t>
-        inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
-        {
-            if (lhs)
-            {
-                assign(*FWD(lhs), FWD(rhs), FWD(converter));
-            }
-        }
-
-        /*!
-        Direct comparison: `lhs == converter(rhs)`
-        */
-        template<typename lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<lhs_t, rhs_t>>
-            requires concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>
-        inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
-        {
-            return lhs == FWD(converter)(rhs);
-        }
-
-        /*!
-        Comparison by dereference: `if(rhs){ lhs == converter(*rhs) }`
-        */
-        template<typename lhs_t, concepts::cpp20::dereferenceable rhs_t, typename converter_t = details::static_cast_converter<lhs_t, traits::dereferenced_t<rhs_t>>>
-            requires 
-                 (!concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>)
-                && concepts::cpp20::comparable<lhs_t, traits::dereferenced_t<rhs_t>, converter_t>
-        inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
-        {
-            return rhs && equal(FWD(lhs), *FWD(rhs), FWD(converter));
-        }
-
-        /*!
-        Comparison by dereference: `if(lhs){ *lhs == converter(rhs) }`
-        */
-        template<concepts::cpp20::dereferenceable lhs_t, typename rhs_t, typename converter_t = details::static_cast_converter<traits::dereferenced_t<lhs_t>, rhs_t>>
-            requires 
-                 (!concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>)
-                && concepts::cpp20::comparable<traits::dereferenced_t<lhs_t>, rhs_t, converter_t>
-        inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
-        {
-            return lhs && equal(*FWD(lhs), FWD(rhs), FWD(converter));
-        }
-
-        /*!
-        Element-wise assignment: `lhs[i] = converter(rhs[i])`
-        */
-        template<concepts::cpp20::iterable lhs_t, concepts::cpp20::iterable rhs_t, typename converter_t = details::by_element_static_cast_converter_t<lhs_t, rhs_t>,
-            // requires 
-            //      (!concepts::cpp20::assignable<lhs_t, rhs_t, converter_t>)
-            //     && concepts::cpp20::assignable<traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t>
-            concepts::assignable<false, lhs_t, rhs_t> = nullptr,
-            concepts::assignable<true, traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t> = nullptr>
-        inline void assign(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {})
-        {
-            if constexpr(traits::is_dynamic_container_v<lhs_t>)
-            {
-                lhs.resize(rhs.size());
-            }
-
-            using iter_t = traits::iterator_t<rhs_t>;
-            auto rhsBegin = iter_t(rhs.begin());
-            auto lhsBegin = lhs.begin();
-            for(; rhsBegin != rhs.end(); ++rhsBegin, ++lhsBegin)
-            {
-                assign(*lhsBegin, *rhsBegin, FWD(converter));
-            }
-
-            if constexpr(traits::is_dynamic_container_v<rhs_t> && std::is_rvalue_reference_v<decltype(rhs)>)
-            {
-                rhs.clear();
-            }
-        }
-
-        /*!
-        Element-wise comparison: `lhs[i] == converter(rhs[i])`
-        */
-        template<concepts::cpp20::iterable lhs_t, concepts::cpp20::iterable rhs_t, typename converter_t = details::by_element_static_cast_converter_t<lhs_t, rhs_t>,
-            // requires 
-            //      (!concepts::cpp20::comparable<lhs_t, rhs_t, converter_t>)
-            //     && concepts::cpp20::comparable<traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t>
-            concepts::comparable<false, lhs_t, rhs_t> = nullptr,
-            concepts::comparable<true, traits::element_type_t<lhs_t>, traits::element_type_t<rhs_t>, converter_t> = nullptr>
-        inline bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {})
-        {
-            return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
-                [&converter](const auto& l, const auto& r){
-                    return equal(l, r, FWD(converter));
-                });
-        }
-    }
-
-    namespace binding
-    {
-        namespace class_info = convertible::traits::class_info;
 
         template<typename member_ptr_t>
-        struct class_member
+        using member_class_t = typename details::member_ptr_meta<member_ptr_t>::class_t;
+        
+        template<typename member_ptr_t, typename class_t = member_class_t<member_ptr_t>, typename value_t = typename details::member_ptr_meta<member_ptr_t>::value_t>
+        using member_value_t = std::conditional_t<std::is_rvalue_reference_v<class_t>, value_t&&, value_t>;
+    }
+
+    namespace concepts
+    {
+        template<typename T>
+        concept iterable = requires(T t){ std::begin(std::declval<T&>()) == std::end(std::declval<T&>()); };
+
+        template<typename T>
+        concept dereferenceable = requires(T t){ *t; };
+
+        template <typename lhs_t, typename rhs_t, typename converter_t>
+        concept assignable = requires(lhs_t lhs, rhs_t rhs, converter_t converter){ {lhs = converter(rhs)}; };
+
+        template <typename lhs_t, typename rhs_t, typename converter_t>
+        concept comparable = requires(lhs_t lhs, rhs_t rhs, converter_t converter){ {lhs == converter(rhs)}; };
+
+        template<typename T, typename U>
+        concept adaptable = requires(T t, U u)
         {
-            using class_t = class_info::member_class_t<member_ptr_t>;
-
-            constexpr class_member(member_ptr_t ptr) : ptr_(ptr){}
-
-            template<typename instance_t,
-                concepts::base_of<true, class_t, instance_t> = nullptr>
-            constexpr decltype(auto) read(instance_t&& instance) const
-            {
-                return FWD(instance).*ptr_;
-            }
-
-        private:
-            member_ptr_t ptr_;
+            //requires std::is_constructible_v<T, std::decay_t<U>&>;
+            requires std::is_convertible_v<T, std::remove_reference_t<U>>;
+            { t.operator=(u) };
+            { t.operator==(u) } -> std::convertible_to<bool>;
         };
 
-        template<typename member_ptr_t,
-            concepts::member_ptr<true, member_ptr_t> = nullptr>
-        class_member(member_ptr_t) -> class_member<member_ptr_t>;
+        template<typename adapter1_t, typename arg1_t, typename adapter2_t, typename arg2_t>
+        concept mappable = requires(adapter1_t adpt1, arg1_t arg1, adapter2_t adpt2, arg2_t arg2)
+        {
+            requires adaptable<adapter1_t, arg1_t>;
+            requires adaptable<adapter2_t, arg2_t>;
+            requires std::convertible_to<arg1_t, arg2_t>;
+        };
     }
+
+    namespace adapters
+    {
+        namespace details
+        {
+            struct placeholder{};
+        }
+
+        template<typename obj_t = details::placeholder>
+        struct object
+        {
+            auto create(auto&& obj) const
+            {
+                return object<decltype(obj)>{FWD(obj)};
+            }
+
+            object() = default;
+            explicit object(auto&& obj): obj_(FWD(obj))
+            {
+            }
+
+            operator decltype(auto)() const
+            {
+                return obj_;
+            }
+
+            auto operator=(auto&& val)
+            {
+                return obj_ = val;
+            }
+
+            auto operator==(const auto& val) const
+            {
+                return obj_ == val;
+            }
+
+            obj_t obj_;
+        };
+
+        template<typename member_ptr_t, typename instance_t = traits::member_class_t<member_ptr_t>, bool is_rval = std::is_rvalue_reference_v<instance_t>>
+            requires std::is_member_pointer_v<member_ptr_t>
+        struct member
+        {
+            using value_t = traits::member_value_t<member_ptr_t>;
+
+            member_ptr_t ptr_;
+            std::decay_t<instance_t>* inst_;
+
+            auto create(auto&& obj) const
+            {
+                return member<member_ptr_t, decltype(obj)>(ptr_, FWD(obj));
+            }
+
+            explicit member(member_ptr_t ptr): ptr_(ptr){}
+            explicit member(member_ptr_t ptr, auto&& inst): ptr_(ptr), inst_(&inst)
+            {
+            }
+
+            operator decltype(auto)() const
+            {
+                if constexpr(is_rval)
+                {
+                    return std::move(inst_->*ptr_);
+                }
+                else
+                {
+                    return inst_->*ptr_;
+                }
+            }
+
+            auto operator=(auto&& val)
+            {
+                return inst_->*ptr_ = FWD(val);
+            }
+
+            auto operator==(const auto& val) const
+            {
+                return inst_->*ptr_ == val;
+            }
+        };
+    }
+
+    namespace operators
+    {
+        struct assign
+        {
+            decltype(auto) exec(auto&& lhs, auto&& rhs) const
+            {
+                return FWD(lhs) = FWD(rhs);
+            }
+        };
+
+        struct compare
+        {
+            decltype(auto) exec(auto&& lhs, auto&& rhs) const
+            {
+                return FWD(lhs) == FWD(rhs);
+            }
+        };
+    }
+
+    enum class direction
+    {
+        lhs_to_rhs,
+        rhs_to_lhs
+    };
+
+    template<typename lhs_adapter_t, typename rhs_adapter_t>
+    struct mapping
+    {
+        explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter):
+            lhsAdapter_(std::move(lhsAdapter)),
+            rhsAdapter_(std::move(rhsAdapter))
+        {}
+
+        template<direction dir>
+        auto assign(auto&& lhs, auto&& rhs) const
+        {
+            constexpr auto op = operators::assign{};
+            if constexpr(dir == direction::rhs_to_lhs)
+                return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
+            else
+                return op.exec(rhsAdapter_.create(FWD(rhs)), lhsAdapter_.create(FWD(lhs)));
+        }
+
+        auto compare(auto&& lhs, auto&& rhs) const
+        {
+            constexpr auto op = operators::compare{};
+            return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
+        }
+
+        std::decay_t<lhs_adapter_t> lhsAdapter_;
+        std::decay_t<rhs_adapter_t> rhsAdapter_;
+    };
 }
 
 #undef FWD
