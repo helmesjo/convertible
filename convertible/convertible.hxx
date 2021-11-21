@@ -33,7 +33,7 @@ namespace convertible
         using member_class_t = typename details::member_ptr_meta<member_ptr_t>::class_t;
         
         template<typename member_ptr_t, typename class_t = member_class_t<member_ptr_t>, typename value_t = typename details::member_ptr_meta<member_ptr_t>::value_t>
-        using member_value_t = std::conditional_t<std::is_rvalue_reference_v<class_t>, value_t&&, value_t>;
+        using member_value_t = value_t;
     }
 
     namespace adapters
