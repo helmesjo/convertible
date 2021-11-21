@@ -4,12 +4,109 @@
 
 #include <iostream>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
 template<typename T>
 struct detect;
+
+SCENARIO("convertible: Operators")
+{
+    using namespace convertible;
+
+    GIVEN("assign operator")
+    {
+        operators::assign op;
+        WHEN("passed two objects a & b")
+        {
+            int a = 1;
+            int b = 2;
+            auto returned = op.exec(a, b);
+
+            THEN("a == b")
+            {
+                REQUIRE(a == b);
+
+                AND_THEN("b is returned")
+                {
+                    REQUIRE(returned == b);
+                }
+            }
+        }
+        WHEN("passed two objects a & (temporary) b")
+        {
+            std::string a = "";
+            std::string b = "hello";
+            op.exec(a, std::move(b));
+
+            THEN("b is moved from")
+            {
+                REQUIRE(b == "");
+            }
+        }
+    }
+
+    GIVEN("equal operator")
+    {
+        operators::equal op;
+        WHEN("passed two equal objects a & b")
+        {
+            THEN("true is returned")
+            {
+                REQUIRE(op.exec(1, 1));
+            }
+        }
+        WHEN("passed two non-equal objects a & b")
+        {
+            THEN("false is returned")
+            {
+                REQUIRE_FALSE(op.exec(1, 2));
+            }
+        }
+    }
+}
+
+SCENARIO("convertible: Adapters")
+{
+    using namespace convertible;
+
+    GIVEN("object adapter")
+    {
+        int val = 1;
+        adapters::object<int&> adapter(val);
+
+        THEN("it implicitly assigns value")
+        {
+            adapter = 5;
+            REQUIRE(val == 5);
+        }
+        THEN("it implicitly converts to type")
+        {
+            REQUIRE(static_cast<int>(adapter) == val);
+        }
+    }
+    GIVEN("member adapter")
+    {
+        struct type
+        {
+            int val = 1;
+        } obj;
+
+        adapters::member adapter(&type::val, obj);
+
+        THEN("it implicitly assigns member value")
+        {
+            adapter = 3;
+            REQUIRE(obj.val == 3);
+        }
+        THEN("it implicitly converts to type")
+        {
+            REQUIRE(static_cast<int>(adapter) == obj.val);
+        }
+    }
+}
 
 SCENARIO("playground1")
 {
