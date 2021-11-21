@@ -84,13 +84,18 @@ namespace convertible
             }
 
             object() = default;
-            explicit object(auto&& obj): obj_(FWD(obj))
+            explicit object(obj_t obj): obj_(FWD(obj))
             {
             }
 
             operator decltype(auto)() const
             {
                 return obj_;
+            }
+
+            auto operator=(const object& other)
+            {
+                return obj_ = other;
             }
 
             auto operator=(auto&& val)
@@ -135,6 +140,11 @@ namespace convertible
                 {
                     return inst_->*ptr_;
                 }
+            }
+
+            auto operator=(const member& other)
+            {
+                return *this = static_cast<value_t>(other);
             }
 
             auto operator=(auto&& val)
