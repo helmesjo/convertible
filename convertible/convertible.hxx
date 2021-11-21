@@ -214,7 +214,7 @@ namespace convertible
         template<direction dir>
         auto assign(auto&& lhs, auto&& rhs) const
         {
-            constexpr auto op = operators::assign{};
+            constexpr operators::assign op;
             if constexpr(dir == direction::rhs_to_lhs)
                 return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
             else
@@ -223,7 +223,7 @@ namespace convertible
 
         auto equal(auto&& lhs, auto&& rhs) const
         {
-            constexpr auto op = operators::equal{};
+            constexpr operators::equal op;
             return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
         }
 
