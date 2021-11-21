@@ -52,7 +52,7 @@ namespace convertible
             }
 
             object() = default;
-            explicit object(obj_t obj): obj_(FWD(obj))
+            explicit object(auto&& obj): obj_(FWD(obj))
             {
             }
 
@@ -107,7 +107,7 @@ namespace convertible
             }
 
             explicit member(member_ptr_t ptr): ptr_(ptr){}
-            explicit member(member_ptr_t ptr, instance_t inst): ptr_(ptr), inst_(&inst)
+            explicit member(member_ptr_t ptr, auto&& inst): ptr_(ptr), inst_(&inst)
             {
             }
 
