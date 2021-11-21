@@ -55,10 +55,10 @@ SCENARIO("playground1")
     REQUIRE(obj1.val == 5);
     m.assign<direction::lhs_to_rhs>(obj1, val1);
     REQUIRE(val1 == 5);
-    REQUIRE(m.compare(obj1, 5));
+    REQUIRE(m.equal(obj1, 5));
 
     mapping m2(adapter1, mbr2);
-    REQUIRE(m2.compare(val1, obj1));
+    REQUIRE(m2.equal(val1, obj1));
 }
 
 // SCENARIO("playground1.1")

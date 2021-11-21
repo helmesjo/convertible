@@ -169,7 +169,7 @@ namespace convertible
             }
         };
 
-        struct compare
+        struct equal
         {
             decltype(auto) exec(auto&& lhs, auto&& rhs) const
             {
@@ -202,9 +202,9 @@ namespace convertible
                 return op.exec(rhsAdapter_.create(FWD(rhs)), lhsAdapter_.create(FWD(lhs)));
         }
 
-        auto compare(auto&& lhs, auto&& rhs) const
+        auto equal(auto&& lhs, auto&& rhs) const
         {
-            constexpr auto op = operators::compare{};
+            constexpr auto op = operators::equal{};
             return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
         }
 
