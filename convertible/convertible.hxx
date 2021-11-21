@@ -68,17 +68,17 @@ namespace convertible
                 }
             }
 
-            auto operator=(const object& other)
+            decltype(auto) operator=(const object& other)
             {
                 return obj_ = other;
             }
 
-            auto operator=(auto&& val)
+            decltype(auto) operator=(auto&& val)
             {
                 return obj_ = val;
             }
 
-            auto operator==(const auto& val) const
+            decltype(auto) operator==(const auto& val) const
             {
                 return obj_ == val;
             }
@@ -123,17 +123,17 @@ namespace convertible
                 }
             }
 
-            auto operator=(const member& other)
+            decltype(auto) operator=(const member& other)
             {
                 return *this = static_cast<value_t>(other);
             }
 
-            auto operator=(auto&& val)
+            decltype(auto) operator=(auto&& val)
             {
                 return inst_->*ptr_ = FWD(val);
             }
 
-            auto operator==(const auto& val) const
+            decltype(auto) operator==(const auto& val) const
             {
                 return inst_->*ptr_ == val;
             }
@@ -180,7 +180,7 @@ namespace convertible
         {}
 
         template<direction dir>
-        auto assign(auto&& lhs, auto&& rhs) const
+        decltype(auto) assign(auto&& lhs, auto&& rhs) const
         {
             constexpr operators::assign op;
             if constexpr(dir == direction::rhs_to_lhs)
@@ -189,7 +189,7 @@ namespace convertible
                 return op.exec(rhsAdapter_.create(FWD(rhs)), lhsAdapter_.create(FWD(lhs)));
         }
 
-        auto equal(auto&& lhs, auto&& rhs) const
+        decltype(auto) equal(auto&& lhs, auto&& rhs) const
         {
             constexpr operators::equal op;
             return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
