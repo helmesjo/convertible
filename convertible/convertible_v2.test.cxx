@@ -171,6 +171,40 @@ namespace operators
 //     }
 // };
 
+enum class direction
+{
+    lhs_to_rhs,
+    rhs_to_lhs
+};
+
+template<typename lhs_adapter_t, typename rhs_adapter_t>
+struct mapping
+{
+    explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter):
+        lhsAdapter_(std::move(lhsAdapter)),
+        rhsAdapter_(std::move(rhsAdapter))
+    {}
+
+    template<direction dir>
+    auto assign(auto&& lhs, auto&& rhs)
+    {
+        auto op = operators::assign{};
+        if constexpr(dir == direction::rhs_to_lhs)
+            return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
+        else
+            return op.exec(rhsAdapter_.create(FWD(rhs)), lhsAdapter_.create(FWD(lhs)));
+    }
+
+    auto compare(auto&& lhs, auto&& rhs) const
+    {
+        constexpr auto op = operators::compare{};
+        return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
+    }
+
+    std::decay_t<lhs_adapter_t> lhsAdapter_;
+    std::decay_t<rhs_adapter_t> rhsAdapter_;
+};
+
 //static_assert(convertible::concepts::cpp20::adaptable<adapter, std::int32_t>, "SADSAD");
 
 auto assign(auto&& lhsAdapter, auto&& lhs, auto&& rhsAdapter, auto&& rhs)
@@ -217,9 +251,16 @@ SCENARIO("playground1")
     obj1.val = 1;
     obj2.val = 2;
     assign(mbr1, obj1, mbr2, std::move(obj2));
+    assign(mbr1, obj1, adapter2, 2);
     REQUIRE(obj1.val == obj2.val);
     REQUIRE(compare(mbr1, obj1, mbr2, std::move(obj2)));
 
+    mapping m(mbr1, adapter2);
+
+    m.assign<direction::rhs_to_lhs>(obj1, 5);
+    REQUIRE(obj1.val == 5);
+    m.assign<direction::lhs_to_rhs>(obj1, val1);
+    REQUIRE(val1 == 5);
 }
 
 // SCENARIO("playground1.1")
