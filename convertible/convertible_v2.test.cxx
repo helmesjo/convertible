@@ -73,7 +73,7 @@ namespace adapters
         obj_t obj_;
     };
 
-    template<typename member_ptr_t, typename instance_t = any, bool is_rval = std::is_rvalue_reference_v<instance_t>>
+    template<typename member_ptr_t, typename instance_t = traits::member_class_t<member_ptr_t>, bool is_rval = std::is_rvalue_reference_v<instance_t>>
         requires std::is_member_pointer_v<member_ptr_t>
     struct member
     {
