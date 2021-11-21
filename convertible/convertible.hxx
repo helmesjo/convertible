@@ -75,7 +75,7 @@ namespace convertible
             struct placeholder{};
         }
 
-        template<typename obj_t = details::placeholder, bool is_rval = std::is_rvalue_reference_v<obj_t>>
+        template<typename obj_t = details::placeholder>
         struct object
         {
             auto create(auto&& obj) const
@@ -90,7 +90,7 @@ namespace convertible
 
             operator decltype(auto)() const
             {
-                if constexpr(is_rval)
+                if constexpr(std::is_rvalue_reference_v<obj_t>)
                 {
                     return std::move(obj_);
                 }
@@ -118,7 +118,13 @@ namespace convertible
             obj_t obj_;
         };
 
-        template<typename member_ptr_t, typename instance_t = traits::member_class_t<member_ptr_t>, bool is_rval = std::is_rvalue_reference_v<instance_t>>
+        template<typename obj_t>
+        object(obj_t&)->object<obj_t&>;
+
+        template<typename obj_t>
+        object(obj_t&&)->object<obj_t&&>;
+
+        template<typename member_ptr_t, typename instance_t = traits::member_class_t<member_ptr_t>>
             requires std::is_member_pointer_v<member_ptr_t>
         struct member
         {
@@ -133,13 +139,13 @@ namespace convertible
             }
 
             explicit member(member_ptr_t ptr): ptr_(ptr){}
-            explicit member(member_ptr_t ptr, auto&& inst): ptr_(ptr), inst_(&inst)
+            explicit member(member_ptr_t ptr, instance_t inst): ptr_(ptr), inst_(&inst)
             {
             }
 
             operator decltype(auto)() const
             {
-                if constexpr(is_rval)
+                if constexpr(std::is_rvalue_reference_v<instance_t>)
                 {
                     return std::move(inst_->*ptr_);
                 }
@@ -164,6 +170,12 @@ namespace convertible
                 return inst_->*ptr_ == val;
             }
         };
+
+        template<typename member_ptr_t, typename instance_t>
+        member(member_ptr_t ptr, instance_t& inst)->member<member_ptr_t, instance_t&>;
+
+        template<typename member_ptr_t, typename instance_t>
+        member(member_ptr_t ptr, instance_t&& inst)->member<member_ptr_t, instance_t&&>;
     }
 
     namespace operators

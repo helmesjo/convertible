@@ -75,7 +75,7 @@ SCENARIO("convertible: Adapters")
     GIVEN("object adapter")
     {
         std::string str = "hello";
-        adapters::object<std::string&> adapter(str);
+        adapters::object adapter(str);
 
         THEN("it implicitly assigns value")
         {
@@ -98,19 +98,93 @@ SCENARIO("convertible: Adapters")
     {
         struct type
         {
-            int val = 1;
+            std::string str;
         } obj;
 
-        adapters::member adapter(&type::val, obj);
+        adapters::member adapter(&type::str, obj);
 
         THEN("it implicitly assigns member value")
         {
-            adapter = 3;
-            REQUIRE(obj.val == 3);
+            adapter = "hello";
+            REQUIRE(obj.str == "hello");
         }
         THEN("it implicitly converts to type")
         {
-            REQUIRE(static_cast<int>(adapter) == obj.val);
+            REQUIRE(static_cast<std::string>(adapter) == obj.str);
+        }
+        THEN("it 'moves from' r-value reference")
+        {
+            obj.str = "world";
+            adapters::member adapterRval(&type::str, std::move(obj));
+
+            REQUIRE(static_cast<std::string>(adapterRval) == "world");
+            REQUIRE(obj.str == "");
+        }
+    }
+}
+
+SCENARIO("convertible: Mapping")
+{
+    using namespace convertible;
+
+    GIVEN("a mapping between a <-> b ")
+    {
+        adapters::object adapter;
+        mapping map(adapter, adapter);
+
+        WHEN("assigning lhs to rhs")
+        {
+            std::string lhs = "hello";
+            std::string rhs = "";
+            map.assign<direction::lhs_to_rhs>(lhs, rhs);
+
+            THEN("lhs == rhs")
+            {
+                REQUIRE(lhs == rhs);
+            }
+        }
+        WHEN("assigning lhs (r-value) to rhs")
+        {
+            std::string lhs = "hello";
+            std::string rhs = "";
+            map.assign<direction::lhs_to_rhs>(std::move(lhs), rhs);
+
+            THEN("rhs is assigned")
+            {
+                REQUIRE(rhs == "hello");
+
+                AND_THEN("lhs is moved from")
+                {
+                    REQUIRE(lhs == "");
+                }
+            }
+        }
+        WHEN("assigning rhs to lhs")
+        {
+            std::string lhs = "";
+            std::string rhs = "hello";
+            map.assign<direction::rhs_to_lhs>(lhs, rhs);
+
+            THEN("lhs == rhs")
+            {
+                REQUIRE(lhs == rhs);
+            }
+        }
+        WHEN("assigning rhs (r-value) to lhs")
+        {
+            std::string lhs = "";
+            std::string rhs = "hello";
+            map.assign<direction::rhs_to_lhs>(lhs, std::move(rhs));
+
+            THEN("lhs is assigned")
+            {
+                REQUIRE(lhs == "hello");
+
+                AND_THEN("rhs is moved from")
+                {
+                    REQUIRE(rhs == "");
+                }
+            }
         }
     }
 }
