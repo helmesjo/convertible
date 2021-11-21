@@ -75,7 +75,7 @@ namespace convertible
             struct placeholder{};
         }
 
-        template<typename obj_t = details::placeholder>
+        template<typename obj_t = details::placeholder, bool is_rval = std::is_rvalue_reference_v<obj_t>>
         struct object
         {
             auto create(auto&& obj) const
@@ -90,7 +90,14 @@ namespace convertible
 
             operator decltype(auto)() const
             {
-                return obj_;
+                if constexpr(is_rval)
+                {
+                    return std::move(obj_);
+                }
+                else
+                {
+                    return obj_;
+                }
             }
 
             auto operator=(const object& other)

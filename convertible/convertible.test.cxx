@@ -35,7 +35,7 @@ SCENARIO("convertible: Operators")
                 }
             }
         }
-        WHEN("passed two objects a & (temporary) b")
+        WHEN("passed two objects a & b (r-value)")
         {
             std::string a = "";
             std::string b = "hello";
@@ -74,17 +74,24 @@ SCENARIO("convertible: Adapters")
 
     GIVEN("object adapter")
     {
-        int val = 1;
-        adapters::object<int&> adapter(val);
+        std::string str = "hello";
+        adapters::object<std::string&> adapter(str);
 
         THEN("it implicitly assigns value")
         {
-            adapter = 5;
-            REQUIRE(val == 5);
+            adapter = "world";
+            REQUIRE(str == "world");
         }
         THEN("it implicitly converts to type")
         {
-            REQUIRE(static_cast<int>(adapter) == val);
+            REQUIRE(static_cast<std::string>(adapter) == str);
+        }
+        THEN("it 'moves from' r-value reference")
+        {
+            adapters::object adapterRval(std::move(str));
+
+            REQUIRE(static_cast<std::string>(adapterRval) == "hello");
+            REQUIRE(str == "");
         }
     }
     GIVEN("member adapter")
