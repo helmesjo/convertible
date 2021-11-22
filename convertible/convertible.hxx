@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -92,7 +93,7 @@ namespace convertible
         template<typename obj_t>
         object(obj_t&&)->object<obj_t&&>;
 
-        template<typename member_ptr_t, typename instance_t = traits::member_class_t<member_ptr_t>>
+        template<typename member_ptr_t, typename instance_t>
             requires std::is_member_pointer_v<member_ptr_t>
         struct member
         {
@@ -106,8 +107,8 @@ namespace convertible
                 return member<member_ptr_t, decltype(obj)>(ptr_, FWD(obj));
             }
 
-            explicit member(auto&& ptr): ptr_(ptr){}
-            explicit member(auto&& ptr, auto&& inst): ptr_(ptr), inst_(&inst)
+            explicit member(member_ptr_t ptr): ptr_(ptr){}
+            explicit member(member_ptr_t ptr, auto&& inst): ptr_(ptr), inst_(&inst)
             {
             }
 
@@ -138,6 +139,10 @@ namespace convertible
                 return inst_->*ptr_ == val;
             }
         };
+
+        template<typename member_ptr_t>
+            requires std::is_member_pointer_v<member_ptr_t>
+        member(member_ptr_t ptr)->member<member_ptr_t, traits::member_class_t<member_ptr_t>&>;
 
         template<typename member_ptr_t, typename instance_t>
         member(member_ptr_t ptr, instance_t& inst)->member<member_ptr_t, instance_t&>;
@@ -210,6 +215,54 @@ namespace convertible
         std::decay_t<lhs_adapter_t> lhsAdapter_;
         std::decay_t<rhs_adapter_t> rhsAdapter_;
         converter_t converter_;
+    };
+
+    template <std::size_t begin, std::size_t end, typename callback_t, typename... arg_ts>
+    constexpr void for_each(callback_t callback, arg_ts... args)
+    {
+        if constexpr (begin < end)
+        {
+            callback(std::get<begin>(std::tuple{FWD(args)...}));
+            for_each<begin + 1, end>(callback, FWD(args)...);
+        }
+    }
+
+    template <typename callback_t, typename... arg_ts>
+    constexpr void for_each(callback_t callback, arg_ts... args)
+    {
+        for_each<0, sizeof...(args)>(callback, FWD(args)...);
+    }
+
+    template <typename callback_t, typename... arg_ts>
+    constexpr void for_each(callback_t callback, std::tuple<arg_ts...> args)
+    {
+        std::apply([&](auto&&... args){
+            for_each<0, sizeof...(args)>(callback, FWD(args)...);
+        }, args);
+    }
+
+    template<typename... mapping_ts>
+    struct mapping_table
+    {
+        mapping_table(mapping_ts... mappings):
+            mappings_(mappings...)
+        {
+        }
+
+        template<direction dir>
+        decltype(auto) assign(auto&& lhs, auto&& rhs) const
+        {
+            for_each([&](auto&& map){
+                using mapping_t = decltype(map);
+                map.template assign<dir>(FWD(lhs), FWD(rhs));
+            }, mappings_);
+        }
+
+        decltype(auto) equal(auto&& lhs, auto&& rhs) const
+        {
+        }
+
+        std::tuple<mapping_ts...> mappings_;
     };
 }
 

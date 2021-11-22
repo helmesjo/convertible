@@ -272,3 +272,33 @@ SCENARIO("convertible: Mapping")
         }
     }
 }
+
+SCENARIO("convertible: Conversion table")
+{
+    using namespace convertible;
+
+    struct type_a
+    {
+        int val1;
+        std::string val2;
+    } lhs;
+
+    struct type_b
+    {
+        int val1;
+        std::string val2;
+    } rhs;
+
+    mapping_table table(
+        mapping(adapters::member(&type_a::val1), adapters::member(&type_b::val1)),
+        mapping(adapters::member(&type_a::val2), adapters::member(&type_b::val2))
+    );
+
+    lhs.val1 = 10;
+    lhs.val2 = "hello";
+
+    table.assign<direction::lhs_to_rhs>(lhs, rhs);
+
+    REQUIRE(lhs.val1 == rhs.val1);
+    REQUIRE(lhs.val2 == rhs.val2);
+}
