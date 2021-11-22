@@ -165,18 +165,30 @@ namespace convertible
         };
     }
 
+    namespace converters
+    {
+        struct identity
+        {
+            constexpr decltype(auto) operator()(auto&& val) const
+            {
+                return FWD(val);
+            }
+        };
+    }
+
     enum class direction
     {
         lhs_to_rhs,
         rhs_to_lhs
     };
 
-    template<typename lhs_adapter_t, typename rhs_adapter_t>
+    template<typename lhs_adapter_t, typename rhs_adapter_t, typename converter_t = converters::identity>
     struct mapping
     {
-        explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter):
+        explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
             lhsAdapter_(std::move(lhsAdapter)),
-            rhsAdapter_(std::move(rhsAdapter))
+            rhsAdapter_(std::move(rhsAdapter)),
+            converter_(converter)
         {}
 
         template<direction dir>
@@ -184,9 +196,9 @@ namespace convertible
         {
             constexpr operators::assign op;
             if constexpr(dir == direction::rhs_to_lhs)
-                return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
+                return op.exec(lhsAdapter_.create(FWD(lhs)), converter_(rhsAdapter_.create(FWD(rhs))));
             else
-                return op.exec(rhsAdapter_.create(FWD(rhs)), lhsAdapter_.create(FWD(lhs)));
+                return op.exec(rhsAdapter_.create(FWD(rhs)), converter_(lhsAdapter_.create(FWD(lhs))));
         }
 
         decltype(auto) equal(auto&& lhs, auto&& rhs) const
@@ -197,6 +209,7 @@ namespace convertible
 
         std::decay_t<lhs_adapter_t> lhsAdapter_;
         std::decay_t<rhs_adapter_t> rhsAdapter_;
+        converter_t converter_;
     };
 }
 
