@@ -93,6 +93,12 @@ SCENARIO("convertible: Adapters")
             REQUIRE(static_cast<std::string>(adapterRval) == "hello");
             REQUIRE(str == "");
         }
+        THEN("equality operator works")
+        {
+            str = "world";
+            REQUIRE(adapter == "world");
+            REQUIRE(adapter != "hello");
+        }
     }
     GIVEN("member adapter")
     {
@@ -119,6 +125,12 @@ SCENARIO("convertible: Adapters")
 
             REQUIRE(static_cast<std::string>(adapterRval) == "world");
             REQUIRE(obj.str == "");
+        }
+        THEN("equality operator works")
+        {
+            obj.str = "world";
+            REQUIRE(adapter == "world");
+            REQUIRE(adapter != "hello");
         }
     }
 }
