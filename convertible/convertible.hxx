@@ -98,7 +98,7 @@ namespace convertible
         {
             using value_t = traits::member_value_t<member_ptr_t>;
 
-            member_ptr_t ptr_;
+            std::decay_t<member_ptr_t> ptr_;
             std::decay_t<instance_t>* inst_;
 
             auto create(auto&& obj) const
@@ -106,8 +106,8 @@ namespace convertible
                 return member<member_ptr_t, decltype(obj)>(ptr_, FWD(obj));
             }
 
-            explicit member(member_ptr_t ptr): ptr_(ptr){}
-            explicit member(member_ptr_t ptr, auto&& inst): ptr_(ptr), inst_(&inst)
+            explicit member(auto&& ptr): ptr_(ptr){}
+            explicit member(auto&& ptr, auto&& inst): ptr_(ptr), inst_(&inst)
             {
             }
 
