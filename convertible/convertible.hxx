@@ -37,6 +37,12 @@ namespace convertible
         using member_value_t = value_t;
     }
 
+    namespace concepts
+    {
+        template<typename T>
+        concept member_ptr = std::is_member_pointer_v<std::decay_t<T>>;
+    }
+
     namespace adapters
     {
         namespace details
@@ -53,6 +59,8 @@ namespace convertible
             }
 
             object() = default;
+            object(const object&) = default;
+            object(object&&) = default;
             explicit object(auto&& obj): obj_(FWD(obj))
             {
             }
@@ -93,8 +101,7 @@ namespace convertible
         template<typename obj_t>
         object(obj_t&&)->object<obj_t&&>;
 
-        template<typename member_ptr_t, typename instance_t>
-            requires std::is_member_pointer_v<member_ptr_t>
+        template<concepts::member_ptr member_ptr_t, typename instance_t>
         struct member
         {
             using value_t = traits::member_value_t<member_ptr_t>;
@@ -104,11 +111,11 @@ namespace convertible
 
             auto create(auto&& obj) const
             {
-                return member<member_ptr_t, decltype(obj)>(ptr_, FWD(obj));
+                return member(ptr_, FWD(obj));
             }
 
-            explicit member(member_ptr_t ptr): ptr_(ptr){}
-            explicit member(member_ptr_t ptr, auto&& inst): ptr_(ptr), inst_(&inst)
+            explicit member(concepts::member_ptr auto&& ptr): ptr_(ptr){}
+            explicit member(concepts::member_ptr auto&& ptr, auto&& inst): ptr_(ptr), inst_(&inst)
             {
             }
 
@@ -140,8 +147,7 @@ namespace convertible
             }
         };
 
-        template<typename member_ptr_t>
-            requires std::is_member_pointer_v<member_ptr_t>
+        template<concepts::member_ptr member_ptr_t>
         member(member_ptr_t ptr)->member<member_ptr_t, traits::member_class_t<member_ptr_t>&>;
 
         template<typename member_ptr_t, typename instance_t>
