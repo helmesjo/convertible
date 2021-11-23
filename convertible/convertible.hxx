@@ -41,6 +41,9 @@ namespace convertible
     {
         template<typename T>
         concept member_ptr = std::is_member_pointer_v<std::decay_t<T>>;
+
+        template<typename rhs_t, typename lhs_t>
+        concept assignable_to = std::assignable_from<lhs_t, rhs_t>;
     }
 
     namespace adapters
@@ -79,15 +82,16 @@ namespace convertible
 
             decltype(auto) operator=(const object& other)
             {
-                return obj_ = other;
+                return *this = static_cast<std::decay_t<obj_t>>(other);
             }
 
-            decltype(auto) operator=(auto&& val)
+            decltype(auto) operator=(concepts::assignable_to<obj_t&> auto&& val)
             {
-                return obj_ = val;
+                obj_ = val;
+                return *this;
             }
 
-            decltype(auto) operator==(const auto& val) const
+            decltype(auto) operator==(const std::equality_comparable_with<obj_t> auto& val) const
             {
                 return obj_ == val;
             }
@@ -101,19 +105,22 @@ namespace convertible
         template<typename obj_t>
         object(obj_t&&)->object<obj_t&&>;
 
-        template<concepts::member_ptr member_ptr_t, typename instance_t>
+        template<concepts::member_ptr member_ptr_t, bool is_rval = false>
         struct member
         {
             using value_t = traits::member_value_t<member_ptr_t>;
 
             std::decay_t<member_ptr_t> ptr_;
-            std::decay_t<instance_t>* inst_;
+            traits::member_class_t<member_ptr_t>* inst_;
 
             auto create(auto&& obj) const
             {
-                return member<decltype(ptr_), decltype(obj)>(ptr_, FWD(obj));
+                return member<decltype(ptr_), std::is_rvalue_reference_v<decltype(obj)>>(ptr_, FWD(obj));
             }
 
+            member() = default;
+            member(const member&) = default;
+            member(member&&) = default;
             explicit member(concepts::member_ptr auto&& ptr): ptr_(ptr){}
             explicit member(concepts::member_ptr auto&& ptr, auto&& inst): ptr_(ptr), inst_(&inst)
             {
@@ -121,7 +128,7 @@ namespace convertible
 
             operator decltype(auto)() const
             {
-                if constexpr(std::is_rvalue_reference_v<instance_t>)
+                if constexpr(is_rval)
                 {
                     return std::move(inst_->*ptr_);
                 }
@@ -136,40 +143,42 @@ namespace convertible
                 return *this = static_cast<value_t>(other);
             }
 
-            decltype(auto) operator=(auto&& val)
+            decltype(auto) operator=(concepts::assignable_to<value_t&> auto&& val)
             {
-                return inst_->*ptr_ = FWD(val);
+                inst_->*ptr_ = FWD(val);
+                return *this;
             }
 
-            decltype(auto) operator==(const auto& val) const
+            decltype(auto) operator==(const std::equality_comparable_with<value_t> auto& val) const
             {
                 return inst_->*ptr_ == val;
             }
         };
 
         template<concepts::member_ptr member_ptr_t>
-        member(member_ptr_t ptr)->member<member_ptr_t, traits::member_class_t<member_ptr_t>&>;
+        member(member_ptr_t ptr)->member<member_ptr_t, false>;
 
         template<concepts::member_ptr member_ptr_t, typename instance_t>
-        member(member_ptr_t ptr, instance_t& inst)->member<member_ptr_t, instance_t&>;
+        member(member_ptr_t ptr, instance_t& inst)->member<member_ptr_t, false>;
 
         template<concepts::member_ptr member_ptr_t, typename instance_t>
-        member(member_ptr_t ptr, instance_t&& inst)->member<member_ptr_t, instance_t&&>;
+        member(member_ptr_t ptr, instance_t&& inst)->member<member_ptr_t, true>;
     }
 
     namespace operators
     {
+
         struct assign
         {
-            decltype(auto) exec(auto&& lhs, auto&& rhs) const
+            decltype(auto) exec(auto& lhs, concepts::assignable_to<decltype(lhs)> auto&& rhs) const
             {
-                return FWD(lhs) = FWD(rhs);
+                return lhs = FWD(rhs);
             }
         };
 
         struct equal
         {
-            decltype(auto) exec(auto&& lhs, auto&& rhs) const
+            decltype(auto) exec(const auto& lhs, const std::equality_comparable_with<decltype(lhs)> auto& rhs) const
             {
                 return FWD(lhs) == FWD(rhs);
             }
@@ -206,10 +215,14 @@ namespace convertible
         decltype(auto) assign(auto&& lhs, auto&& rhs) const
         {
             constexpr operators::assign op;
+
+            auto lhsAdap = lhsAdapter_.create(FWD(lhs));
+            auto rhsAdap = rhsAdapter_.create(FWD(rhs));
+            
             if constexpr(dir == direction::rhs_to_lhs)
-                return op.exec(lhsAdapter_.create(FWD(lhs)), converter_(rhsAdapter_.create(FWD(rhs))));
+                return op.exec(lhsAdap, converter_(std::move(rhsAdap)));
             else
-                return op.exec(rhsAdapter_.create(FWD(rhs)), converter_(lhsAdapter_.create(FWD(lhs))));
+                return op.exec(rhsAdap, converter_(std::move(lhsAdap)));
         }
 
         decltype(auto) equal(auto&& lhs, auto&& rhs) const
@@ -269,6 +282,35 @@ namespace convertible
         }
 
         std::tuple<mapping_ts...> mappings_;
+    };
+}
+
+namespace std
+{
+    /* 
+    Specialization for:
+        `std::common_type<object<A>, object<B>>`
+    Specifically enables:
+        `std::assignable_from<object<A>, object<B>>`
+        where `common_type_t<A, B>` exists.
+    */
+    template<typename A, typename B>
+    struct common_type<convertible::adapters::object<A>, convertible::adapters::object<B>>
+    {
+        using type = std::common_reference_t<A, B>;
+    };
+
+    /* 
+    Specialization for:
+        `std::common_type<member<A>, member<B>>`
+    Specifically enables:
+        `std::assignable_from<member<A>, member<B>>`
+        where `common_type_t<A, B>` exists.
+    */
+    template<typename A1, bool A2, typename B1, bool B2>
+    struct common_type<convertible::adapters::member<A1, A2>, convertible::adapters::member<B1, B2>>
+    {
+        using type = std::common_reference_t<convertible::traits::member_value_t<A1>, convertible::traits::member_value_t<B1>>;
     };
 }
 
