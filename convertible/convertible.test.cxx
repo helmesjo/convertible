@@ -289,10 +289,10 @@ SCENARIO("convertible: Conversion table")
         std::string val2;
     } rhs;
 
-    mapping_table table(
-        mapping(adapters::member(&type_a::val1), adapters::member(&type_b::val1)),
-        mapping(adapters::member(&type_a::val2), adapters::member(&type_b::val2))
-    );
+    mapping_table table{
+        mapping( adapters::member(&type_a::val1), adapters::member(&type_b::val1) ),
+        mapping( adapters::member(&type_a::val2), adapters::member(&type_b::val2) )
+    };
 
     lhs.val1 = 10;
     lhs.val2 = "hello";
