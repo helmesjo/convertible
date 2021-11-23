@@ -111,7 +111,7 @@ namespace convertible
 
             auto create(auto&& obj) const
             {
-                return member(ptr_, FWD(obj));
+                return member<decltype(ptr_), decltype(obj)>(ptr_, FWD(obj));
             }
 
             explicit member(concepts::member_ptr auto&& ptr): ptr_(ptr){}
@@ -150,10 +150,10 @@ namespace convertible
         template<concepts::member_ptr member_ptr_t>
         member(member_ptr_t ptr)->member<member_ptr_t, traits::member_class_t<member_ptr_t>&>;
 
-        template<typename member_ptr_t, typename instance_t>
+        template<concepts::member_ptr member_ptr_t, typename instance_t>
         member(member_ptr_t ptr, instance_t& inst)->member<member_ptr_t, instance_t&>;
 
-        template<typename member_ptr_t, typename instance_t>
+        template<concepts::member_ptr member_ptr_t, typename instance_t>
         member(member_ptr_t ptr, instance_t&& inst)->member<member_ptr_t, instance_t&&>;
     }
 
