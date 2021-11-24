@@ -235,7 +235,7 @@ namespace convertible
                 return op.exec(rhsAdap, converter_(std::move(lhsAdap)));
         }
 
-        decltype(auto) equal(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+        decltype(auto) equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
         {
             constexpr operators::equal op;
             return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
