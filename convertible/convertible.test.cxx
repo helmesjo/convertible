@@ -21,16 +21,15 @@ SCENARIO("convertible: Operators")
         {
             int a = 1;
             int b = 2;
-            auto returned = op.exec(a, b);
 
             THEN("a == b")
             {
+                op.exec(a, b);
                 REQUIRE(a == b);
-
-                AND_THEN("b is returned")
-                {
-                    REQUIRE(returned == b);
-                }
+            }
+            THEN("b is returned")
+            {
+                REQUIRE(&op.exec(a, b) == &a);
             }
         }
         WHEN("passed two objects a & b (r-value)")
@@ -52,24 +51,16 @@ SCENARIO("convertible: Operators")
         operators::equal op;
         WHEN("passed two equal objects a & b")
         {
-            int a = 1;
-            int b = 1;
-            auto returned = op.exec(a, b);
-
             THEN("true is returned")
             {
-                REQUIRE(returned);
+                REQUIRE(op.exec(1, 1));
             }
         }
         WHEN("passed two non-equal objects a & b")
         {
-            int a = 1;
-            int b = 2;
-            auto returned = op.exec(a, b);
-
             THEN("false is returned")
             {
-                REQUIRE_FALSE(returned);
+                REQUIRE_FALSE(op.exec(1, 2));
             }
         }
     }
