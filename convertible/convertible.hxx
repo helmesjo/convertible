@@ -237,6 +237,67 @@ namespace convertible
 
         template<concepts::member_ptr member_ptr_t, typename instance_t>
         member(member_ptr_t ptr, instance_t&& inst)->member<member_ptr_t, true>;
+
+        template<typename converter_t, typename obj_t = details::placeholder>
+        struct converter
+        {
+            converter_t converter_;
+            object<obj_t> obj_;
+
+            auto create(auto&& obj) const
+            {
+                return converter<converter_t, decltype(obj)>{converter_, FWD(obj)};
+            }
+
+            converter() = default;
+            converter(const converter&) = default;
+            converter(converter&&) = default;
+            explicit converter(converter_t converter, std::convertible_to<obj_t> auto&& obj): 
+                converter_(converter), 
+                obj_(FWD(obj))
+            {
+            }
+
+            operator decltype(auto)() const
+            {
+                return converter_(obj_);
+            }
+
+            decltype(auto) operator=(const converter& other)
+            {
+                return *this = static_cast<std::decay_t<obj_t>>(other);
+            }
+
+            decltype(auto) operator=(std::assignable_to<obj_t> auto&& val)
+            {
+                obj_ = val;
+                return *this;
+            }
+
+            decltype(auto) operator=(auto&& val)
+                requires std::assignable_from<obj_t&, decltype(converter_(val))>
+            {
+                obj_ = converter_(FWD(val));
+                return *this;
+            }
+
+            decltype(auto) operator==(const std::equality_comparable_with<obj_t> auto& val) const
+            {
+                return obj_ == val;
+            }
+
+            decltype(auto) operator==(const auto& val) const
+                requires std::equality_comparable_with<obj_t, decltype(converter_(val))>
+            {
+                return obj_ == converter_(val);
+            }
+        };
+
+        template<typename converter_t, typename obj_t>
+        converter(converter_t, obj_t&)->converter<converter_t, obj_t&>;
+
+        template<typename converter_t, typename obj_t>
+        converter(converter_t, obj_t&&)->converter<converter_t, obj_t&&>;
     }
 
     namespace operators
