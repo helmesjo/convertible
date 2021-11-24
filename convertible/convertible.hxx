@@ -9,6 +9,12 @@
 
 namespace convertible
 {
+    enum class direction
+    {
+        lhs_to_rhs,
+        rhs_to_lhs
+    };
+
     namespace traits
     {
         namespace details
@@ -52,6 +58,12 @@ namespace convertible
         concept adaptable = requires(adapter_t adapter, arg_t arg)
         {
             { adapter.create(arg) } -> class_type;
+        };
+
+        template<typename mapping_t, typename lhs_t, typename rhs_t>
+        concept mappable = requires(mapping_t mapping, lhs_t lhs, rhs_t rhs)
+        {
+            mapping.template assign<direction::rhs_to_lhs>(lhs, rhs);
         };
     }
 
@@ -206,12 +218,6 @@ namespace convertible
         };
     }
 
-    enum class direction
-    {
-        lhs_to_rhs,
-        rhs_to_lhs
-    };
-
     template<typename lhs_adapter_t, typename rhs_adapter_t, typename converter_t = converters::identity>
     struct mapping
     {
@@ -281,9 +287,16 @@ namespace convertible
         template<direction dir>
         decltype(auto) assign(auto&& lhs, auto&& rhs) const
         {
+            using lhs_t = decltype(lhs);
+            using rhs_t = decltype(rhs);
+
             for_each([&](auto&& map){
                 using mapping_t = decltype(map);
-                map.template assign<dir>(FWD(lhs), FWD(rhs));
+
+                if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
+                {
+                    map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
+                }
             }, mappings_);
         }
 
