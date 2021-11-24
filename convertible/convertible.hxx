@@ -40,10 +40,19 @@ namespace convertible
     namespace concepts
     {
         template<typename T>
+        concept class_type = std::is_class_v<T>;
+
+        template<typename T>
         concept member_ptr = std::is_member_pointer_v<std::decay_t<T>>;
 
         template<typename rhs_t, typename lhs_t>
         concept assignable_to = std::assignable_from<lhs_t, rhs_t>;
+
+        template<typename arg_t, typename adapter_t>
+        concept adaptable = requires(adapter_t adapter, arg_t arg)
+        {
+            { adapter.create(arg) } -> class_type;
+        };
     }
 
     namespace adapters
@@ -64,7 +73,7 @@ namespace convertible
             object() = default;
             object(const object&) = default;
             object(object&&) = default;
-            explicit object(auto&& obj): obj_(FWD(obj))
+            explicit object(std::convertible_to<obj_t> auto&& obj): obj_(FWD(obj))
             {
             }
 
@@ -108,12 +117,13 @@ namespace convertible
         template<concepts::member_ptr member_ptr_t, bool is_rval = false>
         struct member
         {
+            using instance_t = traits::member_class_t<member_ptr_t>;
             using value_t = traits::member_value_t<member_ptr_t>;
 
             std::decay_t<member_ptr_t> ptr_;
-            traits::member_class_t<member_ptr_t>* inst_;
+            instance_t* inst_;
 
-            auto create(auto&& obj) const
+            auto create(std::convertible_to<instance_t> auto&& obj) const
             {
                 return member<decltype(ptr_), std::is_rvalue_reference_v<decltype(obj)>>(ptr_, FWD(obj));
             }
@@ -122,7 +132,7 @@ namespace convertible
             member(const member&) = default;
             member(member&&) = default;
             explicit member(concepts::member_ptr auto&& ptr): ptr_(ptr){}
-            explicit member(concepts::member_ptr auto&& ptr, auto&& inst): ptr_(ptr), inst_(&inst)
+            explicit member(concepts::member_ptr auto&& ptr, std::convertible_to<instance_t> auto&& inst): ptr_(ptr), inst_(&inst)
             {
             }
 
@@ -212,7 +222,7 @@ namespace convertible
         {}
 
         template<direction dir>
-        decltype(auto) assign(auto&& lhs, auto&& rhs) const
+        decltype(auto) assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
         {
             constexpr operators::assign op;
 
@@ -225,7 +235,7 @@ namespace convertible
                 return op.exec(rhsAdap, converter_(std::move(lhsAdap)));
         }
 
-        decltype(auto) equal(auto&& lhs, auto&& rhs) const
+        decltype(auto) equal(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
         {
             constexpr operators::equal op;
             return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
