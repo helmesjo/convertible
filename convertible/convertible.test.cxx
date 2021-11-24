@@ -277,24 +277,32 @@ SCENARIO("convertible: Mapping table")
 {
     using namespace convertible;
 
+    struct type_a
+    {
+        int val1;
+        std::string val2;
+    };
+
+    struct type_b
+    {
+        int val1;
+        std::string val2;
+    };
+
+    struct type_c
+    {
+        int val1;
+    };
+
     GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val2 <-> b.val2\n")
     {
-        struct type_a
-        {
-            int val1;
-            std::string val2;
-        } lhs;
-
-        struct type_b
-        {
-            int val1;
-            std::string val2;
-        } rhs;
-
         mapping_table table{
             mapping( adapters::member(&type_a::val1), adapters::member(&type_b::val1) ),
             mapping( adapters::member(&type_a::val2), adapters::member(&type_b::val2) )
         };
+
+        type_a lhs;
+        type_b rhs;
 
         WHEN("assigning lhs to rhs")
         {
@@ -352,6 +360,39 @@ SCENARIO("convertible: Mapping table")
                 {
                     REQUIRE(rhs.val2 == "");
                 }
+            }
+        }
+    }
+
+    GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val1 <-> c.val1\n")
+    {
+        struct type_c
+        {
+            int val1;
+        };
+
+        mapping_table table{
+            mapping( adapters::member(&type_a::val1), adapters::member(&type_b::val1) ),
+            mapping( adapters::member(&type_a::val1), adapters::member(&type_c::val1) )
+        };
+
+        type_a lhs_a;
+        type_b rhs_b;
+        type_c rhs_c;
+
+        WHEN("assigning lhs (a) to rhs (b)")
+        {
+            lhs_a.val1 = 10;
+            table.assign<direction::lhs_to_rhs>(lhs_a, rhs_b);
+            table.assign<direction::lhs_to_rhs>(lhs_a, rhs_c);
+
+            THEN("a.val1 == b.val1")
+            {
+                REQUIRE(lhs_a.val1 == rhs_b.val1);
+            }
+            THEN("a.val1 == c.val1")
+            {
+                REQUIRE(lhs_a.val1 == rhs_c.val1);
             }
         }
     }
