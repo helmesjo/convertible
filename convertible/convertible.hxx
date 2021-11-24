@@ -9,7 +9,7 @@
 
 namespace convertible
 {
-// Workaround for MSVC bug: https://developercommunity2.visualstudio.com/t/Concept-satisfaction-failure-for-member/1489332
+    // Workaround for MSVC bug: https://developercommunity2.visualstudio.com/t/Concept-satisfaction-failure-for-member/1489332
 #if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
 #define MSVC_ENUM_FIX(...) int
 
@@ -25,6 +25,63 @@ namespace convertible
         lhs_to_rhs,
         rhs_to_lhs
     };
+#endif
+
+    // Workaround unimplemented concepts & type traits (eg. Clang <= 13.x)
+#if (defined(__clang__) && __clang_major__ <= 13) || defined(__EMSCRIPTEN__)
+    namespace concepts
+    {
+        template< class lhs_t, class rhs_t >
+        concept assignable_from =
+            std::is_lvalue_reference_v<lhs_t> &&
+            requires(lhs_t lhs, rhs_t && rhs) {
+                { lhs = std::forward<rhs_t>(rhs) } -> std::same_as<lhs_t>;
+            };
+
+        template<typename rhs_t, typename lhs_t>
+        concept assignable_to = assignable_from<lhs_t, rhs_t>;
+
+        template <class from_t, class to_t>
+        concept convertible_to =
+            std::is_convertible_v<from_t, to_t> &&
+            requires { static_cast<to_t>(std::declval<from_t>()); };
+
+        template<class T, class U>
+        concept equality_comparable_with = // exposition only
+            requires(const std::remove_reference_t<T>&t,
+                const std::remove_reference_t<U>&u) {
+                    { t == u } -> convertible_to<bool>;
+                    { t != u } -> convertible_to<bool>;
+                    { u == t } -> convertible_to<bool>;
+                    { u != t } -> convertible_to<bool>;
+            };
+    }
+    namespace traits
+    {
+        template< class lhs_t, class rhs_t >
+        using common_reference_t = std::enable_if_t<concepts::convertible_to<lhs_t, rhs_t> && concepts::convertible_to<rhs_t, lhs_t>>;
+    }
+#else
+    namespace concepts
+    {
+        template<typename lhs_t, typename rhs_t>
+        concept assignable_from = std::assignable_from<lhs_t, rhs_t>;
+
+        template<typename rhs_t, typename lhs_t>
+        concept assignable_to = assignable_from<lhs_t, rhs_t>;
+
+        template<typename from_t, typename to_t>
+        concept convertible_to = std::convertible_to<from_t, to_t>;
+
+        template<typename from_t, typename to_t>
+        concept equality_comparable_with = std::equality_comparable_with<from_t, to_t>;
+    }
+
+    namespace traits
+    {
+        template<typename lhs_t, typename rhs_t>
+        using common_reference_t = std::common_reference_t<lhs_t, rhs_t>;
+    }
 #endif
 
     namespace traits
@@ -63,9 +120,6 @@ namespace convertible
         template<typename T>
         concept member_ptr = std::is_member_pointer_v<std::decay_t<T>>;
 
-        template<typename rhs_t, typename lhs_t>
-        concept assignable_to = std::assignable_from<lhs_t, rhs_t>;
-
         template<typename arg_t, typename adapter_t>
         concept adaptable = requires(adapter_t adapter, arg_t arg)
         {
@@ -97,7 +151,7 @@ namespace convertible
             object() = default;
             object(const object&) = default;
             object(object&&) = default;
-            explicit object(std::convertible_to<obj_t> auto&& obj): obj_(FWD(obj))
+            explicit object(concepts::convertible_to<obj_t> auto&& obj): obj_(FWD(obj))
             {
             }
 
@@ -124,7 +178,7 @@ namespace convertible
                 return *this;
             }
 
-            decltype(auto) operator==(const std::equality_comparable_with<obj_t> auto& val) const
+            decltype(auto) operator==(const concepts::equality_comparable_with<obj_t> auto& val) const
             {
                 return obj_ == val;
             }
@@ -147,7 +201,7 @@ namespace convertible
             std::decay_t<member_ptr_t> ptr_;
             instance_t* inst_;
 
-            auto create(std::convertible_to<instance_t> auto&& obj) const
+            auto create(concepts::convertible_to<instance_t> auto&& obj) const
             {
                 return member<decltype(ptr_), std::is_rvalue_reference_v<decltype(obj)>>(ptr_, FWD(obj));
             }
@@ -156,7 +210,7 @@ namespace convertible
             member(const member&) = default;
             member(member&&) = default;
             explicit member(concepts::member_ptr auto&& ptr): ptr_(ptr){}
-            explicit member(concepts::member_ptr auto&& ptr, std::convertible_to<instance_t> auto&& inst): ptr_(ptr), inst_(&inst)
+            explicit member(concepts::member_ptr auto&& ptr, concepts::convertible_to<instance_t> auto&& inst): ptr_(ptr), inst_(&inst)
             {
             }
 
@@ -183,7 +237,7 @@ namespace convertible
                 return *this;
             }
 
-            decltype(auto) operator==(const std::equality_comparable_with<value_t> auto& val) const
+            decltype(auto) operator==(const concepts::equality_comparable_with<value_t> auto& val) const
             {
                 return inst_->*ptr_ == val;
             }
@@ -214,7 +268,7 @@ namespace convertible
         struct equal
         {
             template<typename lhs_t> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) exec(const lhs_t& lhs, const std::equality_comparable_with<lhs_t> auto& rhs) const
+            decltype(auto) exec(const lhs_t& lhs, const concepts::equality_comparable_with<lhs_t> auto& rhs) const
             {
                 return FWD(lhs) == FWD(rhs);
             }
@@ -334,7 +388,7 @@ namespace std
     template<typename A, typename B>
     struct common_type<convertible::adapters::object<A>, convertible::adapters::object<B>>
     {
-        using type = std::common_reference_t<A, B>;
+        using type = ::convertible::traits::common_reference_t<A, B>;
     };
 
     /* 
@@ -347,7 +401,7 @@ namespace std
     template<typename A1, bool A2, typename B1, bool B2>
     struct common_type<convertible::adapters::member<A1, A2>, convertible::adapters::member<B1, B2>>
     {
-        using type = std::common_reference_t<convertible::traits::member_value_t<A1>, convertible::traits::member_value_t<B1>>;
+        using type = ::convertible::traits::common_reference_t<convertible::traits::member_value_t<A1>, convertible::traits::member_value_t<B1>>;
     };
 }
 
