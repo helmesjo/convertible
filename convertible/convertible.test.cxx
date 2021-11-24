@@ -90,6 +90,10 @@ SCENARIO("convertible: Adapters")
 
             REQUIRE(static_cast<std::string>(adapterRval) == "hello");
             REQUIRE(str == "");
+
+            std::string str = "hello";
+            adapterRval = std::move(str);
+            REQUIRE(str == "");
         }
         THEN("equality operator works")
         {
@@ -119,10 +123,14 @@ SCENARIO("convertible: Adapters")
         THEN("it 'moves from' r-value reference")
         {
             obj.str = "world";
-            adapters::member adapterRval(&type::str, std::move(obj));
 
+            adapters::member adapterRval(&type::str, std::move(obj));
             REQUIRE(static_cast<std::string>(adapterRval) == "world");
             REQUIRE(obj.str == "");
+
+            std::string str = "hello";
+            adapterRval = std::move(str);
+            REQUIRE(str == "");
         }
         THEN("equality operator works")
         {

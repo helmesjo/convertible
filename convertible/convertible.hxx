@@ -160,7 +160,7 @@ namespace convertible
 
             decltype(auto) operator=(std::assignable_to<obj_t&> auto&& val)
             {
-                obj_ = val;
+                obj_ = FWD(val);
                 return *this;
             }
 
