@@ -192,7 +192,8 @@ namespace convertible
 
         struct assign
         {
-            decltype(auto) exec(auto& lhs, concepts::assignable_to<decltype(lhs)> auto&& rhs) const
+            template<typename lhs_t> // Workaround for msvc bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            decltype(auto) exec(lhs_t&& lhs, concepts::assignable_to<lhs_t> auto&& rhs) const
             {
                 return lhs = FWD(rhs);
             }
@@ -200,7 +201,8 @@ namespace convertible
 
         struct equal
         {
-            decltype(auto) exec(const auto& lhs, const std::equality_comparable_with<decltype(lhs)> auto& rhs) const
+            template<typename lhs_t> // Workaround for msvc bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            decltype(auto) exec(const lhs_t& lhs, const std::equality_comparable_with<lhs_t> auto& rhs) const
             {
                 return FWD(lhs) == FWD(rhs);
             }

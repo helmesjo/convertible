@@ -37,6 +37,7 @@ SCENARIO("convertible: Operators")
         {
             std::string a = "";
             std::string b = "hello";
+
             op.exec(a, std::move(b));
 
             THEN("b is moved from")
@@ -51,16 +52,24 @@ SCENARIO("convertible: Operators")
         operators::equal op;
         WHEN("passed two equal objects a & b")
         {
+            int a = 1;
+            int b = 1;
+            auto returned = op.exec(a, b);
+
             THEN("true is returned")
             {
-                REQUIRE(op.exec(1, 1));
+                REQUIRE(returned);
             }
         }
         WHEN("passed two non-equal objects a & b")
         {
+            int a = 1;
+            int b = 2;
+            auto returned = op.exec(a, b);
+
             THEN("false is returned")
             {
-                REQUIRE_FALSE(op.exec(1, 2));
+                REQUIRE_FALSE(returned);
             }
         }
     }
