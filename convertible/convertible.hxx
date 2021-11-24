@@ -9,11 +9,23 @@
 
 namespace convertible
 {
+// Workaround for MSVC bug: https://developercommunity2.visualstudio.com/t/Concept-satisfaction-failure-for-member/1489332
+#if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
+#define MSVC_ENUM_FIX(...) int
+
+    namespace direction
+    {
+        static constexpr auto lhs_to_rhs = 0;
+        static constexpr auto rhs_to_lhs = 1;
+    };
+#else
+#define MSVC_ENUM_FIX(...) __VA_ARGS__
     enum class direction
     {
         lhs_to_rhs,
         rhs_to_lhs
     };
+#endif
 
     namespace traits
     {
@@ -192,7 +204,7 @@ namespace convertible
 
         struct assign
         {
-            template<typename lhs_t> // Workaround for msvc bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<typename lhs_t> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
             decltype(auto) exec(lhs_t&& lhs, concepts::assignable_to<lhs_t> auto&& rhs) const
             {
                 return lhs = FWD(rhs);
@@ -201,7 +213,7 @@ namespace convertible
 
         struct equal
         {
-            template<typename lhs_t> // Workaround for msvc bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<typename lhs_t> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
             decltype(auto) exec(const lhs_t& lhs, const std::equality_comparable_with<lhs_t> auto& rhs) const
             {
                 return FWD(lhs) == FWD(rhs);
@@ -229,7 +241,7 @@ namespace convertible
             converter_(converter)
         {}
 
-        template<direction dir>
+        template<MSVC_ENUM_FIX(direction) dir>
         decltype(auto) assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
         {
             constexpr operators::assign op;
@@ -286,7 +298,7 @@ namespace convertible
         {
         }
 
-        template<direction dir>
+        template<MSVC_ENUM_FIX(direction) dir>
         decltype(auto) assign(auto&& lhs, auto&& rhs) const
         {
             using lhs_t = decltype(lhs);
@@ -340,3 +352,4 @@ namespace std
 }
 
 #undef FWD
+#undef MSVC_ENUM_FIX
