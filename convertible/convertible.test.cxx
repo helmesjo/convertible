@@ -251,7 +251,7 @@ SCENARIO("convertible: Mapping")
 
             THEN("converter(rhs) == lhs")
             {
-                REQUIRE(converter(lhs) == rhs);
+                REQUIRE(converter(rhs) == lhs);
             }
         }
         WHEN("assigning rhs (r-value) to lhs")
