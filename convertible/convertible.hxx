@@ -296,7 +296,7 @@ namespace convertible
         {}
 
         template<MSVC_ENUM_FIX(direction) dir>
-        decltype(auto) assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+        void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
         {
             constexpr operators::assign op;
 
@@ -304,12 +304,12 @@ namespace convertible
             auto rhsAdap = rhsAdapter_.create(FWD(rhs));
             
             if constexpr(dir == direction::rhs_to_lhs)
-                return op.exec(lhsAdap, converter_(std::move(rhsAdap)));
+                op.exec(lhsAdap, converter_(std::move(rhsAdap)));
             else
-                return op.exec(rhsAdap, converter_(std::move(lhsAdap)));
+                op.exec(rhsAdap, converter_(std::move(lhsAdap)));
         }
 
-        decltype(auto) equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
+        bool equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
         {
             constexpr operators::equal op;
             return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
@@ -353,7 +353,7 @@ namespace convertible
         }
 
         template<MSVC_ENUM_FIX(direction) dir>
-        decltype(auto) assign(auto&& lhs, auto&& rhs) const
+        void assign(auto&& lhs, auto&& rhs) const
         {
             using lhs_t = decltype(lhs);
             using rhs_t = decltype(rhs);
