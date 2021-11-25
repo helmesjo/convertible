@@ -109,7 +109,7 @@ SCENARIO("convertible: Adapters")
             std::string str;
         } obj;
 
-        adapters::member adapter(&type::str, obj);
+        auto adapter = adapters::member(&type::str, obj);
 
         THEN("it implicitly assigns member value")
         {
@@ -124,7 +124,7 @@ SCENARIO("convertible: Adapters")
         {
             obj.str = "world";
 
-            adapters::member adapterRval(&type::str, std::move(obj));
+            auto adapterRval = adapters::member(&type::str, std::move(obj));
             REQUIRE(static_cast<std::string>(adapterRval) == "world");
             REQUIRE(obj.str == "");
 

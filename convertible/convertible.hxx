@@ -132,17 +132,42 @@ namespace convertible
                     return FWD(obj);
                 }
             };
+
+            template<concepts::member_ptr member_ptr_t>
+            struct member_reader
+            {
+                using class_t = traits::member_class_t<member_ptr_t>;
+
+                member_reader(member_ptr_t ptr):
+                    ptr_(ptr)
+                {}
+
+                decltype(auto) operator()(std::convertible_to<class_t> auto&& obj) const
+                {
+                    if constexpr(std::is_rvalue_reference_v<decltype(obj)>)
+                    {
+                        return std::move(obj.*ptr_);
+                    }
+                    else
+                    {
+                        return obj.*ptr_;
+                    }
+                }
+
+                member_ptr_t ptr_;
+            };
         }
 
         template<typename obj_t = details::placeholder, typename reader_t = details::identity_reader>
+            // Workaround: Clang doesn't approve it in template parameter declaration.
+            requires std::copy_constructible<reader_t>
         struct object
         {
-            // Workaround: Clang does not support constraints in class template parameters
-            static_assert(std::is_copy_constructible_v<reader_t>, "Reader must be copy constructible");
             
             using out_t = std::invoke_result_t<reader_t, obj_t>;
 
             auto create(auto&& obj) const
+                requires std::invocable<reader_t, decltype(obj)>
             {
                 return object<decltype(obj), reader_t>(FWD(obj), reader_);
             }
@@ -189,65 +214,18 @@ namespace convertible
         object(auto&& obj)->object<decltype(obj)>;
         object(auto&& obj, std::invocable<decltype(obj)> auto&& reader)->object<decltype(obj), std::remove_reference_t<decltype(reader)>>;
 
-        template<concepts::member_ptr member_ptr_t, bool is_rval = false>
-        struct member
+        template<concepts::member_ptr member_ptr_t>
+        auto member(member_ptr_t&& ptr, auto&& obj)
         {
-            using instance_t = traits::member_class_t<member_ptr_t>;
-            using value_t = traits::member_value_t<member_ptr_t>;
-
-            std::decay_t<member_ptr_t> ptr_;
-            instance_t* inst_;
-
-            auto create(std::convertible_to<instance_t> auto&& obj) const
-            {
-                return member<decltype(ptr_), std::is_rvalue_reference_v<decltype(obj)>>(ptr_, FWD(obj));
-            }
-
-            member() = default;
-            member(const member&) = default;
-            member(member&&) = default;
-            explicit member(concepts::member_ptr auto&& ptr): ptr_(ptr){}
-            explicit member(concepts::member_ptr auto&& ptr, std::convertible_to<instance_t> auto&& inst): ptr_(ptr), inst_(&inst)
-            {
-            }
-
-            operator decltype(auto)() const
-            {
-                if constexpr(is_rval)
-                {
-                    return std::move(inst_->*ptr_);
-                }
-                else
-                {
-                    return inst_->*ptr_;
-                }
-            }
-
-            decltype(auto) operator=(const member& other)
-            {
-                return *this = static_cast<value_t>(other);
-            }
-
-            decltype(auto) operator=(std::assignable_to<value_t&> auto&& val)
-            {
-                inst_->*ptr_ = FWD(val);
-                return *this;
-            }
-
-            decltype(auto) operator==(const std::equality_comparable_with<value_t> auto& val) const
-            {
-                return inst_->*ptr_ == val;
-            }
-        };
+            return object<decltype(obj), details::member_reader<member_ptr_t>>(FWD(obj), ptr);
+        }
 
         template<concepts::member_ptr member_ptr_t>
-        member(member_ptr_t ptr)->member<member_ptr_t, false>;
-
-        template<concepts::member_ptr member_ptr_t, typename instance_t>
-        member(member_ptr_t ptr, instance_t& inst)->member<member_ptr_t, false>;
-
-        template<concepts::member_ptr member_ptr_t, typename instance_t>
-        member(member_ptr_t ptr, instance_t&& inst)->member<member_ptr_t, true>;
+        auto member(member_ptr_t&& ptr)
+        {
+            constexpr traits::member_class_t<member_ptr_t>* garbage = nullptr;
+            return object<traits::member_class_t<member_ptr_t>&, details::member_reader<member_ptr_t>>(*garbage, ptr);
+        }
     }
 
     namespace operators
@@ -377,28 +355,17 @@ namespace std
 {
     /* 
     Specialization for:
-        `std::common_type<object<A>, object<B>>`
+        `std::common_type<object<...>, object<...>>`
     Specifically enables:
-        `std::assignable_from<object<A>, object<B>>`
-        where `common_type_t<A, B>` exists.
+        `std::assignable_from<object<...>, object<...>>`
     */
-    template<typename A, typename B>
-    struct common_type<convertible::adapters::object<A>, convertible::adapters::object<B>>
+    template<typename A1, typename A2, typename B1, typename B2>
+    struct common_type<convertible::adapters::object<A1, A2>, convertible::adapters::object<B1, B2>>
     {
-        using type = ::std::common_reference_t<A, B>;
-    };
-
-    /* 
-    Specialization for:
-        `std::common_type<member<A>, member<B>>`
-    Specifically enables:
-        `std::assignable_from<member<A>, member<B>>`
-        where `common_type_t<A, B>` exists.
-    */
-    template<typename A1, bool A2, typename B1, bool B2>
-    struct common_type<convertible::adapters::member<A1, A2>, convertible::adapters::member<B1, B2>>
-    {
-        using type = ::std::common_reference_t<convertible::traits::member_value_t<A1>, convertible::traits::member_value_t<B1>>;
+        using type = ::std::common_reference_t<
+            typename convertible::adapters::object<A1, A2>::out_t, 
+            typename convertible::adapters::object<B1, B2>::out_t
+        >;
     };
 }
 
