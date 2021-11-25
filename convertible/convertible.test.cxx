@@ -69,7 +69,7 @@ SCENARIO("convertible: Operators")
 SCENARIO("convertible: Adapters")
 {
     using namespace convertible;
-
+    
     GIVEN("object adapter")
     {
         std::string str = "hello";
