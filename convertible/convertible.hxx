@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <functional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -9,12 +10,13 @@
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
 // Workaround unimplemented concepts & type traits (specifically with libc++)
-// NOTE: Intentially placed in 'std' to detect (compiler error) when implemented
+// NOTE: Intentially placed in 'std' to detect (compiler error) when implemented (backported?)
 //       since below definitions aren't as conforming as std equivalents).
 #if defined(__clang__) && defined(_LIBCPP_VERSION) // libc++
 namespace std
 {
 #if (__clang_major__ <= 13 && (defined(__APPLE__) || defined(__EMSCRIPTEN__))) || __clang_major__ < 13
+    // Credit: https://en.cppreference.com
 
     template< class lhs_t, class rhs_t >
     concept assignable_from =
@@ -38,12 +40,19 @@ namespace std
                 { u != t } -> convertible_to<bool>;
         };
 
-    template <class T>
+    template<class T>
     concept copy_constructible =
         std::is_move_constructible_v<T> &&
         std::is_constructible_v<T, T&> && std::convertible_to<T&, T> &&
         std::is_constructible_v<T, const T&> && std::convertible_to<const T&, T> &&
         std::is_constructible_v<T, const T> && std::convertible_to<const T, T>;
+
+    template<class F, class... Args>
+    concept invocable =
+        requires(F&& f, Args&&... args) {
+            std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+            /* not required to be equality preserving */
+        };
     
     template< class lhs_t, class rhs_t >
     using common_reference_t = std::enable_if_t<std::convertible_to<lhs_t, rhs_t> && std::convertible_to<rhs_t, lhs_t>>;
