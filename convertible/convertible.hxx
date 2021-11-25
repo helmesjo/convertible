@@ -140,8 +140,11 @@ namespace convertible
         namespace details
         {
             struct placeholder{};
+        }
 
-            struct null_reader
+        namespace readers
+        {
+            struct identity
             {
                 decltype(auto) operator()(auto&& obj) const
                 {
@@ -150,11 +153,11 @@ namespace convertible
             };
 
             template<concepts::member_ptr member_ptr_t>
-            struct member_reader
+            struct member
             {
                 using class_t = traits::member_class_t<member_ptr_t>;
 
-                member_reader(member_ptr_t ptr):
+                member(member_ptr_t ptr):
                     ptr_(ptr)
                 {}
 
@@ -174,7 +177,7 @@ namespace convertible
             };
         }
 
-        template<typename obj_t = details::placeholder, typename reader_t = details::null_reader>
+        template<typename obj_t = details::placeholder, typename reader_t = readers::identity>
             // Workaround: Clang doesn't approve it in template parameter declaration.
             requires std::copy_constructible<reader_t>
         struct object
@@ -246,14 +249,14 @@ namespace convertible
         template<concepts::member_ptr member_ptr_t>
         auto member(member_ptr_t&& ptr, auto&& obj)
         {
-            return object<decltype(obj), details::member_reader<member_ptr_t>>(FWD(obj), ptr);
+            return object<decltype(obj), readers::member<member_ptr_t>>(FWD(obj), ptr);
         }
 
         template<concepts::member_ptr member_ptr_t>
         auto member(member_ptr_t&& ptr)
         {
             constexpr traits::member_class_t<member_ptr_t>* garbage = nullptr;
-            return object<traits::member_class_t<member_ptr_t>&, details::member_reader<member_ptr_t>>(*garbage, ptr);
+            return object<traits::member_class_t<member_ptr_t>&, readers::member<member_ptr_t>>(*garbage, ptr);
         }
     }
 
