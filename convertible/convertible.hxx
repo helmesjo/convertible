@@ -134,9 +134,12 @@ namespace convertible
             };
         }
 
-        template<typename obj_t = details::placeholder, std::copy_constructible reader_t = details::identity_reader>
+        template<typename obj_t = details::placeholder, typename reader_t = details::identity_reader>
         struct object
         {
+            // Workaround: Clang does not support constraints in class template parameters
+            static_assert(std::is_copy_constructible_v<reader_t>, "Reader must be copy constructible");
+            
             using out_t = std::invoke_result_t<reader_t, obj_t>;
 
             auto create(auto&& obj) const
