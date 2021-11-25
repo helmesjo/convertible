@@ -139,61 +139,6 @@ SCENARIO("convertible: Adapters")
             REQUIRE(adapter != "hello");
         }
     }
-    GIVEN("converter adapter")
-    {
-        struct type
-        {
-            std::string str;
-            bool operator==(const type& obj) const = default;
-            bool operator!=(const type& obj) const = default;
-        } obj;
-
-        struct custom_converter
-        {
-            type operator()(std::string obj) const
-            {
-                return type{obj};
-            }
-
-            std::string operator()(type obj) const
-            {
-                return obj.str;
-            }
-        };
-
-        adapters::converter adapter(custom_converter{}, obj);
-
-        THEN("it implicitly assigns member value")
-        {
-            adapter = "hello";
-            REQUIRE(obj.str == "hello");
-            adapter = type{"world"};
-            REQUIRE(obj.str == "world");
-        }
-        THEN("it implicitly converts to types")
-        {
-            REQUIRE(static_cast<std::string>(adapter) == obj.str);
-            REQUIRE(static_cast<type>(adapter) == obj);
-        }
-        THEN("it 'moves from' r-value reference")
-        {
-            obj.str = "world";
-            
-            adapters::converter adapterRval(custom_converter{}, std::move(obj));
-            REQUIRE(static_cast<std::string>(adapterRval) == "world");
-            REQUIRE(obj.str == "");
-
-            std::string str = "hello";
-            adapterRval = std::move(str);
-            REQUIRE(str == "");
-        }
-        THEN("equality operator works")
-        {
-            obj.str = "world";
-            REQUIRE(adapter == obj);
-            REQUIRE(adapter != "hello");
-        }
-    }
 }
 
 SCENARIO("convertible: Mapping")
