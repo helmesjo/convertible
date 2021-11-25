@@ -125,7 +125,7 @@ namespace convertible
         {
             struct placeholder{};
 
-            struct identity_reader
+            struct null_reader
             {
                 decltype(auto) operator()(auto&& obj) const
                 {
@@ -158,7 +158,7 @@ namespace convertible
             };
         }
 
-        template<typename obj_t = details::placeholder, typename reader_t = details::identity_reader>
+        template<typename obj_t = details::placeholder, typename reader_t = details::null_reader>
             // Workaround: Clang doesn't approve it in template parameter declaration.
             requires std::copy_constructible<reader_t>
         struct object
