@@ -37,6 +37,13 @@ namespace std
                 { u == t } -> convertible_to<bool>;
                 { u != t } -> convertible_to<bool>;
         };
+
+    template <class T>
+    concept copy_constructible =
+        std::is_move_constructible_v<T> &&
+        std::is_constructible_v<T, T&> && std::convertible_to<T&, T> &&
+        std::is_constructible_v<T, const T&> && std::convertible_to<const T&, T> &&
+        std::is_constructible_v<T, const T> && std::convertible_to<const T, T>;
     
     template< class lhs_t, class rhs_t >
     using common_reference_t = std::enable_if_t<std::convertible_to<lhs_t, rhs_t> && std::convertible_to<rhs_t, lhs_t>>;
