@@ -3,12 +3,73 @@
 #include <doctest/doctest.h>
 
 #include <cstdint>
+#include <concepts>
 #include <iostream>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+#if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
+#define MSVC_ENUM_FIX(...) int
+#else
+#define MSVC_ENUM_FIX(...) __VA_ARGS__
+#endif
 
 template<typename T>
 struct detect;
+
+SCENARIO("convertible: Traits")
+{
+    using namespace convertible;
+
+    struct type
+    {
+        int member;
+    };
+
+    static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::member)>>);
+    static_assert(std::is_same_v<int, convertible::traits::member_value_t<decltype(&type::member)>>);
+}
+
+namespace tests
+{
+    struct mappable_type
+    {
+        template<MSVC_ENUM_FIX(convertible::direction) dir>
+        void assign(int, int){}
+    };
+}
+
+SCENARIO("convertible: Concepts")
+{
+    using namespace convertible;
+
+    {
+        struct type
+        {
+            int member;
+        };
+
+        static_assert(concepts::class_type<type>);
+        static_assert(concepts::class_type<int> == false);
+    }
+
+    {
+        struct type
+        {
+            type create(int){ return {}; }
+            int create(std::string){ return {}; }
+        };
+
+        static_assert(concepts::adaptable<int, type>);
+        static_assert(concepts::adaptable<std::string, type> == false);
+    }
+
+    {
+        static_assert(concepts::mappable<tests::mappable_type, int, int>);
+        static_assert(concepts::mappable<tests::mappable_type, int, std::string> == false);
+    }
+}
 
 SCENARIO("convertible: Operators")
 {
