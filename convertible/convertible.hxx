@@ -134,121 +134,57 @@ namespace convertible
             };
         }
 
-        template<typename obj_t = details::placeholder, typename reader_t = details::identity_reader>
-        struct object_reader
-        {
-            auto create(auto&& obj) const
-            {
-                return object_reader<decltype(obj), reader_t>(FWD(obj), reader_);
-            }
-
-            object_reader() = default;
-            object_reader(const object_reader&) = default;
-            object_reader(object_reader&&) = default;
-            explicit object_reader(std::convertible_to<obj_t> auto&& obj)
-                requires std::is_default_constructible_v<reader_t>
-                : obj_(FWD(obj))
-            {
-            }
-
-            explicit object_reader(std::convertible_to<obj_t> auto&& obj, std::invocable<obj_t> auto&& reader)
-                requires std::is_lvalue_reference_v<std::invoke_result_t<reader_t, obj_t>>
-                : obj_(FWD(obj)), reader_(FWD(reader))
-            {
-            }
-
-            operator decltype(auto)() const
-            {
-                decltype(auto) val = reader_(obj_);
-                if constexpr (std::is_rvalue_reference_v<obj_t>)
-                {
-                    return std::move(val);
-                }
-                else
-                {
-                    return FWD(val);
-                }
-            }
-
-            decltype(auto) operator=(const object_reader& other)
-            {
-                return *this = static_cast<std::decay_t<obj_t>>(other);
-            }
-
-            decltype(auto) operator=(std::assignable_to<obj_t&> auto&& val)
-            {
-                obj_ = FWD(val);
-                return *this;
-            }
-
-            decltype(auto) operator==(const std::equality_comparable_with<obj_t> auto& val) const
-            {
-                return reader_(obj_) == val;
-            }
-
-            reader_t reader_;
-            obj_t obj_;
-        };
-
-        template<typename obj_t, typename reader_t>
-        object_reader(obj_t&, reader_t)->object_reader<obj_t&, reader_t>;
-
-        template<typename obj_t, typename reader_t>
-        object_reader(obj_t&&, reader_t)->object_reader<obj_t&&, reader_t>;
-
-        //using object = object_reader<details::identity_reader>;
-
-        template<typename obj_t = details::placeholder>
+        template<typename obj_t = details::placeholder, std::copy_constructible reader_t = details::identity_reader>
         struct object
         {
+            using out_t = std::invoke_result_t<reader_t, obj_t>;
+
             auto create(auto&& obj) const
             {
-                return object<decltype(obj)>{FWD(obj)};
+                return object<decltype(obj), reader_t>(FWD(obj), reader_);
             }
 
             object() = default;
             object(const object&) = default;
             object(object&&) = default;
-            explicit object(std::convertible_to<obj_t> auto&& obj): obj_(FWD(obj))
+            explicit object(std::convertible_to<obj_t> auto&& obj)
+                requires std::invocable<reader_t, decltype(obj)>
+                : obj_(FWD(obj))
             {
             }
 
-            operator decltype(auto)() const
+            explicit object(std::convertible_to<obj_t> auto&& obj, std::invocable<obj_t> auto&& reader)
+                : obj_(FWD(obj)), reader_(FWD(reader))
             {
-                if constexpr(std::is_rvalue_reference_v<obj_t>)
-                {
-                    return std::move(obj_);
-                }
-                else
-                {
-                    return obj_;
-                }
+            }
+
+            operator out_t() const
+            {
+                return static_cast<out_t>(reader_(obj_));
             }
 
             decltype(auto) operator=(const object& other)
             {
-                return *this = static_cast<std::decay_t<obj_t>>(other);
+                return *this = static_cast<std::decay_t<out_t>>(other);
             }
 
-            decltype(auto) operator=(std::assignable_to<obj_t&> auto&& val)
+            decltype(auto) operator=(std::assignable_to<out_t&> auto&& val)
             {
-                obj_ = FWD(val);
+                reader_(obj_) = FWD(val);
                 return *this;
             }
 
-            decltype(auto) operator==(const std::equality_comparable_with<obj_t> auto& val) const
+            decltype(auto) operator==(const std::equality_comparable_with<out_t> auto& val) const
             {
-                return obj_ == val;
+                return reader_(obj_) == val;
             }
 
             obj_t obj_;
+            reader_t reader_;
         };
 
-        template<typename obj_t>
-        object(obj_t&)->object<obj_t&>;
-
-        template<typename obj_t>
-        object(obj_t&&)->object<obj_t&&>;
+        object(auto&& obj)->object<decltype(obj)>;
+        object(auto&& obj, std::invocable<decltype(obj)> auto&& reader)->object<decltype(obj), std::remove_reference_t<decltype(reader)>>;
 
         template<concepts::member_ptr member_ptr_t, bool is_rval = false>
         struct member
