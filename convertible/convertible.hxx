@@ -227,8 +227,21 @@ namespace convertible
             reader_t reader_;
         };
 
-        object(auto&& obj)->object<decltype(obj)>;
-        object(auto&& obj, std::invocable<decltype(obj)> auto&& reader)->object<decltype(obj), std::remove_reference_t<decltype(reader)>>;
+        // Workaround: MSVC does not like auto parameters in deduction guides.
+
+        template<typename obj_t>
+        object(obj_t& obj)->object<obj_t&>;
+        
+        template<typename obj_t>
+        object(obj_t&& obj)->object<obj_t&&>;
+
+        template<typename obj_t, typename reader_t>
+            requires std::invocable<reader_t, obj_t>
+        object(obj_t& obj, reader_t&& reader)->object<obj_t&, std::remove_reference_t<reader_t>>;
+
+        template<typename obj_t, typename reader_t>
+            requires std::invocable<reader_t, obj_t>
+        object(obj_t&& obj, reader_t&& reader)->object<obj_t&&, std::remove_reference_t<reader_t>>;
 
         template<concepts::member_ptr member_ptr_t>
         auto member(member_ptr_t&& ptr, auto&& obj)
