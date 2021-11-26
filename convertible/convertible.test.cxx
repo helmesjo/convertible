@@ -526,12 +526,17 @@ SCENARIO("convertible: Mapping table")
         {
             lhs_a.val1 = 10;
             table.assign<direction::lhs_to_rhs>(lhs_a, rhs_b);
-            table.assign<direction::lhs_to_rhs>(lhs_a, rhs_c);
 
             THEN("a.val1 == b.val1")
             {
                 REQUIRE(lhs_a.val1 == rhs_b.val1);
             }
+        }
+        WHEN("assigning lhs (a) to rhs (c)")
+        {
+            lhs_a.val1 = 10;
+            table.assign<direction::lhs_to_rhs>(lhs_a, rhs_c);
+
             THEN("a.val1 == c.val1")
             {
                 REQUIRE(lhs_a.val1 == rhs_c.val1);
