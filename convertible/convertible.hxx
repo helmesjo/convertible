@@ -90,28 +90,24 @@ namespace convertible
     {
         namespace details
         {
-            template<typename M>
+            template<typename C, typename R>
             struct member_ptr_meta
             {
-                template<typename R>
-                struct return_t{ using type = R; };
-
-                template <typename C, typename R>
-                static return_t<C> get_class_type(R C::*);
-
-                template <typename C, typename R>
-                static return_t<R> get_value_type(R C::*);
-
-                using class_t = typename decltype(get_class_type(std::declval<M>()))::type;
-                using value_t = typename decltype(get_value_type(std::declval<M>()))::type;
+                using class_t = C;
+                using value_t = R;
+                constexpr member_ptr_meta(R C::*){}
             };
+
+            template<typename M>
+                requires std::is_member_pointer_v<M>
+            using member_ptr_meta_t = decltype(member_ptr_meta(std::declval<M>()));
         }
 
         template<typename member_ptr_t>
-        using member_class_t = typename details::member_ptr_meta<member_ptr_t>::class_t;
+        using member_class_t = typename details::member_ptr_meta_t<member_ptr_t>::class_t;
         
-        template<typename member_ptr_t, typename class_t = member_class_t<member_ptr_t>, typename value_t = typename details::member_ptr_meta<member_ptr_t>::value_t>
-        using member_value_t = value_t;
+        template<typename member_ptr_t>
+        using member_value_t = typename details::member_ptr_meta_t<member_ptr_t>::value_t;
     }
 
     namespace concepts
