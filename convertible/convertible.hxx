@@ -391,12 +391,12 @@ namespace std
     Specifically enables:
         `std::assignable_from<object<...>, object<...>>`
     */
-    template<typename A1, typename A2, typename B1, typename B2>
-    struct common_type<convertible::adapters::object<A1, A2>, convertible::adapters::object<B1, B2>>
+    template<typename... a_ts, typename... b_ts>
+    struct common_type<convertible::adapters::object<a_ts...>, convertible::adapters::object<b_ts...>>
     {
         using type = ::std::common_reference_t<
-            typename convertible::adapters::object<A1, A2>::out_t, 
-            typename convertible::adapters::object<B1, B2>::out_t
+            typename convertible::adapters::object<a_ts...>::out_t,
+            typename convertible::adapters::object<b_ts...>::out_t
         >;
     };
 }
