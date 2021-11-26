@@ -118,6 +118,12 @@ namespace convertible
         template<typename T>
         concept member_ptr = std::is_member_pointer_v<std::decay_t<T>>;
 
+        template<typename T>
+        concept indexable = requires(T t)
+        {
+            t[0];
+        };
+
         template<typename arg_t, typename adapter_t>
         concept adaptable = requires(adapter_t adapter, arg_t arg)
         {
@@ -170,6 +176,22 @@ namespace convertible
                 }
 
                 member_ptr_t ptr_;
+            };
+
+            template<std::size_t i>
+            struct index
+            {
+                decltype(auto) operator()(concepts::indexable auto&& obj) const
+                {
+                    if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
+                    {
+                        return std::move(obj[i]);
+                    }
+                    else
+                    {
+                        return obj[i];
+                    }
+                }
             };
         }
 
@@ -253,6 +275,18 @@ namespace convertible
         {
             constexpr traits::member_class_t<member_ptr_t>* garbage = nullptr;
             return object<traits::member_class_t<member_ptr_t>&, readers::member<member_ptr_t>>(*garbage, ptr);
+        }
+
+        template<std::size_t i>
+        auto index(concepts::indexable auto&& obj)
+        {
+            return object<decltype(obj), readers::index<i>>(FWD(obj));
+        }
+
+        template<std::size_t i>
+        auto index()
+        {
+            return object<details::placeholder, readers::index<i>>();
         }
     }
 

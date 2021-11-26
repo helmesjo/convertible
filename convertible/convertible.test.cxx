@@ -2,6 +2,7 @@
 
 #include <doctest/doctest.h>
 
+#include <array>
 #include <cstdint>
 #include <concepts>
 #include <iostream>
@@ -44,6 +45,7 @@ SCENARIO("convertible: Concepts")
 {
     using namespace convertible;
 
+    // class_type:
     {
         struct type
         {
@@ -54,17 +56,39 @@ SCENARIO("convertible: Concepts")
         static_assert(concepts::class_type<int> == false);
     }
 
+    // member_ptr:
+    {
+        struct type
+        {
+            int member;
+        };
+
+        static_assert(concepts::member_ptr<decltype(&type::member)>);
+        static_assert(concepts::member_ptr<type> == false);
+    }
+
+    // indexable
+    {
+        static_assert(concepts::indexable<std::array<int, 1>>);
+        static_assert(concepts::indexable<int*>);
+        static_assert(concepts::indexable<int> == false);
+    }
+
+    // adaptable:
     {
         struct type
         {
             type create(int){ return {}; }
-            int create(std::string){ return {}; }
+            int create(float) { return {}; }
+            void create(double) { }
         };
 
         static_assert(concepts::adaptable<int, type>);
-        static_assert(concepts::adaptable<std::string, type> == false);
+        static_assert(concepts::adaptable<float, type> == false);
+        static_assert(concepts::adaptable<double, type> == false);
     }
 
+    // mappable:
     {
         static_assert(concepts::mappable<tests::mappable_type, int, int>);
         static_assert(concepts::mappable<tests::mappable_type, int, std::string> == false);
@@ -196,6 +220,39 @@ SCENARIO("convertible: Adapters")
         THEN("equality operator works")
         {
             obj.str = "world";
+            REQUIRE(adapter == "world");
+            REQUIRE(adapter != "hello");
+        }
+    }
+    GIVEN("index adapter")
+    {
+        std::array values = {std::string("1")};
+        auto adapter = adapters::index<0>(values);
+
+        THEN("it implicitly assigns member value")
+        {
+            adapter = "hello";
+            REQUIRE(values[0] == "hello");
+        }
+        THEN("it implicitly converts to type")
+        {
+            REQUIRE(static_cast<std::string>(adapter) == values[0]);
+        }
+        THEN("it 'moves from' r-value reference")
+        {
+            values[0] = "world";
+
+            auto adapterRval = convertible::adapters::index<0>(std::move(values));
+            REQUIRE(static_cast<std::string>(adapterRval) == "world");
+            REQUIRE(values[0] == "");
+
+            std::string str = "hello";
+            adapterRval = std::move(str);
+            REQUIRE(str == "");
+        }
+        THEN("equality operator works")
+        {
+            values[0] = "world";
             REQUIRE(adapter == "world");
             REQUIRE(adapter != "hello");
         }
