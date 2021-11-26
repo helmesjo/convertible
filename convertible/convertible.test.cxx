@@ -208,7 +208,7 @@ SCENARIO("convertible: Mapping")
 
     GIVEN("a mapping between a <-> b")
     {
-        adapters::object adapter;
+        adapters::object adapter = {};
         mapping map(adapter, adapter);
 
         WHEN("assigning lhs to rhs")
@@ -281,7 +281,7 @@ SCENARIO("convertible: Mapping")
             }
         };
 
-        adapters::object adapter;
+        adapters::object adapter = {};
         constexpr custom_converter converter{};
         mapping map(adapter, adapter, converter);
 
