@@ -158,8 +158,14 @@ SCENARIO("convertible: Adapters")
     GIVEN("object adapter")
     {
         std::string str = "hello";
-        adapters::object adapter(str);
+        auto adapter = adapters::object(str);
 
+        THEN("it's adaptable only to the expected type")
+        {
+            // (adapts to any type)
+            static_assert(concepts::adaptable<std::string, decltype(adapter)>);
+            static_assert(concepts::adaptable<int, decltype(adapter)>);
+        }
         THEN("it implicitly assigns value")
         {
             adapter = "world";
@@ -196,6 +202,11 @@ SCENARIO("convertible: Adapters")
 
         auto adapter = adapters::member(&type::str, obj);
 
+        THEN("it's adaptable only to the expected type")
+        {
+            static_assert(concepts::adaptable<type, decltype(adapter)>);
+            static_assert(concepts::adaptable<int, decltype(adapter)> == false);
+        }
         THEN("it implicitly assigns member value")
         {
             adapter = "hello";
@@ -229,6 +240,11 @@ SCENARIO("convertible: Adapters")
         std::array values = {std::string("1")};
         auto adapter = adapters::index<0>(values);
 
+        THEN("it's adaptable only to the expected type")
+        {
+            static_assert(concepts::adaptable<decltype(values), decltype(adapter)>);
+            static_assert(concepts::adaptable<int, decltype(adapter)> == false);
+        }
         THEN("it implicitly assigns member value")
         {
             adapter = "hello";
