@@ -10,7 +10,7 @@
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
 // Workaround unimplemented concepts & type traits (specifically with libc++)
-// NOTE: Intentially placed in 'std' to detect (compiler error) when implemented (backported?)
+// NOTE: Intentionally placed in 'std' to detect (compiler error) when implemented (backported?)
 //       since below definitions aren't as conforming as std equivalents).
 #if defined(__clang__) && defined(_LIBCPP_VERSION) // libc++
 namespace std
@@ -29,6 +29,29 @@ namespace std
     concept convertible_to =
         std::is_convertible_v<from_t, to_t> &&
         requires { static_cast<to_t>(std::declval<from_t>()); };
+
+    template< class lhs_t, class rhs_t >
+    using common_reference_impl_const_t =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<lhs_t>> || std::is_const_v<std::remove_reference_t<rhs_t>>,
+            const std::common_type_t<lhs_t, rhs_t>,
+            std::common_type_t<lhs_t, rhs_t>
+        >;
+
+    template< class lhs_t, class rhs_t >
+    using common_reference_t =
+        std::conditional_t<std::is_reference_v<lhs_t> || std::is_reference_v<rhs_t>,
+            std::conditional_t<std::is_rvalue_reference_v<lhs_t> || std::is_rvalue_reference_v<rhs_t>,
+                std::common_reference_impl_const_t<lhs_t, rhs_t>&&,
+                std::common_reference_impl_const_t<lhs_t, rhs_t>&
+            >,
+            std::common_type_t<lhs_t, rhs_t>
+        >;
+
+    template < class T, class U >
+    concept common_reference_with =
+        std::same_as<std::common_reference_t<T, U>, std::common_reference_t<U, T>> &&
+        std::convertible_to<T, std::common_reference_t<T, U>> &&
+        std::convertible_to<U, std::common_reference_t<T, U>>;
 
     template<class T, class U>
     concept equality_comparable_with =
@@ -53,9 +76,6 @@ namespace std
             std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
             /* not required to be equality preserving */
         };
-    
-    template< class lhs_t, class rhs_t >
-    using common_reference_t = std::enable_if_t<std::convertible_to<lhs_t, rhs_t> && std::convertible_to<rhs_t, lhs_t>>;
 #endif
 }
 #endif
