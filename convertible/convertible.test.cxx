@@ -214,22 +214,27 @@ SCENARIO("convertible: Adapters")
         {
             REQUIRE(static_cast<std::string>(adapter) == str);
         }
-        THEN("it 'moves from' r-value reference")
+        THEN("implicit conversion 'moves from' r-value reference")
         {
             adapters::object adapterRval(std::move(str));
 
-            REQUIRE(static_cast<std::string>(adapterRval) == "hello");
+            std::string assigned = adapterRval;
+            REQUIRE(assigned == "hello");
             REQUIRE(str == "");
-
-            std::string str = "hello";
-            adapterRval = std::move(str);
-            REQUIRE(str == "");
+        }
+        THEN("assign 'moves from' r-value reference")
+        {
+            std::string str2 = "hello";
+            adapter = std::move(str2);
+            REQUIRE(str2 == "");
         }
         THEN("equality operator works")
         {
             str = "world";
             REQUIRE(adapter == "world");
             REQUIRE(adapter != "hello");
+            REQUIRE("world" == adapter);
+            REQUIRE("hello" != adapter);
         }
     }
     GIVEN("member adapter")
