@@ -106,6 +106,13 @@ namespace convertible
     };
 #endif
 
+    namespace adapters
+    {
+        template<typename obj_t, typename reader_t>
+            requires std::invocable<reader_t, obj_t>
+        struct object;
+    }
+
     namespace traits
     {
         namespace details
@@ -121,6 +128,12 @@ namespace convertible
             template<typename M>
                 requires std::is_member_pointer_v<M>
             using member_ptr_meta_t = decltype(member_ptr_meta(std::declval<M>()));
+
+            template<typename... arg_ts>
+            struct is_adapter: std::false_type {};
+
+            template<typename... arg_ts>
+            struct is_adapter<adapters::object<arg_ts...>>: std::true_type {};
         }
 
         template<typename member_ptr_t>
@@ -128,6 +141,9 @@ namespace convertible
         
         template<typename member_ptr_t>
         using member_value_t = typename details::member_ptr_meta_t<member_ptr_t>::value_t;
+
+        template<typename T>
+        constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
     }
 
     namespace concepts
@@ -143,6 +159,9 @@ namespace convertible
         {
             t[0];
         };
+
+        template<typename T>
+        concept adapter = traits::is_adapter_v<T>;
 
         template<typename arg_t, typename adapter_t>
         concept adaptable = requires(adapter_t adapter, arg_t arg)
@@ -217,7 +236,7 @@ namespace convertible
 
         template<typename obj_t = details::placeholder, typename reader_t = readers::identity>
             // Workaround: Clang doesn't approve it in template parameter declaration.
-            requires std::copy_constructible<reader_t>
+            requires std::invocable<reader_t, obj_t>
         struct object
         {
             
