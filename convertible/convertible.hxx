@@ -261,10 +261,17 @@ namespace convertible
             }
 
             template<typename to_t>
-            operator to_t() const
+            operator to_t()
                 requires std::convertible_to<out_t, to_t>
             {
-                return read();
+                return static_cast<to_t>(read());
+            }
+
+            template<typename to_t>
+            operator to_t() const
+                requires std::convertible_to<out_t, to_t> && (!is_rval)
+            {
+                return static_cast<to_t>(read());
             }
             
             object& operator=(concepts::adapter auto&& other)
