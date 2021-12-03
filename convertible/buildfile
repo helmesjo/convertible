@@ -8,6 +8,7 @@ import test_libs += doctest%lib{doctest}
 
 # Unit tests.
 # Create precompiled doctest_main lib
+./: libue{doctest_main}: cxx{doctest_define_main} $test_libs
 
 exe{*.test}:
 {
@@ -21,8 +22,7 @@ for t: cxx{**.test...}
   n = $name($t)...
 
   ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n}
-  $d/exe{$n}: libul{convertible}: bin.whole = false
-  $d/exe{$n}: libue{doctest_main}: cxx{doctest_define_main} $test_libs
+  $d/exe{$n}: libue{doctest_main} libul{convertible}: bin.whole = false
 }
 
 # Include the generated version header into the distribution (so that we don't
