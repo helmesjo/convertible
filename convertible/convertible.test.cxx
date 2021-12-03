@@ -160,7 +160,46 @@ SCENARIO("convertible: Adapters")
         std::string str = "hello";
         auto adapter = adapters::object(str);
 
-        THEN("it's adaptable only to the expected type")
+        // TODO: Test same for all adapters (parameterized tests?)
+        THEN("it shares traits with held type")
+        {            
+            // l-value
+            using adapter_ref_t = adapters::object<std::string&, adapters::readers::identity>;
+            static_assert(std::convertible_to<adapter_ref_t, std::string>);
+            static_assert(std::common_reference_with<adapter_ref_t, std::string>);
+            static_assert(std::common_reference_with<std::string, adapter_ref_t>);
+            static_assert(std::equality_comparable_with<std::string, adapter_ref_t>);
+            static_assert(std::assignable_from<adapter_ref_t&, std::string>);
+            static_assert(std::assignable_from<adapter_ref_t&, std::string&>);
+            static_assert(std::assignable_from<adapter_ref_t&, std::string&&>);
+            static_assert(std::assignable_from<adapter_ref_t&, const std::string&>);
+            static_assert(std::assignable_from<adapter_ref_t&, const std::string&&>);
+            static_assert(std::assignable_from<std::string&, adapter_ref_t>);
+
+            // r-value
+            using adapter_rref_t = adapters::object<std::string&&, adapters::readers::identity>;
+            static_assert(std::common_reference_with<adapters::object<std::string>, adapters::object<const char*>>);
+            static_assert(std::convertible_to<adapter_rref_t, std::string>);
+            static_assert(std::convertible_to<adapter_rref_t, std::string&&>);
+            static_assert(std::convertible_to<adapter_rref_t, const std::string&>);
+            static_assert(std::convertible_to<adapter_rref_t, std::string&> == false);
+            static_assert(std::common_reference_with<adapter_rref_t, std::string>);
+            static_assert(std::common_reference_with<std::string, adapter_rref_t>);
+            static_assert(std::equality_comparable_with<std::string, adapter_rref_t>);
+            static_assert(std::assignable_from<adapter_rref_t&, std::string>);
+            static_assert(std::assignable_from<adapter_rref_t&, std::string&>);
+            static_assert(std::assignable_from<adapter_rref_t&, std::string&&>);
+            static_assert(std::assignable_from<adapter_rref_t&, const std::string&>);
+            static_assert(std::assignable_from<adapter_rref_t&, const std::string&&>);
+            static_assert(std::assignable_from<std::string&, adapter_rref_t>);
+
+            // misc
+            static_assert(std::common_reference_with<adapter_ref_t, adapter_rref_t>);
+            static_assert(std::common_reference_with<adapter_rref_t, adapters::object<const char*>>);
+            static_assert(std::convertible_to<adapters::object<const char*>, std::string>);
+            static_assert(std::convertible_to<const char*, std::string>);
+        }
+        THEN("it's adaptable only to the expected type(s)")
         {
             // (adapts to any type)
             static_assert(concepts::adaptable<std::string, decltype(adapter)>);
@@ -200,8 +239,51 @@ SCENARIO("convertible: Adapters")
             std::string str;
         } obj;
 
+        struct type_b
+        {
+            std::string str;
+        } obj2;
+
         auto adapter = adapters::member(&type::str, obj);
 
+        THEN("it shares traits with held type")
+        {
+            // l-value
+            using adapter_ref_t = adapters::object<type&, adapters::readers::member<std::string type::*>>;
+            static_assert(std::is_convertible_v<adapter_ref_t&, std::string&>);
+            static_assert(std::is_convertible_v<const adapter_ref_t&, const std::string&>);
+            static_assert(std::convertible_to<adapter_ref_t, std::string>);
+            static_assert(std::common_reference_with<adapter_ref_t, std::string>);
+            static_assert(std::common_reference_with<std::string, adapter_ref_t>);
+            static_assert(std::equality_comparable_with<std::string, adapter_ref_t>);
+            static_assert(std::assignable_from<adapter_ref_t&, std::string>);
+            static_assert(std::assignable_from<adapter_ref_t&, std::string&>);
+            static_assert(std::assignable_from<adapter_ref_t&, std::string&&>);
+            static_assert(std::assignable_from<adapter_ref_t&, const std::string&>);
+            static_assert(std::assignable_from<adapter_ref_t&, const std::string&&>);
+            static_assert(std::assignable_from<std::string&, adapter_ref_t>);
+
+            // r-value
+            using adapter_rref_t = adapters::object<type&&, adapters::readers::member<std::string type::*>>;
+            static_assert(std::convertible_to<adapter_rref_t, std::string>);
+            static_assert(std::convertible_to<adapter_rref_t, std::string&&>);
+            static_assert(std::convertible_to<adapter_rref_t, const std::string&>);
+            static_assert(std::convertible_to<adapter_rref_t, std::string&> == false);
+            static_assert(std::common_reference_with<adapter_rref_t, std::string>);
+            static_assert(std::common_reference_with<std::string, adapter_rref_t>);
+            static_assert(std::equality_comparable_with<std::string, adapter_rref_t>);
+            static_assert(std::assignable_from<adapter_rref_t&, std::string>);
+            static_assert(std::assignable_from<adapter_rref_t&, std::string&>);
+            static_assert(std::assignable_from<adapter_rref_t&, std::string&&>);
+            static_assert(std::assignable_from<adapter_rref_t&, const std::string&>);
+            static_assert(std::assignable_from<adapter_rref_t&, const std::string&&>);
+            static_assert(std::assignable_from<std::string&, adapter_rref_t>);
+
+            // misc
+            using adapter_b_ref_t = adapters::object<type_b&, adapters::readers::member<std::string type_b::*>>;
+            static_assert(std::common_reference_with<adapter_ref_t, adapter_b_ref_t>);
+            static_assert(std::assignable_from<adapter_ref_t&, adapter_b_ref_t>);
+        }
         THEN("it's adaptable only to the expected type")
         {
             static_assert(concepts::adaptable<type, decltype(adapter)>);

@@ -204,14 +204,7 @@ namespace convertible
 
                 decltype(auto) operator()(std::convertible_to<class_t> auto&& obj) const
                 {
-                    if constexpr(std::is_rvalue_reference_v<decltype(obj)>)
-                    {
-                        return std::move(obj.*ptr_);
-                    }
-                    else
-                    {
-                        return obj.*ptr_;
-                    }
+                    return obj.*ptr_;
                 }
 
                 member_ptr_t ptr_;
@@ -222,14 +215,7 @@ namespace convertible
             {
                 decltype(auto) operator()(concepts::indexable auto&& obj) const
                 {
-                    if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
-                    {
-                        return std::move(obj[i]);
-                    }
-                    else
-                    {
-                        return obj[i];
-                    }
+                    return obj[i];
                 }
             };
         }
@@ -239,8 +225,10 @@ namespace convertible
             requires std::invocable<reader_t, obj_t>
         struct object
         {
-            
-            using out_t = std::invoke_result_t<reader_t, obj_t>;
+            static constexpr bool is_rval = std::is_rvalue_reference_v<obj_t>;
+            using reader_result_t = std::invoke_result_t<reader_t, obj_t>;
+            using out_t = std::conditional_t<is_rval, std::remove_reference_t<reader_result_t>&&, reader_result_t>;
+            using value_t = std::remove_reference_t<out_t>;
 
             auto create(auto&& obj) const
                 requires std::invocable<reader_t, decltype(obj)>
@@ -262,25 +250,64 @@ namespace convertible
             {
             }
 
-            operator out_t() const
+            operator out_t()
             {
-                return static_cast<out_t>(reader_(obj_));
+                return read();
             }
 
-            decltype(auto) operator=(const object& other)
+            operator const out_t() const
             {
-                return *this = static_cast<std::decay_t<out_t>>(other);
+                return read();
             }
 
-            decltype(auto) operator=(std::assignable_to<out_t&> auto&& val)
+            template<typename to_t>
+            operator to_t() const
+                requires std::convertible_to<out_t, to_t>
             {
-                reader_(obj_) = FWD(val);
+                return read();
+            }
+            
+            object& operator=(concepts::adapter auto&& other)
+                requires std::assignable_from<value_t&, typename std::decay_t<decltype(other)>::out_t>
+            {
+                read() = other.read();
                 return *this;
             }
 
-            decltype(auto) operator==(const std::equality_comparable_with<out_t> auto& val) const
+            object& operator=(std::assignable_to<value_t&> auto&& val)
+                requires (!concepts::adapter<decltype(val)>)
             {
-                return reader_(obj_) == val;
+                read() = FWD(val);
+                return *this;
+            }
+
+            bool operator==(const concepts::adapter auto& other) const
+                requires std::equality_comparable_with<value_t&, typename std::decay_t<decltype(other)>::out_t>
+            {
+                return read() == other;
+            }
+
+            bool operator==(const auto& val) const
+                requires (!concepts::adapter<decltype(val)>)
+            {
+                return read() == val;
+            }
+
+            decltype(auto) read()
+            {
+                if constexpr (is_rval)
+                {
+                    return std::move(reader_(obj_));
+                }
+                else
+                {
+                    return reader_(obj_);
+                }
+            }
+
+            decltype(auto) read() const
+            {
+                return reader_(obj_);
             }
 
             obj_t obj_;
