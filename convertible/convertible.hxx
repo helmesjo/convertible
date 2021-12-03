@@ -354,28 +354,6 @@ namespace convertible
         }
     }
 
-    namespace operators
-    {
-
-        struct assign
-        {
-            template<typename lhs_t> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) exec(lhs_t&& lhs, std::assignable_to<lhs_t> auto&& rhs) const
-            {
-                return lhs = FWD(rhs);
-            }
-        };
-
-        struct equal
-        {
-            template<typename lhs_t> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) exec(const lhs_t& lhs, const std::equality_comparable_with<lhs_t> auto& rhs) const
-            {
-                return FWD(lhs) == FWD(rhs);
-            }
-        };
-    }
-
     namespace converters
     {
         struct identity
@@ -383,6 +361,30 @@ namespace convertible
             constexpr decltype(auto) operator()(auto&& val) const
             {
                 return FWD(val);
+            }
+        };
+    }
+
+    namespace operators
+    {
+
+        struct assign
+        {
+            template<typename lhs_t, typename rhs_t, typename converter_t = converters::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {}) const
+                requires std::assignable_from<lhs_t, std::invoke_result_t<converter_t, rhs_t>>
+            {
+                return lhs = converter(FWD(rhs));
+            }
+        };
+
+        struct equal
+        {
+            template<typename lhs_t, typename rhs_t, typename converter_t = converters::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            decltype(auto) exec(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
+                requires std::equality_comparable_with<lhs_t, std::invoke_result_t<converter_t, rhs_t>>
+            {
+                return FWD(lhs) == converter(FWD(rhs));
             }
         };
     }
@@ -405,15 +407,15 @@ namespace convertible
             auto rhsAdap = rhsAdapter_.create(FWD(rhs));
             
             if constexpr(dir == direction::rhs_to_lhs)
-                op.exec(lhsAdap, converter_(std::move(rhsAdap)));
+                op.exec(lhsAdap, std::move(rhsAdap), converter_);
             else
-                op.exec(rhsAdap, converter_(std::move(lhsAdap)));
+                op.exec(rhsAdap, std::move(lhsAdap), converter_);
         }
 
         bool equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
         {
             constexpr operators::equal op;
-            return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)));
+            return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)), converter_);
         }
 
         std::decay_t<lhs_adapter_t> lhsAdapter_;
