@@ -380,6 +380,7 @@ SCENARIO("convertible: Mapping")
             THEN("lhs == rhs")
             {
                 REQUIRE(lhs == rhs);
+                REQUIRE(map.equal(lhs, rhs));
             }
         }
         WHEN("assigning lhs (r-value) to rhs")
@@ -407,6 +408,7 @@ SCENARIO("convertible: Mapping")
             THEN("lhs == rhs")
             {
                 REQUIRE(lhs == rhs);
+                REQUIRE(map.equal(lhs, rhs));
             }
         }
         WHEN("assigning rhs (r-value) to lhs")
@@ -422,6 +424,7 @@ SCENARIO("convertible: Mapping")
                 AND_THEN("rhs is moved from")
                 {
                     REQUIRE(rhs == "");
+                    REQUIRE(map.equal(rhs, ""));
                 }
             }
         }
@@ -432,7 +435,14 @@ SCENARIO("convertible: Mapping")
         {
             int operator()(std::string val) const
             {
-                return std::stoi(val);
+                try
+                {
+                    return std::stoi(val);
+                }
+                catch(const std::exception&)
+                {
+                    return 0;
+                }
             }
 
             std::string operator()(int val) const
@@ -454,6 +464,8 @@ SCENARIO("convertible: Mapping")
             THEN("converter(lhs) == rhs")
             {
                 REQUIRE(converter(lhs) == rhs);
+                REQUIRE(map.equal(lhs, rhs));
+                REQUIRE(map.equal(rhs, lhs));
             }
         }
         WHEN("assigning lhs (r-value) to rhs")
@@ -469,6 +481,8 @@ SCENARIO("convertible: Mapping")
                 AND_THEN("lhs is moved from")
                 {
                     REQUIRE(lhs == "");
+                    REQUIRE_FALSE(map.equal(lhs, rhs));
+                    REQUIRE_FALSE(map.equal(rhs, lhs));
                 }
             }
         }
@@ -481,6 +495,8 @@ SCENARIO("convertible: Mapping")
             THEN("converter(rhs) == lhs")
             {
                 REQUIRE(converter(rhs) == lhs);
+                REQUIRE(map.equal(lhs, rhs));
+                REQUIRE(map.equal(rhs, lhs));
             }
         }
         WHEN("assigning rhs (r-value) to lhs")
@@ -496,6 +512,8 @@ SCENARIO("convertible: Mapping")
                 AND_THEN("rhs is moved from")
                 {
                     REQUIRE(rhs == "");
+                    REQUIRE_FALSE(map.equal(lhs, rhs));
+                    REQUIRE_FALSE(map.equal(rhs, lhs));
                 }
             }
         }
