@@ -323,11 +323,9 @@ namespace convertible
         object(obj_t&& obj)->object<obj_t&&>;
 
         template<typename obj_t, typename reader_t>
-            requires std::invocable<reader_t, obj_t>
         object(obj_t& obj, reader_t&& reader)->object<obj_t&, std::remove_reference_t<reader_t>>;
 
         template<typename obj_t, typename reader_t>
-            requires std::invocable<reader_t, obj_t>
         object(obj_t&& obj, reader_t&& reader)->object<obj_t&&, std::remove_reference_t<reader_t>>;
 
         template<concepts::member_ptr member_ptr_t>
