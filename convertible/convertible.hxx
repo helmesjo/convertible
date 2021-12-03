@@ -172,7 +172,7 @@ namespace convertible
         template<typename mapping_t, typename lhs_t, typename rhs_t>
         concept mappable = requires(mapping_t mapping, lhs_t lhs, rhs_t rhs)
         {
-            mapping.template assign<direction::rhs_to_lhs>(lhs, rhs);
+            { mapping.template assign<direction::rhs_to_lhs>(lhs, rhs) };
         };
     }
 
