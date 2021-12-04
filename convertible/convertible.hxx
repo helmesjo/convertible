@@ -505,8 +505,8 @@ namespace std
     struct common_type<convertible::adapters::object<a_ts...>, convertible::adapters::object<b_ts...>>
     {
         using type = ::std::common_reference_t<
-            typename convertible::adapters::object<a_ts...>::out_t,
-            typename convertible::adapters::object<b_ts...>::out_t
+            std::remove_cvref_t<typename convertible::adapters::object<a_ts...>::out_t>,
+            std::remove_cvref_t<typename convertible::adapters::object<b_ts...>::out_t>
         >;
     };
 }

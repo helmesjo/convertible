@@ -5,6 +5,7 @@
 #include <iostream> // Fix libc++ link error with doctest
 #include <string>
 #include <tuple>
+#include <type_traits>
 
 TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_traits_with_held_type)
 {
