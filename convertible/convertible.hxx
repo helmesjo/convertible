@@ -465,8 +465,26 @@ namespace convertible
             }, mappings_);
         }
 
-        decltype(auto) equal(auto&& lhs, auto&& rhs) const
+        bool equal(auto&& lhs, auto&& rhs) const
         {
+            using lhs_t = decltype(lhs);
+            using rhs_t = decltype(rhs);
+
+            bool areEqual = true;
+            std::apply([&lhs, &rhs, &areEqual](auto&&... args){
+                for_each([&lhs, &rhs, &areEqual](auto&& map){
+                    using mapping_t = decltype(map);
+                    if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
+                    {
+                        if(!map.template equal(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs)))
+                        {
+                            areEqual = false;
+                        }
+                    }
+                }, FWD(args)...);
+            }, mappings_);
+
+            return areEqual;
         }
 
         std::tuple<mapping_ts...> mappings_;

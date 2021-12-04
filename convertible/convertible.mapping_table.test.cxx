@@ -45,6 +45,8 @@ SCENARIO("convertible: Mapping table")
             {
                 REQUIRE(lhs.val1 == rhs.val1);
                 REQUIRE(lhs.val2 == rhs.val2);
+                REQUIRE(table.equal(lhs, rhs));
+                REQUIRE(table.equal(rhs, lhs));
             }
         }
         WHEN("assigning lhs (r-value) to rhs")
@@ -61,6 +63,7 @@ SCENARIO("convertible: Mapping table")
                 AND_THEN("lhs is moved from")
                 {
                     REQUIRE(lhs.val2 == "");
+                    REQUIRE_FALSE(table.equal(lhs, rhs));
                 }
             }
         }
@@ -74,6 +77,8 @@ SCENARIO("convertible: Mapping table")
             {
                 REQUIRE(lhs.val1 == rhs.val1);
                 REQUIRE(lhs.val2 == rhs.val2);
+                REQUIRE(table.equal(lhs, rhs));
+                REQUIRE(table.equal(rhs, lhs));
             }
         }
         WHEN("assigning rhs (r-value) to lhs")
@@ -86,10 +91,12 @@ SCENARIO("convertible: Mapping table")
             {
                 REQUIRE(lhs.val1 == 10);
                 REQUIRE(lhs.val2 == "hello");
+                REQUIRE(table.equal(lhs, type_a{10, "hello"}));
 
                 AND_THEN("rhs is moved from")
                 {
                     REQUIRE(rhs.val2 == "");
+                    REQUIRE_FALSE(table.equal(lhs, rhs));
                 }
             }
         }
@@ -114,21 +121,27 @@ SCENARIO("convertible: Mapping table")
         WHEN("assigning lhs (a) to rhs (b)")
         {
             lhs_a.val1 = 10;
+            lhs_a.val2 = "hello";
             table.assign<direction::lhs_to_rhs>(lhs_a, rhs_b);
 
             THEN("a.val1 == b.val1")
             {
                 REQUIRE(lhs_a.val1 == rhs_b.val1);
+                REQUIRE(table.equal(lhs_a, rhs_b));
+                REQUIRE(table.equal(rhs_b, lhs_a));
             }
         }
         WHEN("assigning lhs (a) to rhs (c)")
         {
             lhs_a.val1 = 10;
+            lhs_a.val2 = "hello";
             table.assign<direction::lhs_to_rhs>(lhs_a, rhs_c);
 
             THEN("a.val1 == c.val1")
             {
                 REQUIRE(lhs_a.val1 == rhs_c.val1);
+                REQUIRE(table.equal(lhs_a, rhs_c));
+                REQUIRE(table.equal(rhs_c, lhs_a));
             }
         }
     }
