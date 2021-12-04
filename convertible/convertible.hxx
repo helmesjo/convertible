@@ -226,6 +226,8 @@ namespace convertible
         struct object
         {
             static constexpr bool is_rval = std::is_rvalue_reference_v<obj_t>;
+
+            using object_t = obj_t;
             using reader_result_t = std::invoke_result_t<reader_t, obj_t>;
             using out_t = std::conditional_t<is_rval, std::remove_reference_t<reader_result_t>&&, reader_result_t>;
             using value_t = std::remove_reference_t<out_t>;
