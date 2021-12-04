@@ -1,6 +1,7 @@
 #include <convertible/convertible.hxx>
 #include <doctest/doctest.h>
 
+#include <iostream> // Fix libc++ link error with doctest
 #include <string>
 
 SCENARIO("convertible: Operators")

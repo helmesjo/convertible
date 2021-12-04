@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 
 #include <array>
+#include <iostream> // Fix libc++ link error with doctest
 #include <string>
 
 SCENARIO("convertible: Adapters")
