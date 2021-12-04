@@ -11,6 +11,8 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
 {
     using namespace convertible;
 
+    static_assert(concepts::adapter<adapter_t>);
+
     using obj_t = typename adapter_t::object_t;
     using out_t = typename adapter_t::out_t;
 
@@ -49,6 +51,9 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with similar adapter", adapter_pair_
 
     using lhs_adapter_t = std::tuple_element_t<0, adapter_pair_t>;
     using rhs_adapter_t = std::tuple_element_t<1, adapter_pair_t>;
+
+    static_assert(concepts::adapter<lhs_adapter_t>);
+    static_assert(concepts::adapter<rhs_adapter_t>);
 
     using lhs_object_t = typename lhs_adapter_t::object_t;
     using rhs_object_t = typename rhs_adapter_t::object_t;
