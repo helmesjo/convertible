@@ -399,7 +399,7 @@ namespace convertible
     template<typename lhs_adapter_t, typename rhs_adapter_t, typename converter_t = converters::identity>
     struct mapping
     {
-        explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
+        constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
             lhsAdapter_(std::move(lhsAdapter)),
             rhsAdapter_(std::move(rhsAdapter)),
             converter_(converter)
@@ -430,34 +430,20 @@ namespace convertible
         converter_t converter_;
     };
 
-    template <std::size_t begin, std::size_t end, typename callback_t, typename... arg_ts>
-    constexpr void for_each(callback_t callback, arg_ts... args)
+    template <typename callback_t, typename arg_t, typename... arg_ts>
+    constexpr void for_each(callback_t&& callback, arg_t&& head, arg_ts&&... tails)
     {
-        if constexpr (begin < end)
+        FWD(callback)(FWD(head));
+        if constexpr (sizeof...(tails) > 0)
         {
-            callback(std::get<begin>(std::tuple{FWD(args)...}));
-            for_each<begin + 1, end>(callback, FWD(args)...);
+            for_each(callback, FWD(tails)...);
         }
-    }
-
-    template <typename callback_t, typename... arg_ts>
-    constexpr void for_each(callback_t callback, arg_ts... args)
-    {
-        for_each<0, sizeof...(args)>(callback, FWD(args)...);
-    }
-
-    template <typename callback_t, typename... arg_ts>
-    constexpr void for_each(callback_t callback, std::tuple<arg_ts...> args)
-    {
-        std::apply([&](auto&&... args){
-            for_each<0, sizeof...(args)>(callback, FWD(args)...);
-        }, args);
     }
 
     template<typename... mapping_ts>
     struct mapping_table
     {
-        mapping_table(mapping_ts... mappings):
+        constexpr explicit mapping_table(mapping_ts... mappings):
             mappings_(mappings...)
         {
         }
@@ -468,13 +454,14 @@ namespace convertible
             using lhs_t = decltype(lhs);
             using rhs_t = decltype(rhs);
 
-            for_each([&](auto&& map){
-                using mapping_t = decltype(map);
-
-                if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
-                {
-                    map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
-                }
+            std::apply([&lhs, &rhs](auto&&... args){
+                for_each([&lhs, &rhs](auto&& map){
+                    using mapping_t = decltype(map);
+                    if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
+                    {
+                        map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
+                    }
+                }, FWD(args)...);
             }, mappings_);
         }
 
