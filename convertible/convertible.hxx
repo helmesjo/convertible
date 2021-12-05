@@ -480,7 +480,7 @@ namespace convertible
                     using mapping_t = decltype(map);
                     if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
                     {
-                        if(!map.template equal(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs)))
+                        if(!map.equal(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs)))
                         {
                             areEqual = false;
                         }
