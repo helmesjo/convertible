@@ -23,6 +23,17 @@ for t: cxx{**.test...}
 
   ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n}
   $d/exe{$n}: libue{doctest_main} libul{convertible}: bin.whole = false
+
+  # Ignore warning caused by doctest 'parameterized tests'
+  switch $cxx.id
+  {
+    case 'gcc' | 'clang' | 'clang-apple' | 'clang-emscripten'
+      no_used_local_typedef = -Wno-unused-local-typedefs
+  }
+  obj{$n}:
+  {
+    cxx.coptions += $no_used_local_typedef
+  }
 }
 
 # Include the generated version header into the distribution (so that we don't
