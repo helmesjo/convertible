@@ -278,14 +278,14 @@ namespace convertible
                 return read();
             }
             
-            object& operator=(concepts::adapter auto&& other)
+            decltype(auto) operator=(concepts::adapter auto&& other)
                 requires std::assignable_from<value_t&, typename std::decay_t<decltype(other)>::out_t>
             {
                 read() = other.read();
                 return *this;
             }
 
-            object& operator=(std::assignable_to<value_t&> auto&& val)
+            decltype(auto) operator=(std::assignable_to<value_t&> auto&& val)
                 requires (!concepts::adapter<decltype(val)>)
             {
                 read() = FWD(val);
