@@ -187,7 +187,8 @@ namespace convertible
         {
             struct identity
             {
-                decltype(auto) operator()(auto&& obj) const
+                template<typename T>
+                auto operator()(T&& obj) const -> T
                 {
                     return FWD(obj);
                 }
@@ -253,6 +254,7 @@ namespace convertible
             }
 
             operator out_t()
+                requires is_rval
             {
                 return read();
             }
@@ -262,18 +264,18 @@ namespace convertible
                 return read();
             }
 
-            template<typename to_t>
+            template<std::constructible_from<out_t> to_t>
+                requires (!std::same_as<std::remove_reference_t<to_t>, value_t>) && is_rval
             operator to_t()
-                requires std::convertible_to<out_t, to_t>
             {
-                return static_cast<to_t>(read());
+                return read();
             }
 
-            template<typename to_t>
-            operator to_t() const
-                requires std::convertible_to<out_t, to_t> && (!is_rval)
+            template<std::constructible_from<out_t> to_t>
+                requires (!std::same_as<std::remove_reference_t<to_t>, value_t>) && (!is_rval)
+            operator const to_t() const
             {
-                return static_cast<to_t>(read());
+                return read();
             }
             
             object& operator=(concepts::adapter auto&& other)
