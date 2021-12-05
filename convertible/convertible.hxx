@@ -13,10 +13,15 @@
 // NOTE: Intentionally placed in 'std' to detect (compiler error) when implemented (backported?)
 //       since below definitions aren't as conforming as std equivalents).
 #if defined(__clang__) && defined(_LIBCPP_VERSION) // libc++
+
 namespace std
 {
 #if (__clang_major__ <= 13 && (defined(__APPLE__) || defined(__EMSCRIPTEN__))) || __clang_major__ < 13
     // Credit: https://en.cppreference.com
+
+    template < class T, class... Args >
+    concept constructible_from =
+        std::is_nothrow_destructible_v<T> && std::is_constructible_v<T, Args...>;
 
     template< class lhs_t, class rhs_t >
     concept assignable_from =
