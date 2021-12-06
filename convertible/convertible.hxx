@@ -381,7 +381,7 @@ namespace convertible
         }
     }
 
-    namespace converters
+    namespace converter
     {
         struct identity
         {
@@ -394,10 +394,9 @@ namespace convertible
 
     namespace operators
     {
-
         struct assign
         {
-            template<typename lhs_t, typename rhs_t, typename converter_t = converters::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
             decltype(auto) exec(lhs_t& lhs, rhs_t&& rhs, converter_t&& converter = {}) const
                 requires std::assignable_from<lhs_t&, std::invoke_result_t<converter_t, rhs_t>>
             {
@@ -407,7 +406,7 @@ namespace convertible
 
         struct equal
         {
-            template<typename lhs_t, typename rhs_t, typename converter_t = converters::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
             decltype(auto) exec(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
                 requires std::equality_comparable_with<lhs_t, std::invoke_result_t<converter_t, rhs_t>>
             {
@@ -416,7 +415,7 @@ namespace convertible
         };
     }
 
-    template<typename lhs_adapter_t, typename rhs_adapter_t, typename converter_t = converters::identity>
+    template<typename lhs_adapter_t, typename rhs_adapter_t, typename converter_t = converter::identity>
     struct mapping
     {
         constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
