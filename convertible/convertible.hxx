@@ -111,7 +111,7 @@ namespace convertible
     };
 #endif
 
-    namespace adapters
+    namespace adapter
     {
         template<typename obj_t, typename reader_t>
             requires std::invocable<reader_t, obj_t>
@@ -138,7 +138,7 @@ namespace convertible
             struct is_adapter: std::false_type {};
 
             template<typename... arg_ts>
-            struct is_adapter<adapters::object<arg_ts...>>: std::true_type {};
+            struct is_adapter<adapter::object<arg_ts...>>: std::true_type {};
         }
 
         template<typename member_ptr_t>
@@ -181,7 +181,7 @@ namespace convertible
         };
     }
 
-    namespace adapters
+    namespace adapter
     {
         namespace details
         {
@@ -515,11 +515,11 @@ namespace std
         `std::assignable_from<object<...>, object<...>>`
     */
     template<typename... a_ts, typename... b_ts>
-    struct common_type<convertible::adapters::object<a_ts...>, convertible::adapters::object<b_ts...>>
+    struct common_type<convertible::adapter::object<a_ts...>, convertible::adapter::object<b_ts...>>
     {
         using type = ::std::common_reference_t<
-            std::remove_cvref_t<typename convertible::adapters::object<a_ts...>::out_t>,
-            std::remove_cvref_t<typename convertible::adapters::object<b_ts...>::out_t>
+            std::remove_cvref_t<typename convertible::adapter::object<a_ts...>::out_t>,
+            std::remove_cvref_t<typename convertible::adapter::object<b_ts...>::out_t>
         >;
     };
 }

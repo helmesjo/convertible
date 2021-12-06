@@ -107,23 +107,23 @@ SCENARIO("convertible: Adapters")
     GIVEN("object adapter")
     {
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type, 
-            convertible::adapters::object<std::string&, convertible::adapters::readers::identity>,
-            convertible::adapters::object<std::string&&, convertible::adapters::readers::identity>
+            convertible::adapter::object<std::string&, convertible::adapter::readers::identity>,
+            convertible::adapter::object<std::string&&, convertible::adapter::readers::identity>
         );
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
             std::pair<
-                convertible::adapters::object<const char*, convertible::adapters::readers::identity>,
-                convertible::adapters::object<std::string&, convertible::adapters::readers::identity>
+                convertible::adapter::object<const char*, convertible::adapter::readers::identity>,
+                convertible::adapter::object<std::string&, convertible::adapter::readers::identity>
             >
         );
 
         std::string str = "hello";
-        auto adapter = adapters::object(str);
+        auto adapter = adapter::object(str);
 
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapters::object();
+            constexpr auto constexprAdapter = adapter::object();
             (void)constexprAdapter;
         }
         THEN("it implicitly assigns value")
@@ -137,7 +137,7 @@ SCENARIO("convertible: Adapters")
         }
         THEN("implicit conversion 'moves from' r-value reference")
         {
-            adapters::object adapterRval(std::move(str));
+            adapter::object adapterRval(std::move(str));
 
             std::string assigned = adapterRval;
             REQUIRE(assigned == "hello");
@@ -170,23 +170,23 @@ SCENARIO("convertible: Adapters")
             std::string str;
         } obj2;
 
-        auto adapter = adapters::member(&type::str, obj);
+        auto adapter = adapter::member(&type::str, obj);
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type, 
-            adapters::object<type&, adapters::readers::member<std::string type::*>>,
-            adapters::object<type&&, adapters::readers::member<std::string type::*>>
+            adapter::object<type&, adapter::readers::member<std::string type::*>>,
+            adapter::object<type&&, adapter::readers::member<std::string type::*>>
         );
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
             std::pair<
-                convertible::adapters::object<const char*, convertible::adapters::readers::identity>,
-                convertible::adapters::object<std::string&, convertible::adapters::readers::identity>
+                convertible::adapter::object<const char*, convertible::adapter::readers::identity>,
+                convertible::adapter::object<std::string&, convertible::adapter::readers::identity>
             >
         );
 
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapters::member(&type::str);
+            constexpr auto constexprAdapter = adapter::member(&type::str);
             (void)constexprAdapter;
         }
         THEN("it implicitly assigns member value")
@@ -202,7 +202,7 @@ SCENARIO("convertible: Adapters")
         {
             obj.str = "world";
 
-            auto adapterRval = adapters::member(&type::str, std::move(obj));
+            auto adapterRval = adapter::member(&type::str, std::move(obj));
             REQUIRE(static_cast<std::string>(adapterRval) == "world");
             REQUIRE(obj.str == "");
 
@@ -220,23 +220,23 @@ SCENARIO("convertible: Adapters")
     GIVEN("index adapter")
     {
         std::array values = {std::string("1")};
-        auto adapter = adapters::index<0>(values);
+        auto adapter = adapter::index<0>(values);
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type, 
-            adapters::object<std::array<std::string, 1>&, adapters::readers::index<0>>,
-            adapters::object<std::array<std::string, 1>&&, adapters::readers::index<0>>
+            adapter::object<std::array<std::string, 1>&, adapter::readers::index<0>>,
+            adapter::object<std::array<std::string, 1>&&, adapter::readers::index<0>>
         );
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
             std::pair<
-                adapters::object<std::array<const char*, 1>&, adapters::readers::index<0>>,
-                adapters::object<std::array<std::string, 1>&, adapters::readers::index<0>>
+                adapter::object<std::array<const char*, 1>&, adapter::readers::index<0>>,
+                adapter::object<std::array<std::string, 1>&, adapter::readers::index<0>>
             >
         );
 
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapters::index<0>();
+            constexpr auto constexprAdapter = adapter::index<0>();
             (void)constexprAdapter;
         }
         THEN("it implicitly assigns member value")
@@ -252,7 +252,7 @@ SCENARIO("convertible: Adapters")
         {
             values[0] = "world";
 
-            auto adapterRval = convertible::adapters::index<0>(std::move(values));
+            auto adapterRval = convertible::adapter::index<0>(std::move(values));
             REQUIRE(static_cast<std::string>(adapterRval) == "world");
             REQUIRE(values[0] == "");
 

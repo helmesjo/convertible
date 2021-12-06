@@ -10,12 +10,12 @@ SCENARIO("convertible: Mapping")
 
     THEN("it's constexpr constructible")
     {
-        constexpr auto map = mapping(adapters::object(), adapters::object());
+        constexpr auto map = mapping(adapter::object(), adapter::object());
         (void)map;
     }
     GIVEN("a mapping between a <-> b")
     {
-        adapters::object adapter = {};
+        adapter::object adapter = {};
         mapping map(adapter, adapter);
 
         WHEN("assigning lhs to rhs")
@@ -98,7 +98,7 @@ SCENARIO("convertible: Mapping")
             }
         };
 
-        adapters::object adapter = {};
+        adapter::object adapter = {};
         constexpr custom_converter converter{};
         mapping map(adapter, adapter, converter);
 

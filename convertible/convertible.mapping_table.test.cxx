@@ -28,15 +28,15 @@ SCENARIO("convertible: Mapping table")
     THEN("it's constexpr constructible")
     {
         constexpr mapping_table table{
-            mapping( adapters::object(), adapters::object() )
+            mapping( adapter::object(), adapter::object() )
         };
         (void)table;
     }
     GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val2 <-> b.val2\n")
     {
         mapping_table table{
-            mapping( adapters::member(&type_a::val1), adapters::member(&type_b::val1) ),
-            mapping( adapters::member(&type_a::val2), adapters::member(&type_b::val2) )
+            mapping( adapter::member(&type_a::val1), adapter::member(&type_b::val1) ),
+            mapping( adapter::member(&type_a::val2), adapter::member(&type_b::val2) )
         };
 
         type_a lhs;
@@ -117,8 +117,8 @@ SCENARIO("convertible: Mapping table")
         };
 
         mapping_table table{
-            mapping( adapters::member(&type_a::val1), adapters::member(&type_b::val1) ),
-            mapping( adapters::member(&type_a::val1), adapters::member(&type_c::val1) )
+            mapping( adapter::member(&type_a::val1), adapter::member(&type_b::val1) ),
+            mapping( adapter::member(&type_a::val1), adapter::member(&type_c::val1) )
         };
 
         type_a lhs_a;
