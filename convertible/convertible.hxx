@@ -185,7 +185,14 @@ namespace convertible
     {
         namespace details
         {
-            struct placeholder{};
+            struct placeholder
+            {
+                constexpr placeholder operator[](std::size_t)
+                {
+                    return {};
+                }
+            };
+            static_assert(concepts::indexable<placeholder>);
         }
 
         namespace readers
@@ -204,13 +211,18 @@ namespace convertible
             {
                 using class_t = traits::member_class_t<member_ptr_t>;
 
-                member(member_ptr_t ptr):
-                    ptr_(ptr)
+                constexpr member(member_ptr_t ptr):
+                    ptr_(std::move(ptr))
                 {}
 
-                decltype(auto) operator()(std::convertible_to<class_t> auto&& obj) const
+                constexpr decltype(auto) operator()(std::convertible_to<class_t> auto&& obj) const
                 {
                     return obj.*ptr_;
+                }
+
+                constexpr decltype(auto) operator()(std::convertible_to<class_t> auto* obj) const
+                {
+                    return (*this)(*obj);
                 }
 
                 member_ptr_t ptr_;
@@ -219,7 +231,7 @@ namespace convertible
             template<std::size_t i>
             struct index
             {
-                decltype(auto) operator()(concepts::indexable auto&& obj) const
+                constexpr decltype(auto) operator()(concepts::indexable auto&& obj) const
                 {
                     return obj[i];
                 }
@@ -238,13 +250,13 @@ namespace convertible
             using out_t = std::conditional_t<is_rval, std::remove_reference_t<reader_result_t>&&, reader_result_t>;
             using value_t = std::remove_reference_t<out_t>;
 
-            auto create(auto&& obj) const
+            constexpr auto create(auto&& obj) const
                 requires std::invocable<reader_t, decltype(obj)>
             {
                 return object<decltype(obj), reader_t>(FWD(obj), reader_);
             }
 
-            object() = default;
+            constexpr object() = default;
             object(const object&) = default;
             object(object&&) = default;
             explicit object(std::convertible_to<obj_t> auto&& obj)
@@ -253,7 +265,7 @@ namespace convertible
             {
             }
 
-            explicit object(std::convertible_to<obj_t> auto&& obj, std::invocable<obj_t> auto&& reader)
+            constexpr explicit object(std::convertible_to<obj_t> auto&& obj, std::invocable<obj_t> auto&& reader)
                 : obj_(FWD(obj)), reader_(FWD(reader))
             {
             }
@@ -345,26 +357,25 @@ namespace convertible
         object(obj_t&& obj, reader_t&& reader)->object<obj_t&&, std::remove_reference_t<reader_t>>;
 
         template<concepts::member_ptr member_ptr_t>
-        auto member(member_ptr_t&& ptr, auto&& obj)
+        constexpr auto member(member_ptr_t ptr, auto&& obj)
         {
             return object<decltype(obj), readers::member<member_ptr_t>>(FWD(obj), ptr);
         }
 
         template<concepts::member_ptr member_ptr_t>
-        auto member(member_ptr_t&& ptr)
+        consteval auto member(member_ptr_t ptr)
         {
-            constexpr traits::member_class_t<member_ptr_t>* garbage = nullptr;
-            return object<traits::member_class_t<member_ptr_t>&, readers::member<member_ptr_t>>(*garbage, ptr);
+            return object<traits::member_class_t<member_ptr_t>*, readers::member<member_ptr_t>>(nullptr, ptr);
         }
 
         template<std::size_t i>
-        auto index(concepts::indexable auto&& obj)
+        constexpr auto index(concepts::indexable auto&& obj)
         {
             return object<decltype(obj), readers::index<i>>(FWD(obj));
         }
 
         template<std::size_t i>
-        auto index()
+        consteval auto index()
         {
             return object<details::placeholder, readers::index<i>>();
         }
@@ -411,7 +422,7 @@ namespace convertible
         constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
             lhsAdapter_(std::move(lhsAdapter)),
             rhsAdapter_(std::move(rhsAdapter)),
-            converter_(converter)
+            converter_(std::move(converter))
         {}
 
         template<MSVC_ENUM_FIX(direction) dir>
@@ -457,7 +468,7 @@ namespace convertible
     struct mapping_table
     {
         constexpr explicit mapping_table(mapping_ts... mappings):
-            mappings_(mappings...)
+            mappings_(std::move(mappings)...)
         {
         }
 

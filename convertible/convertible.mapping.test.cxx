@@ -8,6 +8,11 @@ SCENARIO("convertible: Mapping")
 {
     using namespace convertible;
 
+    THEN("it's constexpr constructible")
+    {
+        constexpr auto map = mapping(adapters::object(), adapters::object());
+        (void)map;
+    }
     GIVEN("a mapping between a <-> b")
     {
         adapters::object adapter = {};

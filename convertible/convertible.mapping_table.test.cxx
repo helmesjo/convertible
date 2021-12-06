@@ -25,6 +25,13 @@ SCENARIO("convertible: Mapping table")
         int val1;
     };
 
+    THEN("it's constexpr constructible")
+    {
+        constexpr mapping_table table{
+            mapping( adapters::object(), adapters::object() )
+        };
+        (void)table;
+    }
     GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val2 <-> b.val2\n")
     {
         mapping_table table{

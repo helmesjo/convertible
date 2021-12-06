@@ -121,6 +121,11 @@ SCENARIO("convertible: Adapters")
         std::string str = "hello";
         auto adapter = adapters::object(str);
 
+        THEN("it's constexpr constructible")
+        {
+            constexpr auto constexprAdapter = adapters::object();
+            (void)constexprAdapter;
+        }
         THEN("it implicitly assigns value")
         {
             adapter = "world";
@@ -179,6 +184,11 @@ SCENARIO("convertible: Adapters")
             >
         );
 
+        THEN("it's constexpr constructible")
+        {
+            constexpr auto constexprAdapter = adapters::member(&type::str);
+            (void)constexprAdapter;
+        }
         THEN("it implicitly assigns member value")
         {
             adapter = "hello";
@@ -224,6 +234,11 @@ SCENARIO("convertible: Adapters")
             >
         );
 
+        THEN("it's constexpr constructible")
+        {
+            constexpr auto constexprAdapter = adapters::index<0>();
+            (void)constexprAdapter;
+        }
         THEN("it implicitly assigns member value")
         {
             adapter = "hello";
