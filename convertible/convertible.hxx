@@ -387,8 +387,8 @@ namespace convertible
         struct assign
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converters::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs, converter_t&& converter = {}) const
-                requires std::assignable_from<lhs_t, std::invoke_result_t<converter_t, rhs_t>>
+            decltype(auto) exec(lhs_t& lhs, rhs_t&& rhs, converter_t&& converter = {}) const
+                requires std::assignable_from<lhs_t&, std::invoke_result_t<converter_t, rhs_t>>
             {
                 return lhs = converter(FWD(rhs));
             }
