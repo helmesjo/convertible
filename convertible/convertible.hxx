@@ -434,8 +434,8 @@ namespace convertible
             return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)), converter_);
         }
 
-        std::decay_t<lhs_adapter_t> lhsAdapter_;
-        std::decay_t<rhs_adapter_t> rhsAdapter_;
+        lhs_adapter_t lhsAdapter_;
+        rhs_adapter_t rhsAdapter_;
         converter_t converter_;
     };
 
