@@ -195,7 +195,7 @@ namespace convertible
             static_assert(concepts::indexable<placeholder>);
         }
 
-        namespace readers
+        namespace reader
         {
             struct identity
             {
@@ -238,7 +238,7 @@ namespace convertible
             };
         }
 
-        template<typename obj_t = details::placeholder, typename reader_t = readers::identity>
+        template<typename obj_t = details::placeholder, typename reader_t = reader::identity>
             // Workaround: Clang doesn't approve it in template parameter declaration.
             requires std::invocable<reader_t, obj_t>
         struct object
@@ -359,25 +359,25 @@ namespace convertible
         template<concepts::member_ptr member_ptr_t>
         constexpr auto member(member_ptr_t ptr, auto&& obj)
         {
-            return object<decltype(obj), readers::member<member_ptr_t>>(FWD(obj), ptr);
+            return object<decltype(obj), reader::member<member_ptr_t>>(FWD(obj), ptr);
         }
 
         template<concepts::member_ptr member_ptr_t>
         consteval auto member(member_ptr_t ptr)
         {
-            return object<traits::member_class_t<member_ptr_t>*, readers::member<member_ptr_t>>(nullptr, ptr);
+            return object<traits::member_class_t<member_ptr_t>*, reader::member<member_ptr_t>>(nullptr, ptr);
         }
 
         template<std::size_t i>
         constexpr auto index(concepts::indexable auto&& obj)
         {
-            return object<decltype(obj), readers::index<i>>(FWD(obj));
+            return object<decltype(obj), reader::index<i>>(FWD(obj));
         }
 
         template<std::size_t i>
         consteval auto index()
         {
-            return object<details::placeholder, readers::index<i>>();
+            return object<details::placeholder, reader::index<i>>();
         }
     }
 

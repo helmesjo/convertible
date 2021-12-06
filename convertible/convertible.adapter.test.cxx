@@ -107,14 +107,14 @@ SCENARIO("convertible: Adapters")
     GIVEN("object adapter")
     {
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type, 
-            convertible::adapter::object<std::string&, convertible::adapter::readers::identity>,
-            convertible::adapter::object<std::string&&, convertible::adapter::readers::identity>
+            convertible::adapter::object<std::string&, convertible::adapter::reader::identity>,
+            convertible::adapter::object<std::string&&, convertible::adapter::reader::identity>
         );
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
             std::pair<
-                convertible::adapter::object<const char*, convertible::adapter::readers::identity>,
-                convertible::adapter::object<std::string&, convertible::adapter::readers::identity>
+                convertible::adapter::object<const char*, convertible::adapter::reader::identity>,
+                convertible::adapter::object<std::string&, convertible::adapter::reader::identity>
             >
         );
 
@@ -173,14 +173,14 @@ SCENARIO("convertible: Adapters")
         auto adapter = adapter::member(&type::str, obj);
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type, 
-            adapter::object<type&, adapter::readers::member<std::string type::*>>,
-            adapter::object<type&&, adapter::readers::member<std::string type::*>>
+            adapter::object<type&, adapter::reader::member<std::string type::*>>,
+            adapter::object<type&&, adapter::reader::member<std::string type::*>>
         );
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
             std::pair<
-                convertible::adapter::object<const char*, convertible::adapter::readers::identity>,
-                convertible::adapter::object<std::string&, convertible::adapter::readers::identity>
+                convertible::adapter::object<const char*, convertible::adapter::reader::identity>,
+                convertible::adapter::object<std::string&, convertible::adapter::reader::identity>
             >
         );
 
@@ -223,14 +223,14 @@ SCENARIO("convertible: Adapters")
         auto adapter = adapter::index<0>(values);
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type, 
-            adapter::object<std::array<std::string, 1>&, adapter::readers::index<0>>,
-            adapter::object<std::array<std::string, 1>&&, adapter::readers::index<0>>
+            adapter::object<std::array<std::string, 1>&, adapter::reader::index<0>>,
+            adapter::object<std::array<std::string, 1>&&, adapter::reader::index<0>>
         );
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
             std::pair<
-                adapter::object<std::array<const char*, 1>&, adapter::readers::index<0>>,
-                adapter::object<std::array<std::string, 1>&, adapter::readers::index<0>>
+                adapter::object<std::array<const char*, 1>&, adapter::reader::index<0>>,
+                adapter::object<std::array<std::string, 1>&, adapter::reader::index<0>>
             >
         );
 
