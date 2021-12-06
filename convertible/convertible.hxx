@@ -440,13 +440,17 @@ namespace convertible
     };
 
     template <typename callback_t, typename arg_t, typename... arg_ts>
-    constexpr void for_each(callback_t&& callback, arg_t&& head, arg_ts&&... tails)
+    constexpr bool for_each(callback_t&& callback, arg_t&& head, arg_ts&&... tails)
     {
-        FWD(callback)(FWD(head));
+        if(!FWD(callback)(FWD(head)))
+        {
+            return false;
+        }
         if constexpr (sizeof...(tails) > 0)
         {
-            for_each(callback, FWD(tails)...);
+            return for_each(callback, FWD(tails)...);
         }
+        return true;
     }
 
     template<typename... mapping_ts>
@@ -457,12 +461,9 @@ namespace convertible
         {
         }
 
-        template<MSVC_ENUM_FIX(direction) dir>
-        void assign(auto&& lhs, auto&& rhs) const
+        template<MSVC_ENUM_FIX(direction) dir, typename lhs_t, typename rhs_t>
+        void assign(lhs_t&& lhs, rhs_t&& rhs) const
         {
-            using lhs_t = decltype(lhs);
-            using rhs_t = decltype(rhs);
-
             std::apply([&lhs, &rhs](auto&&... args){
                 for_each([&lhs, &rhs](auto&& map){
                     using mapping_t = decltype(map);
@@ -470,30 +471,24 @@ namespace convertible
                     {
                         map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
                     }
+                    return true;
                 }, FWD(args)...);
             }, mappings_);
         }
 
-        bool equal(auto&& lhs, auto&& rhs) const
+        template<typename lhs_t, typename rhs_t>
+        bool equal(lhs_t&& lhs, rhs_t&& rhs) const
         {
-            using lhs_t = decltype(lhs);
-            using rhs_t = decltype(rhs);
-
-            bool areEqual = true;
-            std::apply([&lhs, &rhs, &areEqual](auto&&... args){
-                for_each([&lhs, &rhs, &areEqual](auto&& map){
+            return std::apply([&lhs, &rhs](auto&&... args){
+                return for_each([&lhs, &rhs](auto&& map) -> bool{
                     using mapping_t = decltype(map);
                     if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
                     {
-                        if(!map.equal(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs)))
-                        {
-                            areEqual = false;
-                        }
+                        return map.equal(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
                     }
+                    return true;
                 }, FWD(args)...);
             }, mappings_);
-
-            return areEqual;
         }
 
         std::tuple<mapping_ts...> mappings_;
