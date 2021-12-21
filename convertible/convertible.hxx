@@ -139,6 +139,15 @@ namespace convertible
 
             template<typename... arg_ts>
             struct is_adapter<adapter::object<arg_ts...>>: std::true_type {};
+
+            template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+            struct executable : std::false_type {};
+
+            template<typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+            struct executable<direction::rhs_to_lhs, callable_t, lhs_t, rhs_t, converter_t> : std::integral_constant<bool, std::is_invocable_v<callable_t, lhs_t, rhs_t, converter_t>> {};
+
+            template<typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+            struct executable<direction::lhs_to_rhs, callable_t, lhs_t, rhs_t, converter_t> : std::integral_constant<bool, std::is_invocable_v<callable_t, rhs_t, lhs_t, converter_t>> {};
         }
 
         template<typename member_ptr_t>
@@ -149,6 +158,9 @@ namespace convertible
 
         template<typename T>
         constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
+
+        template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+        constexpr bool executable_v = details::executable<direction::lhs_to_rhs, callable_t, lhs_t, rhs_t, converter_t>::value;
     }
 
     namespace concepts
@@ -179,6 +191,9 @@ namespace convertible
         {
             { mapping.template assign<direction::rhs_to_lhs>(lhs, rhs) };
         };
+
+        template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+        concept executable_with = traits::executable_v<dir, callable_t, lhs_t, rhs_t, converter_t>;
     }
 
     namespace adapter
@@ -421,7 +436,7 @@ namespace convertible
         struct assign
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) exec(lhs_t& lhs, rhs_t&& rhs, converter_t&& converter = {}) const
+            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
                 requires std::assignable_from<lhs_t&, std::invoke_result_t<converter_t, rhs_t>>
             {
                 return lhs = converter(FWD(rhs));
@@ -431,7 +446,7 @@ namespace convertible
         struct equal
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) exec(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
+            decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
                 requires std::equality_comparable_with<lhs_t, std::invoke_result_t<converter_t, rhs_t>>
             {
                 return FWD(lhs) == converter(FWD(rhs));
@@ -448,24 +463,40 @@ namespace convertible
             converter_(std::move(converter))
         {}
 
+        template<typename lhs_t>
+        using lhs_make_t = typename lhs_adapter_t::template make_t<lhs_t>;
+
+        template<typename rhs_t>
+        using rhs_make_t = typename rhs_adapter_t::template make_t<rhs_t>;
+
+        template<typename operator_t>
+        decltype(auto) exec(concepts::adapter auto& lhs, concepts::adapter auto& rhs) const
+            requires std::invocable<operator_t, decltype(lhs), decltype(rhs), converter_t> 
+        {
+            constexpr operator_t op;
+            return op(lhs, rhs, converter_);
+        }
+
         template<MSVC_ENUM_FIX(direction) dir>
         void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+            requires concepts::executable_with<dir, operators::assign, lhs_make_t<decltype(lhs)>&, rhs_make_t<decltype(rhs)>&, converter_t>
         {
-            constexpr operators::assign op;
-
             auto lhsAdap = lhsAdapter_.create(FWD(lhs));
             auto rhsAdap = rhsAdapter_.create(FWD(rhs));
             
             if constexpr(dir == direction::rhs_to_lhs)
-                op.exec(lhsAdap, std::move(rhsAdap), converter_);
+                exec<operators::assign>(lhsAdap, rhsAdap);
             else
-                op.exec(rhsAdap, std::move(lhsAdap), converter_);
+                exec<operators::assign>(rhsAdap, lhsAdap);
         }
 
         bool equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
+            requires concepts::executable_with<direction::rhs_to_lhs, operators::equal, lhs_make_t<decltype(lhs)>, rhs_make_t<decltype(rhs)>, converter_t>
         {
-            constexpr operators::equal op;
-            return op.exec(lhsAdapter_.create(FWD(lhs)), rhsAdapter_.create(FWD(rhs)), converter_);
+            auto lhsAdap = lhsAdapter_.create(FWD(lhs));
+            auto rhsAdap = rhsAdapter_.create(FWD(rhs));
+
+            return exec<operators::equal>(lhsAdap, rhsAdap);
         }
 
         lhs_adapter_t lhsAdapter_;
