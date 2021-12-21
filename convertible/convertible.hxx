@@ -187,9 +187,9 @@ namespace convertible
         {
             struct placeholder
             {
-                constexpr placeholder operator[](std::size_t)
+                constexpr placeholder& operator[](std::size_t)
                 {
-                    return {};
+                    return *this;
                 }
             };
             static_assert(concepts::indexable<placeholder>);
@@ -200,7 +200,7 @@ namespace convertible
             struct identity
             {
                 template<typename T>
-                constexpr decltype(auto) operator()(T&& obj) const
+                constexpr auto operator()(T&& obj) const -> T
                 {
                     return FWD(obj);
                 }
@@ -247,8 +247,21 @@ namespace convertible
 
             using object_t = obj_t;
             using reader_result_t = std::invoke_result_t<reader_t, obj_t>;
-            using out_t = std::conditional_t<is_rval, std::remove_reference_t<reader_result_t>&&, std::remove_reference_t<reader_result_t>&>;
-            using value_t = std::remove_reference_t<out_t>;
+
+            static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<reader_result_t>>;
+
+            using out_t = 
+                std::conditional_t<is_ptr,
+                    reader_result_t,
+                    std::conditional_t<is_rval, 
+                        std::remove_reference_t<reader_result_t>&&, 
+                        std::remove_reference_t<reader_result_t>&
+                    >
+                >;
+            using value_t = std::remove_reference_t<reader_result_t>;
+
+            template<typename arg_t>
+            using make_t = object<arg_t, reader_t>;
 
             constexpr auto create(auto&& obj) const
                 requires std::invocable<reader_t, decltype(obj)>
@@ -270,47 +283,55 @@ namespace convertible
             {
             }
 
-            operator out_t()
-                requires is_rval
+            operator out_t() const noexcept
             {
-                return read();
+                return FWD(read());
             }
 
-            operator const out_t() const
+            template<typename to_t>
+                requires (!std::same_as<to_t, out_t>)
+            explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
             {
-                return read();
+                return FWD(read());
             }
 
-            template<std::constructible_from<out_t> to_t>
-                requires (!std::same_as<std::remove_reference_t<to_t>, value_t>) && is_rval
-            operator to_t()
+            object& operator=(const object& other)
+                requires std::assignable_from<value_t&, value_t>
             {
-                return read();
+                return *this = other.read();
             }
 
-            template<std::constructible_from<out_t> to_t>
-                requires (!std::same_as<std::remove_reference_t<to_t>, value_t>) && (!is_rval)
-            operator const to_t() const
+            object& operator=(object&& other) noexcept
+                requires std::assignable_from<value_t&, value_t>
             {
-                return read();
+                return *this = std::move(other.read());
             }
-            
-            decltype(auto) operator=(concepts::adapter auto&& other)
-                requires std::assignable_from<value_t&, typename std::decay_t<decltype(other)>::out_t>
+
+            // Workaround: MSVC (VS 16.11.4) fails with decltype on auto template parameters (sometimes? equality operator works fine...), but not "regular" ones.
+            template<concepts::adapter adapter_t>
+            object& operator=(adapter_t&& other)
+                requires (!std::same_as<object, std::decay_t<adapter_t>>) && std::assignable_from<value_t&, typename std::decay_t<adapter_t>::value_t>
             {
-                read() = other.read();
+                (void)assign(FWD(other).read());
                 return *this;
             }
 
-            decltype(auto) operator=(std::assignable_to<value_t&> auto&& val)
+            // Workaround: MSVC (VS 16.11.4) fails with decltype on auto template parameters (sometimes? equality operator works fine...), but not "regular" ones.
+            template<std::assignable_to<value_t&> arg_t>
+            object& operator=(arg_t&& val)
                 requires (!concepts::adapter<decltype(val)>)
             {
-                read() = FWD(val);
+                (void)assign(FWD(val));
                 return *this;
+            }
+
+            bool operator==(const object& other) const
+            {
+                return read() == other;
             }
 
             bool operator==(const concepts::adapter auto& other) const
-                requires std::equality_comparable_with<value_t&, typename std::decay_t<decltype(other)>::out_t>
+                requires (!std::same_as<object, std::decay_t<decltype(other)>>) && std::equality_comparable_with<value_t&, typename std::decay_t<decltype(other)>::out_t>
             {
                 return read() == other;
             }
@@ -321,21 +342,24 @@ namespace convertible
                 return read() == val;
             }
 
-            decltype(auto) read()
+            decltype(auto) assign(auto&& val)
             {
+                return reader_(obj_) = FWD(val);
+            }
+
+            out_t read() const
+            {
+                // For now, this class is a pure "forwarder", so override const-ness for held object.
+                // TODO: Fix so that `const object<...>` always copies (?).
+                auto& nonConstThis = const_cast<object&>(*this);
                 if constexpr (is_rval)
                 {
-                    return std::move(reader_(obj_));
+                    return std::move(reader_(nonConstThis.obj_));
                 }
                 else
                 {
-                    return reader_(obj_);
+                    return reader_(nonConstThis.obj_);
                 }
-            }
-
-            decltype(auto) read() const
-            {
-                return reader_(obj_);
             }
 
             obj_t obj_;
@@ -517,8 +541,11 @@ namespace std
     struct common_type<convertible::adapter::object<a_ts...>, convertible::adapter::object<b_ts...>>
     {
         using type = ::std::common_reference_t<
-            std::remove_cvref_t<typename convertible::adapter::object<a_ts...>::out_t>,
-            std::remove_cvref_t<typename convertible::adapter::object<b_ts...>::out_t>
+            // AFAIK, this should rather be <a::out_t, b::value_t>, but that fails with libc++ (and a few MSVC variants),
+            // eg. with libc++ common_reference_t<const char*, string&> is 'string&', but obviously 'const char*' can't be bound to 'string&'...
+            // TODO: Figure out what is the most correct.
+            typename convertible::adapter::object<a_ts...>::value_t,
+            typename convertible::adapter::object<b_ts...>::value_t
         >;
     };
 }
