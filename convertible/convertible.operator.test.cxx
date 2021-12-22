@@ -11,7 +11,15 @@ TEST_CASE_TEMPLATE_DEFINE("it's invocable with types", arg_tuple_t, invocable_wi
     using lhs_t = std::tuple_element_t<1, arg_tuple_t>;
     using rhs_t = std::tuple_element_t<2, arg_tuple_t>;
 
-    static_assert(std::invocable<operator_t, lhs_t, rhs_t>);
+    if constexpr(std::tuple_size_v<arg_tuple_t> > 3)
+    {
+        using converter_t = std::tuple_element_t<3, arg_tuple_t>;
+        static_assert(std::invocable<operator_t, lhs_t, rhs_t, converter_t>);
+    }
+    else
+    {
+        static_assert(std::invocable<operator_t, lhs_t, rhs_t>);
+    }
 }
 
 SCENARIO("convertible: Operators")
@@ -20,6 +28,18 @@ SCENARIO("convertible: Operators")
 
     GIVEN("assign operator")
     {
+        struct int_string_converter
+        {
+            int operator()(std::string s)
+            {
+                return std::stoi(s);
+            }
+            std::string operator()(int i)
+            {
+                return std::to_string(i);
+            }
+        } converter;
+
         TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
             std::tuple<
                 operators::assign,
@@ -40,10 +60,24 @@ SCENARIO("convertible: Operators")
                 operators::assign,
                 adapter::object<int&&>&, 
                 adapter::object<const int&>&
+            >,
+            std::tuple<
+                operators::assign,
+                adapter::object<int&>&, 
+                adapter::object<std::string&>&,
+                int_string_converter
             >
         );
 
         operators::assign op;
+
+        std::vector<int> lhs = {0};
+        std::vector<std::string> rhs = {"1"};
+        op(lhs, rhs, converter);
+
+        REQUIRE(lhs.size() == 1);
+        REQUIRE(lhs[0] == 1);
+
         WHEN("passed two objects a & b")
         {
             int a = 1;

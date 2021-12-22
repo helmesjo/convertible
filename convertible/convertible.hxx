@@ -2,6 +2,7 @@
 
 #include <concepts>
 #include <functional>
+#include <ranges>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -436,10 +437,21 @@ namespace convertible
         struct assign
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
                 requires std::assignable_from<lhs_t&, std::invoke_result_t<converter_t, rhs_t>>
+            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
                 return lhs = converter(FWD(rhs));
+            }
+
+            template<std::ranges::range lhs_t, std::ranges::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+                requires 
+                    (!std::assignable_from<lhs_t&, rhs_t>)
+                    && ((!std::invocable<converter_t, rhs_t>) || (!std::assignable_from<lhs_t&, std::invoke_result_t<converter_t, rhs_t>>))
+                    && std::assignable_from<std::ranges::range_value_t<lhs_t>&, std::invoke_result_t<converter_t, std::ranges::range_value_t<rhs_t>>>
+            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
+            {
+                std::transform(rhs.begin(), rhs.end(), std::back_inserter(lhs), converter);
+                return FWD(lhs);
             }
         };
 
