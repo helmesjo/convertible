@@ -1,9 +1,22 @@
 #include <convertible/convertible.hxx>
 #include <doctest/doctest.h>
 
+#include <array>
 #include <iostream> // Fix libc++ link error with doctest
 #include <string>
 #include <tuple>
+#include <vector>
+
+namespace
+{
+    auto verify_equal = [](const auto& lhs, const auto& rhs, const auto& converter){
+        return lhs == converter(rhs);
+    };
+
+    auto verify_empty = [](auto&& rhs){
+        return rhs == std::remove_cvref_t<decltype(rhs)>{};
+    };
+}
 
 TEST_CASE_TEMPLATE_DEFINE("it's invocable with types", arg_tuple_t, invocable_with_types)
 {
@@ -22,6 +35,43 @@ TEST_CASE_TEMPLATE_DEFINE("it's invocable with types", arg_tuple_t, invocable_wi
     }
 }
 
+template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity, typename verify_t = decltype(verify_equal)>
+void COPY_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}, verify_t verifyEqual = verify_equal)
+{
+    auto op = convertible::operators::assign{};
+
+    AND_WHEN("passed lhs & rhs")
+    {
+        THEN("lhs == rhs")
+        {
+            op(lhs, rhs, converter);
+            REQUIRE(verifyEqual(lhs, rhs, converter));
+        }
+        THEN("lhs is returned")
+        {
+            REQUIRE(&op(lhs, rhs, converter) == &lhs);
+        }
+    }
+}
+
+template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity, typename verify_t = decltype(verify_empty)>
+void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}, verify_t verifyMoved = verify_empty)
+{
+    auto op = convertible::operators::assign{};
+
+    static_assert(std::movable<std::decay_t<rhs_t>>, "rhs must be a movable type");
+    
+    AND_WHEN("passed lhs & rhs (r-value)")
+    {
+        op(lhs, std::move(rhs), converter);
+
+        THEN("b is moved from")
+        {
+            REQUIRE(verifyMoved(rhs));
+        }
+    }
+}
+
 SCENARIO("convertible: Operators")
 {
     using namespace convertible;
@@ -30,15 +80,15 @@ SCENARIO("convertible: Operators")
     {
         struct int_string_converter
         {
-            int operator()(std::string s)
+            int operator()(std::string s) const
             {
                 return std::stoi(s);
             }
-            std::string operator()(int i)
+            std::string operator()(int i) const
             {
                 return std::to_string(i);
             }
-        } converter;
+        } intStringConverter;
 
         TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
             std::tuple<
@@ -66,43 +116,153 @@ SCENARIO("convertible: Operators")
                 adapter::object<int&>&, 
                 adapter::object<std::string&>&,
                 int_string_converter
+            >,
+            std::tuple<
+                operators::assign,
+                adapter::object<std::vector<int>&>&, 
+                adapter::object<std::vector<std::string>&>&,
+                int_string_converter
             >
         );
 
-        operators::assign op;
-
-        std::vector<int> lhs = {0};
-        std::vector<std::string> rhs = {"1"};
-        op(lhs, rhs, converter);
-
-        REQUIRE(lhs.size() == 1);
-        REQUIRE(lhs[0] == 1);
-
-        WHEN("passed two objects a & b")
+        WHEN("lhs int, rhs int")
         {
-            int a = 1;
-            int b = 2;
+            auto lhs = int{1};
+            auto rhs = int{2};
 
-            THEN("a == b")
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs);
+        }
+
+        WHEN("lhs string, rhs string")
+        {
+            auto lhs = std::string{"1"};
+            auto rhs = std::string{"2"};
+
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs);
+            MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs));
+        }
+
+        WHEN("lhs int, rhs string")
+        {
+            auto lhs = int{1};
+            auto rhs = std::string{"2"};
+
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter);
+            MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter);
+        }
+
+        WHEN("lhs vector<string>, rhs vector<string>")
+        {
+            auto lhs = std::vector<std::string>{};
+            auto rhs = std::vector<std::string>{ "2" };
+
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs);
+            MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs));
+        }
+
+        WHEN("lhs vector<int>, rhs vector<string>")
+        {
+            auto lhs = std::vector<int>{};
+            auto rhs = std::vector<std::string>{ "2" };
+
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+                return lhs[0] == converter(rhs[0]);
+            });
+            MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+                return rhs[0] == "";
+            });
+        }
+
+        WHEN("lhs array<string>, rhs array<string>")
+        {
+            auto lhs = std::array<std::string, 1>{};
+            auto rhs = std::array<std::string, 1>{ "2" };
+
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs);
+            MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs));
+        }
+
+        WHEN("lhs array<int>, rhs array<string>")
+        {
+            auto lhs = std::array<int, 1>{};
+            auto rhs = std::array<std::string, 1>{ "2" };
+
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+                return lhs[0] == converter(rhs[0]);
+            });
+            MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+                return rhs[0] == "";
+            });
+        }
+
+        WHEN("lhs array<string>, rhs vector<string>")
+        {
+            auto lhs = std::array<std::string, 1>{};
+            auto rhs = std::vector<std::string>{ "2" };
+
+            COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+                return lhs[0] == converter(rhs[0]);
+            });
+            MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+                return rhs[0] == "";
+            });
+        }
+
+        WHEN("lhs is dynamic container, rhs is dynamic container")
+        {
+            AND_WHEN("lhs size < rhs size")
             {
-                op(a, b);
-                REQUIRE(a == b);
+                auto lhs = std::vector<std::string>{ "5" };
+                auto rhs = std::vector<std::string>{ "1", "2" };
+
+                COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+                    return lhs == rhs;
+                });
+                MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+                    return rhs.empty();
+                });
             }
-            THEN("b is returned")
+
+            AND_WHEN("lhs size > rhs size")
             {
-                REQUIRE(&op(a, b) == &a);
+                auto lhs = std::vector<std::string>{ "5", "6" };
+                auto rhs = std::vector<std::string>{ "1" };
+
+                COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+                    return lhs == rhs;
+                });
+                MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+                    return rhs.empty();
+                });
             }
         }
-        WHEN("passed two objects a & b (r-value)")
+
+        WHEN("lhs is static container, rhs is dynamic container")
         {
-            std::string a = "";
-            std::string b = "hello";
-
-            op(a, std::move(b));
-
-            THEN("b is moved from")
+            AND_WHEN("lhs size < rhs size")
             {
-                REQUIRE(b == "");
+                auto lhs = std::array<std::string, 1>{};
+                auto rhs = std::vector<std::string>{ "1", "2" };
+
+                COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+                    return lhs[0] == converter(rhs[0]);
+                });
+                MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+                    return rhs[0] == "" && rhs[1] == "2";
+                });
+            }
+
+            AND_WHEN("lhs size > rhs size")
+            {
+                auto lhs = std::array<std::string, 2>{"5", "6"};
+                auto rhs = std::vector<std::string>{ "1" };
+
+                COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+                    return lhs[0] == converter(rhs[0]) && lhs[1] == "6";
+                });
+                MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+                    return rhs[0] == "";
+                });
             }
         }
     }

@@ -197,6 +197,9 @@ namespace convertible
         template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
         concept executable_with = traits::executable_v<dir, callable_t, lhs_t, rhs_t, converter_t>;
 
+        template<typename lhs_t, typename rhs_t, typename converter_t>
+        concept assignable_from_converted = std::assignable_from<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
+
         template<class T>
         concept resizable = requires(T container)
         {
@@ -468,7 +471,7 @@ namespace convertible
         struct assign
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-                requires std::assignable_from<lhs_t&, std::invoke_result_t<converter_t, rhs_t>>
+                requires concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>
             decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
                 return lhs = converter(FWD(rhs));
@@ -476,12 +479,26 @@ namespace convertible
 
             template<std::ranges::range lhs_t, std::ranges::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
                 requires 
-                    (!std::assignable_from<lhs_t&, rhs_t>)
-                    && ((!std::invocable<converter_t, rhs_t>) || (!std::assignable_from<lhs_t&, std::invoke_result_t<converter_t, rhs_t>>))
-                    && std::assignable_from<std::ranges::range_value_t<lhs_t>&, std::invoke_result_t<converter_t, std::ranges::range_value_t<rhs_t>>>
+                    (!concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>)
+                    && concepts::assignable_from_converted<std::ranges::range_value_t<lhs_t>&, std::ranges::range_value_t<rhs_t>, converter_t>
             decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
-                std::transform(rhs.begin(), rhs.end(), std::back_inserter(lhs), converter);
+                using container_t = std::decay_t<rhs_t>;
+                using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
+                using iterator_t = std::conditional_t<
+                    std::is_rvalue_reference_v<decltype(rhs)>, 
+                        std::move_iterator<container_iterator_t>, 
+                        container_iterator_t
+                    >;
+                    
+                if constexpr(concepts::resizable<lhs_t>)
+                {
+                    lhs.resize(rhs.size());
+                }
+
+                const auto size = std::min(lhs.size(), rhs.size());
+                std::transform(iterator_t{std::begin(rhs)}, iterator_t{std::begin(rhs) + size}, std::begin(lhs), converter);
+
                 return FWD(lhs);
             }
         };
