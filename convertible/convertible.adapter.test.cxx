@@ -51,6 +51,18 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
         static_assert(std::equality_comparable_with<adapter_t, adapter_t>);
         static_assert(std::equality_comparable_with<adapter_t, out_t>);
         static_assert(std::equality_comparable_with<out_t, adapter_t>);
+
+        // range
+        if constexpr(std::ranges::range<out_t>)
+        {
+            static_assert(std::ranges::range<adapter_t>);
+        }
+
+        // resizable
+        if constexpr(concepts::resizable<out_t>)
+        {
+            static_assert(concepts::resizable<adapter_t>);
+        }
     }
     THEN("it's adaptable only to the expected type")
     {
@@ -156,7 +168,9 @@ SCENARIO("convertible: Adapters")
             adapter::object<int&&>,
             adapter::object<const int&&>,
             adapter::object<std::string&>,
-            adapter::object<std::string&&>
+            adapter::object<std::string&&>,
+            adapter::object<std::vector<int>&>,
+            adapter::object<std::vector<int>&&>
         );
 
         TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
@@ -179,6 +193,10 @@ SCENARIO("convertible: Adapters")
            std::pair<
                adapter::object<const char*>,
                adapter::object<std::string&>
+           >,
+           std::pair<
+               adapter::object<std::vector<int>&>,
+               adapter::object<std::vector<int>&>
            >
         );
 

@@ -196,6 +196,12 @@ namespace convertible
 
         template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
         concept executable_with = traits::executable_v<dir, callable_t, lhs_t, rhs_t, converter_t>;
+
+        template<class T>
+        concept resizable = requires(T container)
+        {
+            container.resize(std::size_t{0});
+        };
     }
 
     namespace adapter
@@ -310,6 +316,30 @@ namespace convertible
             explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
             {
                 return FWD(read());
+            }
+
+            decltype(auto) begin()
+                requires std::ranges::range<out_t>
+            {
+                return std::begin(read());
+            }
+
+            decltype(auto) end()
+                requires std::ranges::range<out_t>
+            {
+                return std::end(read());
+            }
+
+            decltype(auto) size() const
+                requires std::ranges::range<out_t>
+            {
+                return read().size();
+            }
+
+            decltype(auto) resize(std::size_t size) const
+                requires concepts::resizable<out_t>
+            {
+                return read().resize(size);
             }
 
             object& operator=(const object& other)
