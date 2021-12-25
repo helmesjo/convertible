@@ -9,6 +9,9 @@ import test_libs += doctest%lib{doctest}
 # Unit tests.
 # Create precompiled doctest_main lib
 ./: libue{doctest_main}: cxx{doctest_define_main} $test_libs
+{
+  install = false
+}
 
 exe{*.test}:
 {
@@ -21,7 +24,7 @@ for t: cxx{**.test...}
   d = $directory($t)
   n = $name($t)...
 
-  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n}
+  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} hxx{doctest_include} $d/testscript{+$n}
   $d/exe{$n}: libue{doctest_main} libul{convertible}: bin.whole = false
 
   # Ignore warning caused by doctest 'parameterized tests'

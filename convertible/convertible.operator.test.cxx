@@ -1,8 +1,7 @@
 #include <convertible/convertible.hxx>
-#include <doctest/doctest.h>
+#include <convertible/doctest_include.hxx>
 
 #include <array>
-#include <iostream> // Fix libc++ link error with doctest
 #include <string>
 #include <tuple>
 #include <vector>
@@ -38,6 +37,10 @@ TEST_CASE_TEMPLATE_DEFINE("it's invocable with types", arg_tuple_t, invocable_wi
 template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity, typename verify_t = decltype(verify_equal)>
 void COPY_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}, verify_t verifyEqual = verify_equal)
 {
+    CAPTURE(lhs);
+    CAPTURE(rhs);
+    CAPTURE(converter);
+
     auto op = convertible::operators::assign{};
 
     AND_WHEN("passed lhs & rhs")
@@ -57,6 +60,10 @@ void COPY_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
 template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity, typename verify_t = decltype(verify_empty)>
 void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}, verify_t verifyMoved = verify_empty)
 {
+    CAPTURE(lhs);
+    CAPTURE(rhs);
+    CAPTURE(converter);
+
     auto op = convertible::operators::assign{};
 
     static_assert(std::movable<std::decay_t<rhs_t>>, "rhs must be a movable type");

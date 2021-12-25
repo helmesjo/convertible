@@ -1,7 +1,6 @@
 #include <convertible/convertible.hxx>
-#include <doctest/doctest.h>
+#include <convertible/doctest_include.hxx>
 
-#include <iostream> // Fix libc++ link error with doctest
 #include <string>
 
 SCENARIO("convertible: Mapping")

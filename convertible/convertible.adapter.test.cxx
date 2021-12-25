@@ -1,8 +1,7 @@
 #include <convertible/convertible.hxx>
-#include <doctest/doctest.h>
+#include <convertible/doctest_include.hxx>
 
 #include <array>
-#include <iostream> // Fix libc++ link error with doctest
 #include <string>
 #include <tuple>
 #include <type_traits>
