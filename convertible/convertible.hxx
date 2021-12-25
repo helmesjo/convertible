@@ -200,6 +200,9 @@ namespace convertible
         template<typename lhs_t, typename rhs_t, typename converter_t>
         concept assignable_from_converted = std::assignable_from<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
 
+        template<typename lhs_t, typename rhs_t, typename converter_t>
+        concept equality_comparable_with_converted = std::equality_comparable_with<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
+
         template<class T>
         concept resizable = requires(T container)
         {
@@ -483,7 +486,6 @@ namespace convertible
                     && concepts::assignable_from_converted<std::ranges::range_value_t<lhs_t>&, std::ranges::range_value_t<rhs_t>, converter_t>
             decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
-                using container_t = std::decay_t<rhs_t>;
                 using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
                 using iterator_t = std::conditional_t<
                     std::is_rvalue_reference_v<decltype(rhs)>, 
@@ -507,9 +509,27 @@ namespace convertible
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
             decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
-                requires std::equality_comparable_with<lhs_t, std::invoke_result_t<converter_t, rhs_t>>
+                requires concepts::equality_comparable_with_converted<lhs_t, rhs_t, converter_t>
             {
                 return FWD(lhs) == converter(FWD(rhs));
+            }
+
+            template<std::ranges::range lhs_t, std::ranges::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+                requires 
+                    (!concepts::equality_comparable_with_converted<lhs_t&, rhs_t, converter_t>)
+                    && concepts::equality_comparable_with_converted<std::ranges::range_value_t<lhs_t>&, std::ranges::range_value_t<rhs_t>, converter_t>
+            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
+            {
+                using iterator_t = std::decay_t<decltype(std::begin(rhs))>;
+
+                constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
+                const auto size = std::min(lhs.size(), rhs.size());
+                const auto& [rhsItr, lhsItr] = std::mismatch(std::begin(rhs), std::begin(rhs) + size, std::begin(lhs), [&converter](const auto& lhs, const auto& rhs){
+                    return lhs == converter(rhs);
+                });
+
+                (void)rhsItr;
+                return lhsItr == std::end(lhs) && (sizeShouldMatch ? lhs.size() == rhs.size() : true);
             }
         };
     }

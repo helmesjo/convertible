@@ -72,24 +72,49 @@ void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
     }
 }
 
+template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity>
+void EQUALITY_COMPARES_CORRECTLY(bool expectedResult, lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+{
+    CAPTURE(lhs);
+    CAPTURE(rhs);
+    CAPTURE(converter);
+
+    auto op = convertible::operators::equal{};
+
+    if(expectedResult)
+    {
+        THEN("lhs == rhs returns true")
+        {
+            REQUIRE(op(lhs, rhs, converter));
+        }
+    }
+    else
+    {
+        THEN("lhs != rhs returns false")
+        {
+            REQUIRE_FALSE(op(lhs, rhs, converter));
+        }
+    }
+}
+
 SCENARIO("convertible: Operators")
 {
     using namespace convertible;
 
+    struct int_string_converter
+    {
+        int operator()(std::string s) const
+        {
+            return std::stoi(s);
+        }
+        std::string operator()(int i) const
+        {
+            return std::to_string(i);
+        }
+    } intStringConverter;
+
     GIVEN("assign operator")
     {
-        struct int_string_converter
-        {
-            int operator()(std::string s) const
-            {
-                return std::stoi(s);
-            }
-            std::string operator()(int i) const
-            {
-                return std::to_string(i);
-            }
-        } intStringConverter;
-
         TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
             std::tuple<
                 operators::assign,
@@ -265,6 +290,35 @@ SCENARIO("convertible: Operators")
                 });
             }
         }
+
+        WHEN("lhs is dynamic container, rhs is static container")
+        {
+            AND_WHEN("lhs size < rhs size")
+            {
+                auto lhs = std::vector<std::string>{ "1" };
+                auto rhs = std::array<std::string, 2>{ "1", "2" };
+
+                COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+                    return lhs.size() == 2 && lhs[0] == converter(rhs[0]) && lhs[1] == converter(rhs[1]);
+                });
+                MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+                    return rhs[0] == "" && rhs[1] == "";
+                });
+            }
+
+            AND_WHEN("lhs size > rhs size")
+            {
+                auto lhs = std::vector<std::string>{ "1", "2" };
+                auto rhs = std::array<std::string, 1>{ "5" };
+
+                COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+                    return lhs.size() == 1 && lhs[0] == converter(rhs[0]);
+                });
+                MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+                    return rhs[0] == "";
+                });
+            }
+        }
     }
 
     GIVEN("equal operator")
@@ -294,22 +348,179 @@ SCENARIO("convertible: Operators")
                 operators::equal,
                 const adapter::object<int&&>&, 
                 const adapter::object<const int&>&
+            >,
+            std::tuple<
+                operators::equal,
+                adapter::object<int&>&, 
+                adapter::object<std::string&>&,
+                int_string_converter
+            >,
+            std::tuple<
+                operators::equal,
+                adapter::object<std::vector<int>&>&, 
+                adapter::object<std::vector<std::string>&>&,
+                int_string_converter
             >
         );
 
         operators::equal op;
-        WHEN("passed two equal objects a & b")
+
+        WHEN("lhs int, rhs int")
         {
-            THEN("true is returned")
+            auto lhs = int{1};
+            auto rhs = int{1};
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+            rhs = 2;
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+        }
+
+        WHEN("lhs string, rhs string")
+        {
+            auto lhs = std::string{"hello"};
+            auto rhs = std::string{"hello"};
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+            rhs = "world";
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+        }
+
+        WHEN("lhs int, rhs string")
+        {
+            auto lhs = int{1};
+            auto rhs = std::string{"1"};
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+            rhs = "2";
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+        }
+        
+        WHEN("lhs vector<string>, rhs vector<string>")
+        {
+            auto lhs = std::vector<std::string>{ "hello" };
+            auto rhs = std::vector<std::string>{ "hello" };
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+            rhs = { "world" };
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+        }
+        
+        WHEN("lhs vector<int>, rhs vector<string>")
+        {
+            auto lhs = std::vector<int>{ 1 };
+            auto rhs = std::vector<std::string>{ "1" };
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+            rhs = { "2" };
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+        }
+
+        WHEN("lhs array<string>, rhs array<string>")
+        {
+            auto lhs = std::array<std::string, 1>{ "1" };
+            auto rhs = std::array<std::string, 1>{ "1" };
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+            rhs = { "2" };
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+        }
+
+        WHEN("lhs array<int>, rhs array<string>")
+        {
+            auto lhs = std::array<int, 1>{ 1 };
+            auto rhs = std::array<std::string, 1>{ "1" };
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+            rhs = { "2" };
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+        }
+
+        WHEN("lhs array<string>, rhs vector<string>")
+        {
+            auto lhs = std::array<std::string, 1>{ "1" };
+            auto rhs = std::vector<std::string>{ "1" };
+
+            EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+            rhs = { "2" };
+            EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+        }
+
+        WHEN("lhs is dynamic container, rhs is dynamic container")
+        {
+            AND_WHEN("lhs size < rhs size")
             {
-                REQUIRE(op(1, 1));
+                auto lhs = std::vector<std::string>{ "1" };
+                auto rhs = std::vector<std::string>{ "1", "2" };
+
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+            }
+
+            AND_WHEN("lhs size > rhs size")
+            {
+                auto lhs = std::vector<std::string>{ "5", "6" };
+                auto rhs = std::vector<std::string>{ "5" };
+
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
             }
         }
-        WHEN("passed two non-equal objects a & b")
+
+        WHEN("lhs is static container, rhs is dynamic container")
         {
-            THEN("false is returned")
+            AND_WHEN("lhs size == rhs size")
             {
-                REQUIRE_FALSE(op(1, 2));
+                auto lhs = std::array<std::string, 2>{ "1", "2" };
+                auto rhs = std::vector<std::string>{ "1", "2" };
+
+                EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+                rhs = { "2", "1" };
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+            }
+
+            AND_WHEN("lhs size < rhs size")
+            {
+                auto lhs = std::array<std::string, 1>{ "1" };
+                auto rhs = std::vector<std::string>{ "1", "2" };
+
+                EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+                rhs = { "2", "1" };
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+            }
+
+            AND_WHEN("lhs size > rhs size")
+            {
+                auto lhs = std::array<std::string, 2>{"5", "6"};
+                auto rhs = std::vector<std::string>{ "5" };
+
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+            }
+        }
+
+        WHEN("lhs is dynamic container, rhs is static container")
+        {
+            AND_WHEN("lhs size == rhs size")
+            {
+                auto lhs = std::vector<std::string>{ "1", "2" };
+                auto rhs = std::array<std::string, 2>{ "1", "2" };
+
+                EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+                rhs = { "2", "1" };
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+            }
+
+            AND_WHEN("lhs size < rhs size")
+            {
+                auto lhs = std::vector<std::string>{ "1" };
+                auto rhs = std::array<std::string, 2>{ "1", "2" };
+
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+            }
+
+            AND_WHEN("lhs size > rhs size")
+            {
+                auto lhs = std::vector<std::string>{ "1", "2" };
+                auto rhs = std::array<std::string, 2>{ "1" };
+
+                EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
             }
         }
     }
