@@ -52,9 +52,9 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
         static_assert(std::equality_comparable_with<out_t, adapter_t>);
 
         // range
-        if constexpr(std::ranges::range<out_t>)
+        if constexpr(concepts::range<out_t>)
         {
-            static_assert(std::ranges::range<adapter_t>);
+            static_assert(concepts::range<adapter_t>);
         }
 
         // resizable

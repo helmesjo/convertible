@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <concepts>
 #include <functional>
-#include <ranges>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -208,6 +207,14 @@ namespace convertible
         {
             container.resize(std::size_t{0});
         };
+
+        template< class T >
+
+        // Credit: https://en.cppreference.com/w/cpp/ranges/range
+        concept range = requires( T& t ) {
+            std::begin(t); // equality-preserving for forward iterators
+            std::end  (t);
+        };
     }
 
     namespace adapter
@@ -325,19 +332,19 @@ namespace convertible
             }
 
             decltype(auto) begin()
-                requires std::ranges::range<out_t>
+                requires concepts::range<out_t>
             {
                 return std::begin(read());
             }
 
             decltype(auto) end()
-                requires std::ranges::range<out_t>
+                requires concepts::range<out_t>
             {
                 return std::end(read());
             }
 
             decltype(auto) size() const
-                requires std::ranges::range<out_t>
+                requires concepts::range<out_t>
             {
                 return read().size();
             }
@@ -480,7 +487,7 @@ namespace convertible
                 return lhs = converter(FWD(rhs));
             }
 
-            template<std::ranges::range lhs_t, std::ranges::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
                 requires 
                     (!concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>)
                     && concepts::assignable_from_converted<std::ranges::range_value_t<lhs_t>&, std::ranges::range_value_t<rhs_t>, converter_t>
@@ -514,7 +521,7 @@ namespace convertible
                 return FWD(lhs) == converter(FWD(rhs));
             }
 
-            template<std::ranges::range lhs_t, std::ranges::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
                 requires 
                     (!concepts::equality_comparable_with_converted<lhs_t&, rhs_t, converter_t>)
                     && concepts::equality_comparable_with_converted<std::ranges::range_value_t<lhs_t>&, std::ranges::range_value_t<rhs_t>, converter_t>
