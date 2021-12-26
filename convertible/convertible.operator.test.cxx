@@ -370,8 +370,6 @@ SCENARIO("convertible: Operators")
             >
         );
 
-        operators::equal op;
-
         WHEN("lhs int, rhs int")
         {
             auto lhs = int{1};

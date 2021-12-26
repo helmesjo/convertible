@@ -530,8 +530,6 @@ namespace convertible
                     && concepts::equality_comparable_with_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, converter_t>
             decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
-                using iterator_t = std::decay_t<decltype(std::begin(rhs))>;
-
                 constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
                 const auto size = std::min(lhs.size(), rhs.size());
                 const auto& [rhsItr, lhsItr] = std::mismatch(std::begin(rhs), std::begin(rhs) + size, std::begin(lhs), [&converter](const auto& lhs, const auto& rhs){
