@@ -158,6 +158,9 @@ namespace convertible
         using member_value_t = typename details::member_ptr_meta_t<member_ptr_t>::value_t;
 
         template<typename T>
+        using range_value_t = std::remove_reference_t<decltype(*std::begin(std::declval<T&>()))>;
+
+        template<typename T>
         constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
 
         template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
@@ -490,7 +493,7 @@ namespace convertible
             template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
                 requires 
                     (!concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>)
-                    && concepts::assignable_from_converted<std::ranges::range_value_t<lhs_t>&, std::ranges::range_value_t<rhs_t>, converter_t>
+                    && concepts::assignable_from_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, converter_t>
             decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
                 using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
@@ -524,7 +527,7 @@ namespace convertible
             template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
                 requires 
                     (!concepts::equality_comparable_with_converted<lhs_t&, rhs_t, converter_t>)
-                    && concepts::equality_comparable_with_converted<std::ranges::range_value_t<lhs_t>&, std::ranges::range_value_t<rhs_t>, converter_t>
+                    && concepts::equality_comparable_with_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, converter_t>
             decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
                 using iterator_t = std::decay_t<decltype(std::begin(rhs))>;
