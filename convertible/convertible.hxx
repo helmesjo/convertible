@@ -334,19 +334,31 @@ namespace convertible
                 return FWD(read());
             }
 
-            decltype(auto) begin()
+            constexpr decltype(auto) begin()
                 requires concepts::range<out_t>
             {
                 return std::begin(read());
             }
 
-            decltype(auto) end()
+            constexpr decltype(auto) begin() const
+                requires concepts::range<out_t>
+            {
+                return std::begin(read());
+            }
+
+            constexpr decltype(auto) end()
                 requires concepts::range<out_t>
             {
                 return std::end(read());
             }
 
-            decltype(auto) size() const
+            constexpr decltype(auto) end() const
+                requires concepts::range<out_t>
+            {
+                return std::end(read());
+            }
+
+            constexpr decltype(auto) size() const
                 requires concepts::range<out_t>
             {
                 return read().size();
@@ -485,7 +497,7 @@ namespace convertible
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
                 requires concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>
-            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
+            constexpr decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
                 return lhs = converter(FWD(rhs));
             }
@@ -494,7 +506,7 @@ namespace convertible
                 requires 
                     (!concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>)
                     && concepts::assignable_from_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, converter_t>
-            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
+            constexpr decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
                 using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
                 using iterator_t = std::conditional_t<
@@ -518,7 +530,7 @@ namespace convertible
         struct equal
         {
             template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-            decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
+            constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
                 requires concepts::equality_comparable_with_converted<lhs_t, rhs_t, converter_t>
             {
                 return FWD(lhs) == converter(FWD(rhs));
@@ -528,7 +540,7 @@ namespace convertible
                 requires 
                     (!concepts::equality_comparable_with_converted<lhs_t&, rhs_t, converter_t>)
                     && concepts::equality_comparable_with_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, converter_t>
-            decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
+            constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
             {
                 constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
                 const auto size = std::min(lhs.size(), rhs.size());
