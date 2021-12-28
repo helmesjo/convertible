@@ -164,7 +164,7 @@ namespace convertible
         constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
 
         template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
-        constexpr bool executable_v = details::executable<direction::lhs_to_rhs, callable_t, lhs_t, rhs_t, converter_t>::value;
+        constexpr bool executable_v = details::executable<dir, callable_t, lhs_t, rhs_t, converter_t>::value;
     }
 
     namespace concepts

@@ -12,10 +12,34 @@
 #define MSVC_ENUM_FIX(...) __VA_ARGS__
 #endif
 
+namespace
+{
+    struct int_string_converter
+    {
+        int operator()(std::string val) const
+        {
+            try
+            {
+                return std::stoi(val);
+            }
+            catch(const std::exception&)
+            {
+                return 0;
+            }
+        }
+
+        std::string operator()(int val) const
+        {
+            return std::to_string(val);
+        }
+    };
+}
+
 SCENARIO("convertible: Traits")
 {
     using namespace convertible;
 
+    // member pointer
     struct type
     {
         int member;
@@ -23,6 +47,11 @@ SCENARIO("convertible: Traits")
 
     static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::member)>>);
     static_assert(std::is_same_v<int, convertible::traits::member_value_t<decltype(&type::member)>>);
+
+    // range_value
+    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>>>);
+    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
+    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
 }
 
 namespace tests
@@ -85,5 +114,20 @@ SCENARIO("convertible: Concepts")
     {
         static_assert(concepts::mappable<tests::mappable_type, int, int>);
         static_assert(concepts::mappable<tests::mappable_type, int, std::string> == false);
+    }
+
+    // executable
+    {
+        constexpr auto lhs_to_rhs = MSVC_ENUM_FIX(direction::lhs_to_rhs);
+        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, int&, converter::identity>);
+        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, std::string&, int_string_converter>);
+        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
+        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<std::string>&&, std::vector<std::string>&, converter::identity>);
+
+        constexpr auto rhs_to_lhs = MSVC_ENUM_FIX(direction::rhs_to_lhs);
+        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, int&, converter::identity>);
+        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, std::string&, int_string_converter>);
+        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
+        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<std::string>&, std::vector<std::string>&&, converter::identity>);
     }
 }
