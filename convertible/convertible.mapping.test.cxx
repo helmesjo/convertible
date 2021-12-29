@@ -47,12 +47,9 @@ namespace
         {
             map.template assign<direction::rhs_to_lhs>(lhs, std::move(rhs));
 
-            THEN("lhs is assigned")
+            THEN("rhs is moved from")
             {
-                AND_THEN("rhs is moved from")
-                {
-                    REQUIRE(verifyMoved(rhs));
-                }
+                REQUIRE(verifyMoved(rhs));
             }
         }
         WHEN("assigning lhs to rhs")
@@ -68,12 +65,9 @@ namespace
         {
             map.template assign<direction::lhs_to_rhs>(std::move(lhs), rhs);
 
-            THEN("lhs is assigned")
+            THEN("lhs is moved from")
             {
-                AND_THEN("lhs is moved from")
-                {
-                    REQUIRE(verifyMoved(lhs));
-                }
+                REQUIRE(verifyMoved(lhs));
             }
         }
     }
@@ -90,174 +84,60 @@ SCENARIO("convertible: Mapping")
     }
     GIVEN("a mapping between a <-> b")
     {
-        adapter::object adapter = {};
-        mapping map(adapter, adapter);
+        using lhs_t = std::string;
+        using rhs_t = std::string;
 
-        WHEN("assigning lhs to rhs")
-        {
-            std::string lhs = "hello";
-            std::string rhs = "";
-            map.assign<direction::lhs_to_rhs>(lhs, rhs);
+        auto map = mapping(adapter::object(), adapter::object());
 
-            THEN("lhs == rhs")
-            {
-                REQUIRE(lhs == rhs);
-                REQUIRE(map.equal(lhs, rhs));
-            }
-        }
-        WHEN("assigning lhs (r-value) to rhs")
-        {
-            std::string lhs = "hello";
-            std::string rhs = "";
-            map.assign<direction::lhs_to_rhs>(std::move(lhs), rhs);
-
-            THEN("rhs is assigned")
-            {
-                REQUIRE(rhs == "hello");
-
-                AND_THEN("lhs is moved from")
-                {
-                    REQUIRE(lhs == "");
-                }
-            }
-        }
-        WHEN("assigning rhs to lhs")
-        {
-            std::string lhs = "";
-            std::string rhs = "hello";
-            map.assign<direction::rhs_to_lhs>(lhs, rhs);
-
-            THEN("lhs == rhs")
-            {
-                REQUIRE(lhs == rhs);
-                REQUIRE(map.equal(lhs, rhs));
-            }
-        }
-        WHEN("assigning rhs (r-value) to lhs")
-        {
-            std::string lhs = "";
-            std::string rhs = "hello";
-            map.assign<direction::rhs_to_lhs>(lhs, std::move(rhs));
-
-            THEN("lhs is assigned")
-            {
-                REQUIRE(lhs == "hello");
-
-                AND_THEN("rhs is moved from")
-                {
-                    REQUIRE(rhs == "");
-                    REQUIRE(map.equal(rhs, ""));
-                }
-            }
-        }
+        auto lhs = lhs_t{"hello"};
+        auto rhs = rhs_t{"world"};
+        MAPS_CORRECTLY(lhs, rhs, map);
     }
     GIVEN("a mapping between a <- converter -> b")
     {
-        adapter::object adapter = {};
-        constexpr int_string_converter converter{};
-        mapping map(adapter, adapter, converter);
+        using lhs_t = int;
+        using rhs_t = std::string;
 
-        WHEN("assigning lhs to rhs")
-        {
-            int lhs = 11;
-            std::string rhs = "";
-            map.assign<direction::lhs_to_rhs>(lhs, rhs);
+        auto map = mapping(adapter::object(), adapter::object(), int_string_converter{});
 
-            THEN("converter(lhs) == rhs")
-            {
-                REQUIRE(converter(lhs) == rhs);
-                REQUIRE(map.equal(lhs, rhs));
-                REQUIRE(map.equal(rhs, lhs));
-            }
-        }
-        WHEN("assigning lhs (r-value) to rhs")
-        {
-            std::string lhs = "11";
-            int rhs = 0;
-            map.assign<direction::lhs_to_rhs>(std::move(lhs), rhs);
-
-            THEN("rhs is assigned")
-            {
-                REQUIRE(rhs == 11);
-
-                AND_THEN("lhs is moved from")
-                {
-                    REQUIRE(lhs == "");
-                    REQUIRE_FALSE(map.equal(lhs, rhs));
-                    REQUIRE_FALSE(map.equal(rhs, lhs));
-                }
-            }
-        }
-        WHEN("assigning rhs to lhs")
-        {
-            int lhs = 0;
-            std::string rhs = "11";
-            map.assign<direction::rhs_to_lhs>(lhs, rhs);
-
-            THEN("converter(rhs) == lhs")
-            {
-                REQUIRE(converter(rhs) == lhs);
-                REQUIRE(map.equal(lhs, rhs));
-                REQUIRE(map.equal(rhs, lhs));
-            }
-        }
-        WHEN("assigning rhs (r-value) to lhs")
-        {
-            int lhs = 0;
-            std::string rhs = "11";
-            map.assign<direction::rhs_to_lhs>(lhs, std::move(rhs));
-
-            THEN("lhs is assigned")
-            {
-                REQUIRE(lhs == 11);
-
-                AND_THEN("rhs is moved from")
-                {
-                    REQUIRE(rhs == "");
-                    REQUIRE_FALSE(map.equal(lhs, rhs));
-                    REQUIRE_FALSE(map.equal(rhs, lhs));
-                }
-            }
-        }
+        auto lhs = lhs_t{11};
+        auto rhs = rhs_t{"22"};
+        MAPS_CORRECTLY(lhs, rhs, map, [](const auto& obj){
+            if constexpr(std::same_as<lhs_t, std::decay_t<decltype(obj)>>)
+                return obj == 11;
+            else
+                return obj == "";
+        });
     }
 }
-
-template<typename T>
-struct detect;
 
 SCENARIO("convertible: Mapping (misc use-cases)")
 {
     using namespace convertible;
 
-    constexpr int_string_converter converter{};
-
     GIVEN("vector<string> <-> vector<string>")
     {
         using lhs_t = std::vector<std::string>;
         using rhs_t = std::vector<std::string>;
-        auto lhs = lhs_t{};
-        auto rhs = rhs_t{};
 
         auto map = mapping(adapter::object(), adapter::object());
 
-        lhs = {"1", "2", "3"};
-        rhs = {"3", "2", "1"};
+        auto lhs = lhs_t{"1", "2", "3"};
+        auto rhs = rhs_t{"3", "2", "1"};
         MAPS_CORRECTLY(lhs, rhs, map);
     }
     GIVEN("vector<string> <-> vector<int>")
     {
         using lhs_t = std::vector<std::string>;
         using rhs_t = std::vector<int>;
-        auto lhs = lhs_t{};
-        auto rhs = rhs_t{};
 
-        auto map = mapping(adapter::object(), adapter::object(), converter);
+        auto map = mapping(adapter::object(), adapter::object(), int_string_converter{});
 
-        lhs = {"1", "2", "3"};
-        rhs = {1, 2, 3};
+        auto lhs = lhs_t{"1", "2", "3"};
+        auto rhs = rhs_t{1, 2, 3};
         MAPS_CORRECTLY(lhs, rhs, map, [](const auto& obj){
             if constexpr(std::same_as<lhs_t, std::decay_t<decltype(obj)>>)
-                return obj[0] == "";
+                return std::all_of(std::begin(obj), std::end(obj), [](const auto& elem){ return elem == ""; });
             else
                 return obj[0] == 1;
         });
