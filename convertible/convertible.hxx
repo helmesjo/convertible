@@ -331,7 +331,7 @@ namespace convertible
                 requires (!std::same_as<to_t, out_t>)
             explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
             {
-                return FWD(read());
+                return static_cast<to_t>(FWD(read()));
             }
 
             constexpr decltype(auto) begin()
