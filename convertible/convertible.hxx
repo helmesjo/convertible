@@ -337,37 +337,47 @@ namespace convertible
             constexpr decltype(auto) begin()
                 requires concepts::range<out_t>
             {
-                return std::begin(read());
+                using container_iterator_t = std::decay_t<decltype(std::begin(read_ref()))>;
+                using iterator_t = std::conditional_t<is_rval,
+                        std::move_iterator<container_iterator_t>, 
+                        container_iterator_t
+                    >;
+                return iterator_t{std::begin(read_ref())};
             }
 
             constexpr decltype(auto) begin() const
                 requires concepts::range<out_t>
             {
-                return std::begin(read());
+                return std::begin(read_ref());
             }
 
             constexpr decltype(auto) end()
                 requires concepts::range<out_t>
             {
-                return std::end(read());
+                using container_iterator_t = std::decay_t<decltype(std::end(read_ref()))>;
+                using iterator_t = std::conditional_t<is_rval,
+                        std::move_iterator<container_iterator_t>, 
+                        container_iterator_t
+                    >;
+                return iterator_t{std::end(read_ref())};
             }
 
             constexpr decltype(auto) end() const
                 requires concepts::range<out_t>
             {
-                return std::end(read());
+                return std::end(read_ref());
             }
 
             constexpr decltype(auto) size() const
                 requires concepts::range<out_t>
             {
-                return read().size();
+                return std::size(read_ref());
             }
 
             decltype(auto) resize(std::size_t size) const
                 requires concepts::resizable<out_t>
             {
-                return read().resize(size);
+                return read_ref().resize(size);
             }
 
             object& operator=(const object& other)
@@ -422,6 +432,12 @@ namespace convertible
                 return reader_(obj_) = FWD(val);
             }
 
+            value_t& read_ref() const
+            {
+                auto& nonConstThis = const_cast<object&>(*this);
+                return nonConstThis.reader_(nonConstThis.obj_);
+            }
+
             out_t read() const
             {
                 // For now, this class is a pure "forwarder", so override const-ness for held object.
@@ -429,11 +445,11 @@ namespace convertible
                 auto& nonConstThis = const_cast<object&>(*this);
                 if constexpr (is_rval)
                 {
-                    return std::move(reader_(nonConstThis.obj_));
+                    return std::move(nonConstThis.reader_(nonConstThis.obj_));
                 }
                 else
                 {
-                    return reader_(nonConstThis.obj_);
+                    return nonConstThis.reader_(nonConstThis.obj_);
                 }
             }
 

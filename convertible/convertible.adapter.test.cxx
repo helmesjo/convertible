@@ -19,6 +19,16 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
 
     THEN("it shares traits with held type")
     {
+        // reference
+        if constexpr(std::is_rvalue_reference_v<obj_t>)
+        {
+            static_assert(std::is_rvalue_reference_v<out_t>);
+        }
+        if constexpr(std::is_lvalue_reference_v<obj_t>)
+        {
+            static_assert(std::is_lvalue_reference_v<out_t>);
+        }
+
         // common_reference_with
         static_assert(std::common_reference_with<adapter_t, adapter_t>);
         static_assert(std::common_reference_with<adapter_t, out_t>);
@@ -55,6 +65,27 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
         if constexpr(concepts::range<out_t>)
         {
             static_assert(concepts::range<adapter_t>);
+
+            // Make sure dereferenced iterator returns correct value category
+            if constexpr(std::is_lvalue_reference_v<out_t>)
+            {
+                using begin_val_t = decltype(*std::declval<adapter_t>().begin());
+                using end_val_t = decltype(*std::declval<adapter_t>().end());
+                static_assert(std::is_lvalue_reference_v<begin_val_t>);
+                static_assert(std::is_lvalue_reference_v<end_val_t>);
+            }
+            if constexpr(std::is_rvalue_reference_v<out_t>)
+            {
+                using begin_val_t = decltype(*std::declval<adapter_t>().begin());
+                using end_val_t = decltype(*std::declval<adapter_t>().end());
+                static_assert(std::is_rvalue_reference_v<begin_val_t>);
+                static_assert(std::is_rvalue_reference_v<end_val_t>);
+                if constexpr(!std::is_const_v<std::remove_reference_t<obj_t>>)
+                {
+                    static_assert(!std::is_const_v<std::remove_reference_t<begin_val_t>>);
+                    static_assert(!std::is_const_v<std::remove_reference_t<end_val_t>>);
+                }
+            }
         }
 
         // resizable
