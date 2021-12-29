@@ -564,8 +564,8 @@ namespace convertible
                 constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
                 const auto size = std::min(lhs.size(), rhs.size());
                 const auto& [rhsItr, lhsItr] = std::mismatch(std::begin(rhs), std::begin(rhs) + size, std::begin(lhs), 
-                    [&converter](const auto& rhs, const auto& lhs){
-                        return lhs == converter(rhs);
+                    [this, &converter](const auto& rhs, const auto& lhs){
+                        return this->operator()(lhs, rhs, converter);
                     });
 
                 (void)rhsItr;
