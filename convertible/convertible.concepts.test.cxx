@@ -118,13 +118,13 @@ SCENARIO("convertible: Concepts")
 
     // executable
     {
-        constexpr auto lhs_to_rhs = MSVC_ENUM_FIX(direction::lhs_to_rhs);
+        constexpr auto lhs_to_rhs = direction::lhs_to_rhs;
         static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, int&, converter::identity>);
         static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, std::string&, int_string_converter>);
         static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
         static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<std::string>&&, std::vector<std::string>&, converter::identity>);
 
-        constexpr auto rhs_to_lhs = MSVC_ENUM_FIX(direction::rhs_to_lhs);
+        constexpr auto rhs_to_lhs = direction::rhs_to_lhs;
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, int&, converter::identity>);
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, std::string&, int_string_converter>);
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
