@@ -94,7 +94,7 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
             static_assert(concepts::resizable<adapter_t>);
         }
     }
-    THEN("it's adaptable only to the expected type")
+    THEN("it's adaptable to the expected type")
     {
         static_assert(concepts::adaptable<obj_t, adapter_t>);
     }
@@ -179,7 +179,7 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with similar adapter", adapter_pair_
         static_assert(std::equality_comparable_with<lhs_adapter_t&, rhs_adapter_t&>);
         static_assert(std::equality_comparable_with<rhs_adapter_t&&, lhs_adapter_t&&>);
     }
-    THEN("it's adaptable only to the expected type")
+    THEN("it's adaptable to the expected type")
     {
         static_assert(concepts::adaptable<lhs_object_t, lhs_adapter_t>);
         static_assert(concepts::adaptable<rhs_object_t, rhs_adapter_t>);
@@ -245,7 +245,8 @@ SCENARIO("convertible: Adapters")
         }
         THEN("it implicitly converts to type")
         {
-            REQUIRE(static_cast<std::string>(adapter) == str);
+            std::string val = adapter;
+            REQUIRE(val == str);
         }
         THEN("implicit conversion 'moves from' r-value reference")
         {
@@ -318,7 +319,8 @@ SCENARIO("convertible: Adapters")
         }
         THEN("it implicitly converts to type")
         {
-            REQUIRE(static_cast<std::string>(adapter) == obj.str);
+            std::string val = adapter;
+            REQUIRE(val == obj.str);
         }
         THEN("it 'moves from' r-value reference")
         {
@@ -376,7 +378,8 @@ SCENARIO("convertible: Adapters")
         }
         THEN("it implicitly converts to type")
         {
-            REQUIRE(static_cast<std::string>(adapter) == values[0]);
+            std::string val = adapter;
+            REQUIRE(val == values[0]);
         }
         THEN("it 'moves from' r-value reference")
         {
