@@ -537,7 +537,10 @@ namespace convertible
                 }
 
                 const auto size = std::min(lhs.size(), rhs.size());
-                std::transform(iterator_t{std::begin(rhs)}, iterator_t{std::begin(rhs) + size}, std::begin(lhs), converter);
+                std::for_each(iterator_t{std::begin(rhs)}, iterator_t{std::begin(rhs) + size}, 
+                    [this, lhsItr = std::begin(lhs), &converter](auto&& rhs) mutable {
+                        this->operator()(*lhsItr++, FWD(rhs), converter);
+                    });
 
                 return FWD(lhs);
             }
@@ -560,9 +563,10 @@ namespace convertible
             {
                 constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
                 const auto size = std::min(lhs.size(), rhs.size());
-                const auto& [rhsItr, lhsItr] = std::mismatch(std::begin(rhs), std::begin(rhs) + size, std::begin(lhs), [&converter](const auto& lhs, const auto& rhs){
-                    return lhs == converter(rhs);
-                });
+                const auto& [rhsItr, lhsItr] = std::mismatch(std::begin(rhs), std::begin(rhs) + size, std::begin(lhs), 
+                    [&converter](const auto& rhs, const auto& lhs){
+                        return lhs == converter(rhs);
+                    });
 
                 (void)rhsItr;
                 return lhsItr == std::end(lhs) && (sizeShouldMatch ? lhs.size() == rhs.size() : true);
