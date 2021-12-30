@@ -130,4 +130,14 @@ SCENARIO("convertible: Concepts")
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<std::string>&, std::vector<std::string>&&, converter::identity>);
     }
+
+    // castable_to
+    {
+        static_assert(concepts::castable_to<int, int>);
+        static_assert(concepts::castable_to<int, float>);
+        static_assert(concepts::castable_to<float, int>);
+
+        static_assert(!concepts::castable_to<std::string, int>);
+        static_assert(!concepts::castable_to<int, std::string>);
+    }
 }

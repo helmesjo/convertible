@@ -39,6 +39,15 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
         static_assert(std::convertible_to<adapter_t, out_t>);
         static_assert(std::convertible_to<const adapter_t, out_t>);
 
+        // castable_to
+        {
+            struct dummy{};
+            static_assert(concepts::castable_to<adapter_t, out_t>);
+            static_assert(concepts::castable_to<const adapter_t, value_t>);
+
+            static_assert(!concepts::castable_to<adapter_t, dummy>);
+        }
+
         // assignable_from
         static_assert(!std::assignable_from<const adapter_t&, out_t>);
 

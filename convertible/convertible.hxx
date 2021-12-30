@@ -211,9 +211,14 @@ namespace convertible
             container.resize(std::size_t{0});
         };
 
-        template< class T >
+        template<typename from_t, typename to_t>
+        concept castable_to = 
+            requires {
+                static_cast<to_t>(std::declval<from_t>());
+            };
 
         // Credit: https://en.cppreference.com/w/cpp/ranges/range
+        template< class T >
         concept range = requires( T& t ) {
             std::begin(t); // equality-preserving for forward iterators
             std::end  (t);
@@ -328,7 +333,7 @@ namespace convertible
             }
 
             template<typename to_t>
-                requires (!std::same_as<to_t, out_t>)
+                requires (!std::same_as<to_t, out_t>) && concepts::castable_to<out_t, to_t>
             explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
             {
                 return static_cast<to_t>(FWD(read()));
