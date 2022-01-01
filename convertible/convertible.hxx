@@ -510,23 +510,71 @@ namespace convertible
                 return FWD(val);
             }
         };
+
+        template<typename to_t, typename converter_t>
+        struct explicit_cast
+        {
+            explicit_cast(converter_t& converter):
+                converter_(converter)
+            {}
+
+            template<typename in_t>
+            using converted_t = std::invoke_result_t<converter_t, in_t>;
+
+            template<typename adapter_t>
+            using adapter_value_t = typename std::decay_t<adapter_t>::value_t;
+
+            template<typename target_t = to_t>
+                requires (!concepts::adapter<target_t>)
+            constexpr decltype(auto) operator()(auto&& val) const
+                requires 
+                    std::assignable_from<target_t&, converted_t<decltype(val)>>
+                    || concepts::castable_to<converted_t<decltype(val)>, target_t>
+            {
+                if constexpr(std::assignable_from<target_t&, converted_t<decltype(val)>>)
+                {
+                    return converter_(FWD(val));
+                }
+                else
+                {
+                    return static_cast<target_t>(converter_(FWD(val)));
+                }
+            }
+
+            template<typename target_t = to_t>
+                requires concepts::adapter<target_t>
+            constexpr decltype(auto) operator()(auto&& val) const
+                requires 
+                    std::assignable_from<adapter_value_t<target_t>&, converted_t<decltype(val)>>
+                    || concepts::castable_to<converted_t<decltype(val)>, adapter_value_t<target_t>>
+            {
+                return this->template operator()<adapter_value_t<target_t>>(FWD(val));
+            }
+
+            converter_t& converter_;
+        };
     }
 
     namespace operators
     {
+        template<typename to_t, typename converter_t>
+        using explicit_cast = converter::explicit_cast<to_t, converter_t>;
+
         struct assign
         {
-            template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-                requires concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>
+            // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<lhs_t, converter_t>>
+                requires concepts::assignable_from_converted<lhs_t&, rhs_t, cast_t>
             constexpr decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
-                return lhs = converter(FWD(rhs));
+                return lhs = cast_t(converter)(FWD(rhs));
             }
-
-            template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            
+            // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
                 requires 
-                    (!concepts::assignable_from_converted<lhs_t&, rhs_t, converter_t>)
-                    && concepts::assignable_from_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, converter_t>
+                    (!concepts::assignable_from_converted<lhs_t&, rhs_t, explicit_cast<lhs_t, converter_t>>)
+                    && concepts::assignable_from_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, cast_t>
             constexpr decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
             {
                 using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
@@ -553,20 +601,21 @@ namespace convertible
 
         struct equal
         {
-            template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<lhs_t, converter_t>>
             constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
-                requires concepts::equality_comparable_with_converted<lhs_t, rhs_t, converter_t>
+                requires concepts::equality_comparable_with_converted<lhs_t, rhs_t, cast_t>
             {
-                return FWD(lhs) == converter(FWD(rhs));
+                return FWD(lhs) == cast_t(converter)(FWD(rhs));
             }
 
-            template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity> // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+            template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
                 requires 
-                    (!concepts::equality_comparable_with_converted<lhs_t&, rhs_t, converter_t>)
-                    && concepts::equality_comparable_with_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, converter_t>
+                    (!concepts::equality_comparable_with_converted<lhs_t&, rhs_t, explicit_cast<lhs_t, converter_t>>)
+                    && concepts::equality_comparable_with_converted<traits::range_value_t<lhs_t>, traits::range_value_t<rhs_t>, cast_t>
             constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
             {
-                constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
                 const auto size = std::min(lhs.size(), rhs.size());
                 const auto& [rhsItr, lhsItr] = std::mismatch(std::begin(rhs), std::begin(rhs) + size, std::begin(lhs), 
                     [this, &converter](const auto& rhs, const auto& lhs){
@@ -574,6 +623,7 @@ namespace convertible
                     });
 
                 (void)rhsItr;
+                constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
                 return lhsItr == std::end(lhs) && (sizeShouldMatch ? lhs.size() == rhs.size() : true);
             }
         };

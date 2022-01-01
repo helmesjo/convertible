@@ -120,6 +120,9 @@ SCENARIO("convertible: Operators")
         }
     } intStringConverter;
 
+    enum class enum_a{};
+    enum class enum_b{};
+
     GIVEN("assign operator")
     {
         TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
@@ -154,6 +157,11 @@ SCENARIO("convertible: Operators")
                 adapter::object<std::vector<int>&>&, 
                 adapter::object<std::vector<std::string>&>&,
                 int_string_converter
+            >,
+            std::tuple<
+                operators::assign,
+                adapter::object<enum_a&>&, 
+                adapter::object<enum_b&>&
             >
         );
 
@@ -367,6 +375,11 @@ SCENARIO("convertible: Operators")
                 adapter::object<std::vector<int>&>&, 
                 adapter::object<std::vector<std::string>&>&,
                 int_string_converter
+            >,
+            std::tuple<
+                operators::equal,
+                adapter::object<enum_a&>&, 
+                adapter::object<enum_b&>&
             >
         );
 

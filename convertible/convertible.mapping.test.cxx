@@ -115,6 +115,22 @@ SCENARIO("convertible: Mapping (misc use-cases)")
 {
     using namespace convertible;
 
+    GIVEN("enum_a <-> enum_b")
+    {
+        enum class enum_a{ val = 0 };
+        enum class enum_b{ val = 0 };
+
+        using lhs_t = enum_a;
+        using rhs_t = enum_b;
+
+        auto map = mapping(adapter::object(), adapter::object());
+
+        auto lhs = lhs_t::val;
+        auto rhs = rhs_t::val;
+        MAPS_CORRECTLY(lhs, rhs, map, [](const auto&){
+            return true;
+        });
+    }
     GIVEN("vector<string> <-> vector<string>")
     {
         using lhs_t = std::vector<std::string>;

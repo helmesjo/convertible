@@ -292,16 +292,10 @@ SCENARIO("convertible: Adapters")
 
         THEN("it's explicitly castable to valid type")
         {
-            enum class enum_a
-            {
-                val1
-            };
-            enum class enum_b
-            {
-                val1
-            };
+            enum class enum_a{ val = 1 };
+            enum class enum_b{ val = 1 };
 
-            REQUIRE(static_cast<enum_b>(adapter::object(enum_a::val1)) == enum_b::val1);
+            REQUIRE(static_cast<enum_b>(adapter::object(enum_a::val)) == enum_b::val);
         }
     }
     GIVEN("member adapter")
