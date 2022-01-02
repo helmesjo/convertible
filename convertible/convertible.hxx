@@ -10,8 +10,8 @@
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
-// Workaround unimplemented concepts & type traits (specifically with libc++)
-// NOTE: Intentionally placed in 'std' to detect (compiler error) when implemented (backported?)
+// Workarounds for unimplemented concepts & type traits (specifically with libc++)
+// NOTE: Intentionally placed in 'std' to be easily removed when no longer needed
 //       since below definitions aren't as conforming as std equivalents).
 #if defined(__clang__) && defined(_LIBCPP_VERSION) // libc++
 
@@ -20,40 +20,32 @@ namespace std
 #if (__clang_major__ <= 13 && (defined(__APPLE__) || defined(__EMSCRIPTEN__))) || __clang_major__ < 13
     // Credit: https://en.cppreference.com
 
-    template < class T, class... Args >
+    template<class T, class... Args>
     concept constructible_from =
         std::is_nothrow_destructible_v<T> && std::is_constructible_v<T, Args...>;
 
-    template< class lhs_t, class rhs_t >
+    template<class lhs_t, class rhs_t>
     concept assignable_from =
         std::is_lvalue_reference_v<lhs_t> &&
         requires(lhs_t lhs, rhs_t && rhs) {
             { lhs = std::forward<rhs_t>(rhs) } -> std::same_as<lhs_t>;
         };
 
-    template <class from_t, class to_t>
+    template<class from_t, class to_t>
     concept convertible_to =
         std::is_convertible_v<from_t, to_t> &&
         requires { static_cast<to_t>(std::declval<from_t>()); };
 
-    template< class lhs_t, class rhs_t >
-    using common_reference_impl_const_t =
-        std::conditional_t<std::is_const_v<std::remove_reference_t<lhs_t>> || std::is_const_v<std::remove_reference_t<rhs_t>>,
-            const std::common_type_t<lhs_t, rhs_t>,
-            std::common_type_t<lhs_t, rhs_t>
-        >;
+    template<class lhs_t, class rhs_t>
+    struct common_reference
+    {
+        using type = const std::common_type_t<lhs_t, rhs_t>&;
+    };
 
-    template< class lhs_t, class rhs_t >
-    using common_reference_t =
-        std::conditional_t<std::is_reference_v<lhs_t> || std::is_reference_v<rhs_t>,
-            std::conditional_t<std::is_rvalue_reference_v<lhs_t> || std::is_rvalue_reference_v<rhs_t>,
-                std::common_reference_impl_const_t<lhs_t, rhs_t>&&,
-                std::common_reference_impl_const_t<lhs_t, rhs_t>&
-            >,
-            std::common_type_t<lhs_t, rhs_t>
-        >;
+    template<class lhs_t, class rhs_t>
+    using common_reference_t = typename std::common_reference<lhs_t, rhs_t>::type;
 
-    template < class T, class U >
+    template<class T, class U>
     concept common_reference_with =
         std::same_as<std::common_reference_t<T, U>, std::common_reference_t<U, T>> &&
         std::convertible_to<T, std::common_reference_t<T, U>> &&
