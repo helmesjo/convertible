@@ -745,14 +745,15 @@ namespace std
     */
     template<typename... a_ts, typename... b_ts>
     struct common_type<convertible::adapter::object<a_ts...>, convertible::adapter::object<b_ts...>>
-    {
-        using type = ::std::common_reference_t<
+        : 
+        ::std::common_reference<
             // AFAIK, this should rather be <a::out_t, b::value_t>, but that fails with libc++ (and a few MSVC variants),
             // eg. with libc++ common_reference_t<const char*, string&> is 'string&', but obviously 'const char*' can't be bound to 'string&'...
             // TODO: Figure out what is the most correct.
             typename convertible::adapter::object<a_ts...>::value_t,
             typename convertible::adapter::object<b_ts...>::value_t
-        >;
+        >
+    {
     };
 }
 
