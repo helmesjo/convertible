@@ -671,18 +671,10 @@ namespace convertible
         converter_t converter_;
     };
 
-    template <typename callback_t, typename arg_t, typename... arg_ts>
-    constexpr bool for_each(callback_t&& callback, arg_t&& head, arg_ts&&... tails)
+    template <typename callback_t, typename... arg_ts>
+    constexpr bool for_each(callback_t&& callback, arg_ts&&... args)
     {
-        if(!FWD(callback)(FWD(head)))
-        {
-            return false;
-        }
-        if constexpr (sizeof...(tails) > 0)
-        {
-            return for_each(callback, FWD(tails)...);
-        }
-        return true;
+        return (FWD(callback)(FWD(args)) && ...);
     }
 
     template<typename... mapping_ts>
