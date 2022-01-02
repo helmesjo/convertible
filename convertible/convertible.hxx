@@ -179,7 +179,7 @@ namespace convertible
         template<typename arg_t, typename adapter_t>
         concept adaptable = requires(adapter_t adapter, arg_t arg)
         {
-            { adapter.create(arg) } -> class_type;
+            { adapter.make(arg) } -> class_type;
         };
 
         template<typename mapping_t, typename lhs_t, typename rhs_t>
@@ -299,7 +299,7 @@ namespace convertible
             template<typename arg_t>
             using make_t = object<arg_t, reader_t>;
 
-            constexpr auto create(auto&& obj) const
+            constexpr auto make(auto&& obj) const
                 requires std::invocable<reader_t, decltype(obj)>
             {
                 return object<decltype(obj), reader_t>(FWD(obj), reader_);
@@ -648,8 +648,8 @@ namespace convertible
         void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
             requires concepts::executable_with<dir, operators::assign, lhs_make_t<decltype(lhs)>&, rhs_make_t<decltype(rhs)>&, converter_t>
         {
-            auto lhsAdap = lhsAdapter_.create(FWD(lhs));
-            auto rhsAdap = rhsAdapter_.create(FWD(rhs));
+            auto lhsAdap = lhsAdapter_.make(FWD(lhs));
+            auto rhsAdap = rhsAdapter_.make(FWD(rhs));
             
             if constexpr(dir == direction::rhs_to_lhs)
                 exec<operators::assign>(lhsAdap, rhsAdap);
@@ -660,8 +660,8 @@ namespace convertible
         bool equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
             requires concepts::executable_with<direction::rhs_to_lhs, operators::equal, lhs_make_t<decltype(lhs)>, rhs_make_t<decltype(rhs)>, converter_t>
         {
-            auto lhsAdap = lhsAdapter_.create(FWD(lhs));
-            auto rhsAdap = rhsAdapter_.create(FWD(rhs));
+            auto lhsAdap = lhsAdapter_.make(FWD(lhs));
+            auto rhsAdap = rhsAdapter_.make(FWD(rhs));
 
             return exec<operators::equal>(lhsAdap, rhsAdap);
         }

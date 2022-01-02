@@ -100,9 +100,9 @@ SCENARIO("convertible: Concepts")
     {
         struct type
         {
-            type create(int){ return {}; }
-            int create(float) { return {}; }
-            void create(double) { }
+            type make(int){ return {}; }
+            int make(float) { return {}; }
+            void make(double) { }
         };
 
         static_assert(concepts::adaptable<int, type>);
