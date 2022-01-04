@@ -96,6 +96,12 @@ SCENARIO("convertible: Concepts")
         static_assert(concepts::indexable<int> == false);
     }
 
+    // dereferencable
+    {
+        static_assert(concepts::dereferencable<int*>);
+        static_assert(concepts::dereferencable<int> == false);
+    }
+
     // adaptable:
     {
         struct type

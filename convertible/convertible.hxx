@@ -174,6 +174,12 @@ namespace convertible
         };
 
         template<typename T>
+        concept dereferencable = requires(T t)
+        {
+            *t;
+        };
+
+        template<typename T>
         concept adapter = traits::is_adapter_v<T>;
 
         template<typename arg_t, typename adapter_t>
@@ -272,6 +278,14 @@ namespace convertible
                     return obj[i];
                 }
             };
+
+            struct deref
+            {
+                constexpr decltype(auto) operator()(concepts::dereferencable auto&& obj) const
+                {
+                    return *obj;
+                }
+            };
         }
 
         template<typename obj_t = details::placeholder, typename reader_t = reader::identity>
@@ -279,12 +293,11 @@ namespace convertible
             requires std::invocable<reader_t, obj_t>
         struct object
         {
-            static constexpr bool is_rval = std::is_rvalue_reference_v<obj_t>;
-
             using object_t = obj_t;
             using reader_result_t = std::invoke_result_t<reader_t, obj_t>;
 
             static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<reader_result_t>>;
+            static constexpr bool is_rval = std::is_rvalue_reference_v<obj_t>;
 
             using out_t = 
                 std::conditional_t<is_ptr,
@@ -490,6 +503,16 @@ namespace convertible
         consteval auto index()
         {
             return object<details::placeholder, reader::index<i>>();
+        }
+
+        constexpr auto deref(concepts::dereferencable auto&& obj)
+        {
+            return object<decltype(obj), reader::deref>(FWD(obj));
+        }
+
+        consteval auto deref()
+        {
+            return object<details::placeholder*, reader::deref>();
         }
     }
 

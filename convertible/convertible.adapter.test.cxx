@@ -423,4 +423,70 @@ SCENARIO("convertible: Adapters")
             REQUIRE(adapter != "hello");
         }
     }
+    GIVEN("dereference adapter")
+    {
+        struct int_wrapper
+        {
+            int operator*() const
+            {
+                return {};
+            }
+        };
+        
+        auto str = std::string();
+        auto ptr = &str;
+        auto adapter = adapter::deref(ptr);
+
+        TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type, 
+           adapter::object<int*, adapter::reader::deref>,
+           adapter::object<int_wrapper, adapter::reader::deref>
+        );
+
+        TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter, 
+           std::pair<
+               adapter::object<int*, adapter::reader::deref>,
+               adapter::object<int_wrapper, adapter::reader::deref>
+           >
+        );
+
+        THEN("it's constexpr constructible")
+        {
+            constexpr auto constexprAdapter = adapter::deref();
+            (void)constexprAdapter;
+        }
+        THEN("it implicitly assigns member value")
+        {
+            adapter = "hello";
+            REQUIRE(str == "hello");
+        }
+        THEN("it implicitly converts to type")
+        {
+            adapter = "hello";
+            std::string val = adapter;
+            REQUIRE(val == "hello");
+        }
+        THEN("it 'moves from' r-value reference")
+        {
+            auto adapterRval = adapter::deref(std::move(&str));
+
+            str = "hello";
+            const auto movedTo = static_cast<std::string>(adapterRval);
+            REQUIRE(movedTo == "hello");
+
+            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
+            // of std::string when doing static cast here, which causes it to not be moved-from.
+            // See example here: https://godbolt.org/z/jPrhvMhWd
+            //REQUIRE(str == "");
+
+            str = "hello";
+            adapterRval = std::move(str);
+            REQUIRE(str == "");
+        }
+        THEN("equality operator works")
+        {
+            str = "hello";
+            REQUIRE(adapter == "hello");
+            REQUIRE(adapter != "world");
+        }
+    }
 }
