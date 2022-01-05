@@ -2,8 +2,9 @@ intf_libs = # Interface dependencies.
 impl_libs = # Implementation dependencies.
 #import impl_libs += libhello%lib{hello}
 import test_libs += doctest%lib{doctest}
+import benchmark_libs += google-benchmark%lib{benchmark}
 
-./: lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{** -**.test... -doctest_define_main -doctest_include -version} \
+./: lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{** -**.test... -**.benchmark... -doctest_define_main -doctest_include -version} \
   hxx{version} $impl_libs $intf_libs
 
 # Unit tests.
@@ -38,6 +39,26 @@ for t: cxx{**.test...}
   obj{$n}:
   {
     cxx.coptions += $no_used_local_typedef
+  }
+}
+
+# Benchmarks.
+#
+if $(config.$(project).benchmarks)
+{
+  exe{*.benchmark}:
+  {
+    test = true
+    install = false
+  }
+
+  for t: cxx{**.benchmark...}
+  {
+    d = $directory($t)
+    n = $name($t)...
+
+    ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n}
+    $d/exe{$n}: $benchmark_libs libul{convertible}: bin.whole = false
   }
 }
 
