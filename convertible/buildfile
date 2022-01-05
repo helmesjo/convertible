@@ -2,7 +2,7 @@ intf_libs = # Interface dependencies.
 impl_libs = # Implementation dependencies.
 #import impl_libs += libhello%lib{hello}
 import test_libs += doctest%lib{doctest}
-import benchmark_libs += google-benchmark%lib{benchmark}
+import benchmark_libs += google-benchmark%liba{benchmark}
 
 ./: lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{** -**.test... -**.benchmark... -doctest_define_main -doctest_include -version} \
   hxx{version} $impl_libs $intf_libs
