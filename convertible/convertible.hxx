@@ -296,11 +296,12 @@ namespace convertible
             using object_t = obj_t;
             using reader_result_t = std::invoke_result_t<reader_t, obj_t>;
 
-            static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<reader_result_t>>;
+            static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<obj_t>>;
             static constexpr bool is_rval = std::is_rvalue_reference_v<obj_t>;
+            static constexpr bool is_result_ptr = std::is_pointer_v<std::remove_reference_t<reader_result_t>>;
 
             using out_t = 
-                std::conditional_t<is_ptr,
+                std::conditional_t<is_result_ptr,
                     reader_result_t,
                     std::conditional_t<is_rval, 
                         std::remove_reference_t<reader_result_t>&&, 
@@ -463,7 +464,7 @@ namespace convertible
                 }
             }
 
-            obj_t obj_;
+            std::conditional_t<is_ptr, std::remove_reference_t<obj_t>, obj_t> obj_;
             reader_t reader_;
         };
 
