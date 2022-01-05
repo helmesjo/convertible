@@ -353,9 +353,9 @@ SCENARIO("convertible: Adapters")
             // See example here: https://godbolt.org/z/jPrhvMhWd
             //REQUIRE(obj.str == "");
 
-            std::string str = "hello";
-            adapterRval = std::move(str);
-            REQUIRE(str == "");
+            std::string fromStr = "hello";
+            adapterRval = std::move(fromStr);
+            REQUIRE(fromStr == "");
         }
         THEN("equality operator works")
         {
@@ -412,9 +412,9 @@ SCENARIO("convertible: Adapters")
             // See example here: https://godbolt.org/z/jPrhvMhWd
             //REQUIRE(values[0] == "");
 
-            std::string str = "hello";
-            adapterRval = std::move(str);
-            REQUIRE(str == "");
+            std::string fromStr = "hello";
+            adapterRval = std::move(fromStr);
+            REQUIRE(fromStr == "");
         }
         THEN("equality operator works")
         {
@@ -478,9 +478,9 @@ SCENARIO("convertible: Adapters")
             // See example here: https://godbolt.org/z/jPrhvMhWd
             //REQUIRE(str == "");
 
-            str = "hello";
-            adapterRval = std::move(str);
-            REQUIRE(str == "");
+            std::string fromStr = "hello";
+            adapterRval = std::move(fromStr);
+            REQUIRE(fromStr == "");
         }
         THEN("equality operator works")
         {
