@@ -445,22 +445,18 @@ namespace convertible
 
             value_t& read_ref() const
             {
-                auto& nonConstThis = const_cast<object&>(*this);
-                return nonConstThis.reader_(nonConstThis.obj_);
+                return reader_(obj_);
             }
 
-            out_t read() const
+            decltype(auto) read() const
             {
-                // For now, this class is a pure "forwarder", so override const-ness for held object.
-                // TODO: Fix so that `const object<...>` always copies (?).
-                auto& nonConstThis = const_cast<object&>(*this);
                 if constexpr (is_rval)
                 {
-                    return std::move(nonConstThis.reader_(nonConstThis.obj_));
+                    return std::move(reader_(obj_));
                 }
                 else
                 {
-                    return nonConstThis.reader_(nonConstThis.obj_);
+                    return reader_(obj_);
                 }
             }
 
