@@ -2,6 +2,7 @@
 #include <convertible/convertible.hxx>
 
 #include <cstdlib>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,7 @@ namespace
         int val1;
         std::string val2;
         std::vector<std::string> val3;
+        std::optional<int> val4;
     };
 
     struct type_b
@@ -43,6 +45,7 @@ namespace
         int val1;
         std::string val2;
         std::vector<int> val3;
+        int val4;
     };
 
     struct int_string_converter
@@ -66,7 +69,8 @@ namespace
         {
             gen_random_int(), 
             gen_random_str(size),
-            {}
+            {},
+            999
         };
 
         obj.val3.resize(size);
@@ -80,13 +84,14 @@ namespace
 
     auto create_type_b()
     {
-        constexpr auto size = 1000;
+        constexpr std::size_t size = 1000;
 
         type_b obj
         {
             gen_random_int(), 
             gen_random_str(size),
-            {}
+            {},
+            0
         };
 
         obj.val3.resize(size);
@@ -106,7 +111,8 @@ static void mapping_conversion(benchmark::State& state)
         {
             mapping( adapter::member(&type_a::val1), adapter::member(&type_b::val1) ),
             mapping( adapter::member(&type_a::val2), adapter::member(&type_b::val2) ),
-            mapping( adapter::member(&type_a::val3), adapter::member(&type_b::val3), int_string_converter{} )
+            mapping( adapter::member(&type_a::val3), adapter::member(&type_b::val3), int_string_converter{} ),
+            mapping( adapter::deref(adapter::member(&type_a::val4)), adapter::member(&type_b::val4) )
         };
 
     for (auto _ : state)
@@ -138,6 +144,7 @@ static void manual_conversion(benchmark::State& state)
         {
             lhs.val3[i] = int_string_converter{}(rhs.val3[i]);
         }
+        lhs.val4 = rhs.val4;
 
         bool equal = true;
         for(std::size_t i = 0; i < rhs.val3.size(); ++i)
