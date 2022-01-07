@@ -490,3 +490,26 @@ SCENARIO("convertible: Adapters")
         }
     }
 }
+
+SCENARIO("convertible: Adapter composition")
+{
+    using namespace convertible;
+
+    struct type
+    {
+        int* val = nullptr;
+    };
+
+    THEN("composed adapters are constexpr constructible")
+    {
+        constexpr auto composedAdapter = adapter::deref(adapter::object(adapter::member(&type::val)));
+        (void)composedAdapter;
+    }
+    THEN("composed adapters output expected result")
+    {
+        int i = 10;
+        type obj{ &i };
+        auto composedAdapter = adapter::deref(adapter::object(adapter::member(&type::val, obj)));
+        REQUIRE(static_cast<int>(composedAdapter) == 10);
+    }
+}

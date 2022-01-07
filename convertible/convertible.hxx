@@ -233,8 +233,14 @@ namespace convertible
                 {
                     return *this;
                 }
+
+                constexpr placeholder& operator*()
+                {
+                    return *this;
+                }
             };
             static_assert(concepts::indexable<placeholder>);
+            static_assert(concepts::dereferencable<placeholder>);
         }
 
         namespace reader
@@ -302,7 +308,7 @@ namespace convertible
 
             using out_t = 
                 std::conditional_t<is_result_ptr,
-                    reader_result_t,
+                    std::remove_reference_t<reader_result_t>,
                     std::conditional_t<is_rval, 
                         std::remove_reference_t<reader_result_t>&&, 
                         std::remove_reference_t<reader_result_t>&
@@ -320,9 +326,9 @@ namespace convertible
             }
 
             constexpr object() = default;
-            object(const object&) = default;
-            object(object&&) = default;
-            explicit object(std::convertible_to<obj_t> auto&& obj)
+            constexpr object(const object&) = default;
+            constexpr object(object&&) = default;
+            constexpr explicit object(std::convertible_to<obj_t> auto&& obj)
                 requires std::invocable<reader_t, decltype(obj)>
                 : obj_(FWD(obj))
             {
@@ -389,6 +395,12 @@ namespace convertible
                 requires concepts::resizable<out_t>
             {
                 return read_ref().resize(size);
+            }
+
+            decltype(auto) operator*() const
+                requires concepts::dereferencable<out_t>
+            {
+                return *FWD(read());
             }
 
             object& operator=(const object& other)
@@ -460,7 +472,7 @@ namespace convertible
                 }
             }
 
-            std::conditional_t<is_ptr, std::remove_reference_t<obj_t>, obj_t> obj_;
+            std::conditional_t<is_ptr || concepts::adapter<obj_t>, std::remove_reference_t<obj_t>, obj_t> obj_;
             reader_t reader_;
         };
 
