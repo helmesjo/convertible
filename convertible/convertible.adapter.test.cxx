@@ -102,6 +102,12 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
         {
             static_assert(concepts::resizable<adapter_t>);
         }
+
+        // dereferencable
+        if constexpr(concepts::dereferencable<out_t>)
+        {
+            static_assert(concepts::dereferencable<adapter_t>);
+        }
     }
     THEN("it's adaptable to the expected type")
     {
@@ -206,6 +212,8 @@ SCENARIO("convertible: Adapters")
             adapter::object<const int&>,
             adapter::object<int&&>,
             adapter::object<const int&&>,
+            adapter::object<int*>,
+            adapter::object<const int*>,
             adapter::object<std::string&>,
             adapter::object<std::string&&>,
             adapter::object<std::vector<int>&>,
@@ -495,21 +503,77 @@ SCENARIO("convertible: Adapter composition")
 {
     using namespace convertible;
 
+    TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type,
+        adapter::object<adapter::object<int&>&>
+    );
+
+    TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter,
+        std::pair<
+            adapter::object<adapter::object<int&>&>,
+            adapter::object<adapter::object<float&>&>
+        >
+    );
+
     struct type
     {
-        int* val = nullptr;
+        std::string* val = nullptr;
     };
 
-    THEN("composed adapters are constexpr constructible")
+    std::string str;
+    type obj{ &str };
+
+    GIVEN("composed adapter")
     {
-        constexpr auto composedAdapter = adapter::deref(adapter::object(adapter::member(&type::val)));
-        (void)composedAdapter;
-    }
-    THEN("composed adapters output expected result")
-    {
-        int i = 10;
-        type obj{ &i };
-        auto composedAdapter = adapter::deref(adapter::object(adapter::member(&type::val, obj)));
-        REQUIRE(static_cast<int>(composedAdapter) == 10);
+        auto adapter = adapter::deref(adapter::member(&type::val, obj));
+
+        THEN("it's constexpr constructible")
+        {
+            constexpr auto constexprAdapter = adapter::deref(adapter::object(adapter::member(&type::val)));
+            (void)constexprAdapter;
+        }
+        THEN("it implicitly assigns member value")
+        {
+            adapter = "hello";
+            REQUIRE(str == "hello");
+        }
+        THEN("it implicitly converts to type")
+        {
+            adapter = "hello";
+            std::string val = adapter;
+            REQUIRE(val == "hello");
+        }
+        THEN("it 'moves from' r-value reference")
+        {
+            str = "hello";
+            type obj{ &str };
+            auto adapterRval = adapter::deref(adapter::member(&type::val, std::move(obj)));
+
+            const auto movedTo = static_cast<std::string>(adapterRval);
+            REQUIRE(movedTo == "hello");
+
+            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
+            // of std::string when doing static cast here, which causes it to not be moved-from.
+            // See example here: https://godbolt.org/z/jPrhvMhWd
+            //REQUIRE(str == "");
+
+            std::string fromStr = "hello";
+            adapterRval = std::move(fromStr);
+            REQUIRE(fromStr == "");
+        }
+        THEN("it can make an adapter")
+        {
+            std::string str2 = "hello";
+            type obj2{ &str2 };
+            auto adapterTemplate = adapter::deref(adapter::member(&type::val));
+            auto composedAdapter = adapterTemplate.make(std::move(obj2));
+
+            const auto movedTo = static_cast<std::string>(composedAdapter);
+            REQUIRE(movedTo == "hello");
+
+            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
+            // of std::string when doing static cast here, which causes it to not be moved-from.
+            // See example here: https://godbolt.org/z/jPrhvMhWd
+            //REQUIRE(str == "");
+        }
     }
 }

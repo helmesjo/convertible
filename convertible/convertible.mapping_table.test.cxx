@@ -1,6 +1,7 @@
 #include <convertible/convertible.hxx>
 #include <convertible/doctest_include.hxx>
 
+#include <memory>
 #include <string>
 
 SCENARIO("convertible: Mapping table")
@@ -148,6 +149,126 @@ SCENARIO("convertible: Mapping table")
                 REQUIRE(lhs_a.val1 == rhs_c.val1);
                 REQUIRE(table.equal(lhs_a, rhs_c));
                 REQUIRE(table.equal(rhs_c, lhs_a));
+            }
+        }
+    }
+}
+
+SCENARIO("convertible: Mapping table (misc use-cases)")
+{
+    using namespace convertible;
+
+    GIVEN("Recursive:\n\n\ta.val <-> b.val\n\ta.node <-> b.node\n")
+    {
+        struct type_a
+        {
+            int val;
+            std::shared_ptr<type_a> node;
+
+            bool operator==(const type_a& obj) const
+            {
+                if(node && obj.node)
+                {
+                    return val == obj.val && *node == *obj.node;
+                }
+                else
+                {
+                    return val == obj.val && node == obj.node;
+                }
+            }
+        };
+        struct type_b
+        {
+            int val;
+            std::shared_ptr<type_b> node;
+
+            bool operator==(const type_b& obj) const
+            {
+                if(node && obj.node)
+                {
+                    return val == obj.val && *node == *obj.node;
+                }
+                else
+                {
+                    return val == obj.val && node == obj.node;
+                }
+            }
+        };
+
+        struct a_b_converter
+        {
+            a_b_converter():
+                ref(*this)
+            {}
+            a_b_converter& ref;
+            type_a operator()(type_b obj) const
+            {
+                if(obj.node)
+                {
+                    return { obj.val, std::make_shared<type_a>(ref(*obj.node)) };
+                }
+                else
+                {
+                    return { obj.val, nullptr };
+                }
+            }
+
+            type_b operator()(type_a obj) const
+            {
+                if(obj.node)
+                {
+                    return { obj.val, std::make_shared<type_b>(ref(*obj.node)) };
+                }
+                else
+                {
+                    return { obj.val, nullptr };
+                }
+            }
+        };
+
+        mapping_table table{
+            mapping( adapter::member(&type_a::val), adapter::member(&type_b::val) ),
+            mapping( adapter::deref(adapter::member(&type_a::node)), adapter::deref(adapter::member(&type_b::node)), a_b_converter{} )
+        };
+
+        type_a lhs;
+        type_b rhs;
+
+        WHEN("assigning lhs to rhs")
+        {
+            lhs.val = 1;
+            auto lhsNode = std::make_shared<type_a>(type_a{6, nullptr});
+            lhs.node = lhsNode;
+            rhs.val = 5;
+            auto rhsNode = std::make_shared<type_b>(type_b{7, nullptr});
+            rhs.node = rhsNode;
+            table.assign<direction::rhs_to_lhs>(lhs, rhs);
+
+            THEN("lhs == rhs")
+            {
+                REQUIRE(lhs.val == rhs.val);
+                REQUIRE(lhs.node != nullptr);
+                REQUIRE(lhs.node->val == rhs.node->val);
+                REQUIRE(lhs.node->node == nullptr);
+                REQUIRE(table.equal(lhs, rhs));
+            }
+        }
+        WHEN("not assigning lhs to rhs")
+        {
+            lhs.val = 5;
+            auto lhsNode = std::make_shared<type_a>(type_a{6, nullptr});
+            lhs.node = lhsNode;
+            rhs.val = lhs.val;
+            auto rhsNode = std::make_shared<type_b>(type_b{7, nullptr});
+            rhs.node = rhsNode;
+
+            THEN("lhs != rhs")
+            {
+                REQUIRE(lhs.val == rhs.val);
+                REQUIRE(lhs.node != nullptr);
+                REQUIRE(lhs.node->val != rhs.node->val);
+                REQUIRE(lhs.node->node == nullptr);
+                REQUIRE_FALSE(table.equal(lhs, rhs));
             }
         }
     }

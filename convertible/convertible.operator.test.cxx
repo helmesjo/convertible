@@ -162,6 +162,21 @@ SCENARIO("convertible: Operators")
                 operators::assign,
                 adapter::object<enum_a&>&, 
                 adapter::object<enum_b&>&
+            >,
+            std::tuple<
+                operators::assign,
+                adapter::object<int&>&, 
+                adapter::object<adapter::object<int&>&>&
+            >,
+            std::tuple<
+                operators::assign,
+                adapter::object<adapter::object<int&>&>&,
+                adapter::object<int&>&
+            >,
+            std::tuple<
+                operators::assign,
+                adapter::object<adapter::object<int&>&>&,
+                adapter::object<adapter::object<float&>&>&
             >
         );
 
@@ -380,6 +395,21 @@ SCENARIO("convertible: Operators")
                 operators::equal,
                 adapter::object<enum_a&>&, 
                 adapter::object<enum_b&>&
+            >,
+            std::tuple<
+                operators::equal,
+                adapter::object<int&>&, 
+                adapter::object<adapter::object<int&>&>&
+            >,
+            std::tuple<
+                operators::equal,
+                adapter::object<adapter::object<int&>&>&,
+                adapter::object<int&>&
+            >,
+            std::tuple<
+                operators::equal,
+                adapter::object<adapter::object<int&>&>&,
+                adapter::object<adapter::object<float&>&>&
             >
         );
 

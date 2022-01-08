@@ -241,6 +241,19 @@ namespace convertible
             };
             static_assert(concepts::indexable<placeholder>);
             static_assert(concepts::dereferencable<placeholder>);
+
+            template<typename obj_t>
+            consteval bool is_rval()
+            {
+                if constexpr(concepts::adapter<obj_t>)
+                {
+                    return std::decay_t<obj_t>::is_rval;
+                }
+                else
+                {
+                    return std::is_rvalue_reference_v<obj_t>;
+                }
+            }
         }
 
         namespace reader
@@ -303,7 +316,7 @@ namespace convertible
             using reader_result_t = std::invoke_result_t<reader_t, obj_t>;
 
             static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<obj_t>>;
-            static constexpr bool is_rval = std::is_rvalue_reference_v<obj_t>;
+            static constexpr bool is_rval = details::is_rval<obj_t>();
             static constexpr bool is_result_ptr = std::is_pointer_v<std::remove_reference_t<reader_result_t>>;
 
             using out_t = 
@@ -316,13 +329,18 @@ namespace convertible
                 >;
             using value_t = std::remove_reference_t<reader_result_t>;
 
-            template<typename arg_t>
-            using make_t = object<arg_t, reader_t>;
-
             constexpr auto make(auto&& obj) const
-                requires std::invocable<reader_t, decltype(obj)>
+                requires std::invocable<reader_t, decltype(obj)> || concepts::adaptable<decltype(obj), obj_t>
             {
-                return object<decltype(obj), reader_t>(FWD(obj), reader_);
+                if constexpr(concepts::adaptable<decltype(obj), obj_t>)
+                {
+                    auto tmp = obj_.make(FWD(obj));
+                    return object<decltype(tmp), reader_t>(std::move(tmp), reader_);
+                }
+                else
+                {
+                    return object<decltype(obj), reader_t>(FWD(obj), reader_);
+                }
             }
 
             constexpr object() = default;
@@ -475,6 +493,9 @@ namespace convertible
             std::conditional_t<is_ptr || concepts::adapter<obj_t>, std::remove_reference_t<obj_t>, obj_t> obj_;
             reader_t reader_;
         };
+
+        template<concepts::adapter adapter_t, typename arg_t>
+        using make_t = decltype(std::declval<adapter_t>().make(std::declval<arg_t>()));
 
         // Workaround: MSVC does not like auto parameters in deduction guides.
 
@@ -663,10 +684,10 @@ namespace convertible
         {}
 
         template<typename lhs_t>
-        using lhs_make_t = typename lhs_adapter_t::template make_t<lhs_t>;
+        using lhs_make_t = adapter::make_t<lhs_adapter_t, lhs_t>;
 
         template<typename rhs_t>
-        using rhs_make_t = typename rhs_adapter_t::template make_t<rhs_t>;
+        using rhs_make_t = adapter::make_t<rhs_adapter_t, rhs_t>;
 
         template<typename operator_t>
         decltype(auto) exec(concepts::adapter auto& lhs, concepts::adapter auto& rhs) const
@@ -754,7 +775,7 @@ namespace convertible
 namespace std
 {
     /* 
-    Specialization for:
+    Specialization of:
         `std::common_type<object<...>, object<...>>`
     Specifically enables:
         `std::assignable_from<object<...>, object<...>>`
@@ -762,7 +783,7 @@ namespace std
     template<typename... a_ts, typename... b_ts>
     struct common_type<convertible::adapter::object<a_ts...>, convertible::adapter::object<b_ts...>>
         : 
-        ::std::common_reference<
+        ::std::common_type<
             // AFAIK, this should rather be <a::out_t, b::value_t>, but that fails with libc++ (and a few MSVC variants),
             // eg. with libc++ common_reference_t<const char*, string&> is 'string&', but obviously 'const char*' can't be bound to 'string&'...
             // TODO: Figure out what is the most correct.
