@@ -675,7 +675,7 @@ namespace convertible
         };
     }
 
-    template<typename lhs_adapter_t, typename rhs_adapter_t, typename converter_t = converter::identity>
+    template<concepts::adapter lhs_adapter_t, concepts::adapter rhs_adapter_t, typename converter_t = converter::identity>
     struct mapping
     {
         constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
