@@ -24,6 +24,10 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
         {
             static_assert(std::is_rvalue_reference_v<out_t>);
         }
+        else
+        {
+            static_assert(!std::is_rvalue_reference_v<out_t>);
+        }
         if constexpr(std::is_lvalue_reference_v<obj_t>)
         {
             static_assert(std::is_lvalue_reference_v<out_t>);
@@ -96,17 +100,29 @@ TEST_CASE_TEMPLATE_DEFINE("it shares traits with held type", adapter_t, shares_t
                 }
             }
         }
+        else
+        {
+            static_assert(!concepts::range<adapter_t>);
+        }
 
         // resizable
         if constexpr(concepts::resizable<out_t>)
         {
             static_assert(concepts::resizable<adapter_t>);
         }
+        else
+        {
+            static_assert(!concepts::resizable<adapter_t>);
+        }
 
         // dereferencable
         if constexpr(concepts::dereferencable<out_t>)
         {
             static_assert(concepts::dereferencable<adapter_t>);
+        }
+        else
+        {
+            static_assert(!concepts::dereferencable<adapter_t>);
         }
     }
     THEN("it's adaptable to the expected type")
@@ -504,13 +520,26 @@ SCENARIO("convertible: Adapter composition")
     using namespace convertible;
 
     TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_held_type,
-        adapter::object<adapter::object<int&>&>
+        adapter::object<adapter::object<int&>&>,
+        adapter::object<adapter::object<int*, adapter::reader::deref>&>
     );
 
     TEST_CASE_TEMPLATE_INVOKE(shares_traits_with_similar_adapter,
         std::pair<
             adapter::object<adapter::object<int&>&>,
             adapter::object<adapter::object<float&>&>
+        >,
+        std::pair<
+            adapter::object<adapter::object<int&>&>,
+            adapter::object<adapter::object<float*, adapter::reader::deref>&>
+        >,
+        std::pair<
+            adapter::object<int&>,
+            adapter::object<adapter::object<float*, adapter::reader::deref>&>
+        >,
+        std::pair<
+            adapter::object<int*, adapter::reader::deref>,
+            adapter::object<adapter::object<float*, adapter::reader::deref>&>
         >
     );
 
