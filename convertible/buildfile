@@ -4,7 +4,7 @@ impl_libs = # Implementation dependencies.
 import test_libs += doctest%lib{doctest}
 import benchmark_libs += google-benchmark%liba{benchmark}
 
-./: lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{** -**.test... -**.benchmark... -doctest_define_main -doctest_include -version} \
+./: lib{convertible}: {hxx ixx txx cxx}{** -version -**.test... -**.benchmark... -doctest*} \
   hxx{version} $impl_libs $intf_libs
 
 # Unit tests.
@@ -28,7 +28,7 @@ for t: cxx{**.test...}
   n = $name($t)...
 
   ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} hxx{doctest_include} $d/testscript{+$n}
-  $d/exe{$n}: libue{doctest_main} libul{convertible}: bin.whole = false
+  $d/exe{$n}: libue{doctest_main} lib{convertible}: bin.whole = false
 
   # Ignore warning caused by doctest 'parameterized tests'
   switch $cxx.id
@@ -58,7 +58,7 @@ if $(config.$(project).benchmarks)
     n = $name($t)...
 
     ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n}
-    $d/exe{$n}: $benchmark_libs libul{convertible}: bin.whole = false
+    $d/exe{$n}: $benchmark_libs lib{convertible}: bin.whole = false
   }
 }
 
