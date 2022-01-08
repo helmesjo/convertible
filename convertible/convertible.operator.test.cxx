@@ -256,7 +256,7 @@ SCENARIO("convertible: Operators")
                 auto rhs = std::vector<std::string>{ "1", "2" };
 
                 COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-                    return lhs == rhs;
+                    return lhs == converter(rhs);
                 });
                 MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
                     return rhs.empty();
@@ -269,7 +269,7 @@ SCENARIO("convertible: Operators")
                 auto rhs = std::vector<std::string>{ "1" };
 
                 COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-                    return lhs == rhs;
+                    return lhs == converter(rhs);
                 });
                 MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
                     return rhs.empty();
