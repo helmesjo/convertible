@@ -740,6 +740,7 @@ namespace convertible
         }
 
         template<MSVC_ENUM_FIX(direction) dir, typename lhs_t, typename rhs_t>
+            requires (concepts::mappable<mapping_ts, lhs_t, rhs_t> || ...)
         void assign(lhs_t&& lhs, rhs_t&& rhs) const
         {
             std::apply([&lhs, &rhs](auto&&... args){
@@ -755,6 +756,7 @@ namespace convertible
         }
 
         template<typename lhs_t, typename rhs_t>
+            requires (concepts::mappable<mapping_ts, lhs_t, rhs_t> || ...)
         bool equal(lhs_t&& lhs, rhs_t&& rhs) const
         {
             return std::apply([&lhs, &rhs](auto&&... args){

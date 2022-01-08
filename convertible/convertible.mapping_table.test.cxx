@@ -53,7 +53,6 @@ SCENARIO("convertible: Mapping table")
                 REQUIRE(lhs.val1 == rhs.val1);
                 REQUIRE(lhs.val2 == rhs.val2);
                 REQUIRE(table.equal(lhs, rhs));
-                REQUIRE(table.equal(rhs, lhs));
             }
         }
         WHEN("assigning lhs (r-value) to rhs")
@@ -85,7 +84,6 @@ SCENARIO("convertible: Mapping table")
                 REQUIRE(lhs.val1 == rhs.val1);
                 REQUIRE(lhs.val2 == rhs.val2);
                 REQUIRE(table.equal(lhs, rhs));
-                REQUIRE(table.equal(rhs, lhs));
             }
         }
         WHEN("assigning rhs (r-value) to lhs")
@@ -98,7 +96,7 @@ SCENARIO("convertible: Mapping table")
             {
                 REQUIRE(lhs.val1 == 10);
                 REQUIRE(lhs.val2 == "hello");
-                REQUIRE(table.equal(lhs, type_a{10, "hello"}));
+                REQUIRE(table.equal(lhs, type_b{10, "hello"}));
 
                 AND_THEN("rhs is moved from")
                 {
@@ -135,7 +133,6 @@ SCENARIO("convertible: Mapping table")
             {
                 REQUIRE(lhs_a.val1 == rhs_b.val1);
                 REQUIRE(table.equal(lhs_a, rhs_b));
-                REQUIRE(table.equal(rhs_b, lhs_a));
             }
         }
         WHEN("assigning lhs (a) to rhs (c)")
@@ -148,7 +145,6 @@ SCENARIO("convertible: Mapping table")
             {
                 REQUIRE(lhs_a.val1 == rhs_c.val1);
                 REQUIRE(table.equal(lhs_a, rhs_c));
-                REQUIRE(table.equal(rhs_c, lhs_a));
             }
         }
     }
