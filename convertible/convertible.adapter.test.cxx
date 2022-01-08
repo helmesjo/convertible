@@ -369,13 +369,9 @@ SCENARIO("convertible: Adapters")
 
             auto adapterRval = adapter::member(&type::str, std::move(obj));
 
-            const auto movedTo = static_cast<std::string>(adapterRval);
+            const std::string movedTo = adapterRval;
             REQUIRE(movedTo == "world");
-
-            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
-            // of std::string when doing static cast here, which causes it to not be moved-from.
-            // See example here: https://godbolt.org/z/jPrhvMhWd
-            //REQUIRE(obj.str == "");
+            REQUIRE(obj.str == "");
 
             std::string fromStr = "hello";
             adapterRval = std::move(fromStr);
@@ -428,13 +424,9 @@ SCENARIO("convertible: Adapters")
 
             auto adapterRval = adapter::index<0>(std::move(values));
 
-            const auto movedTo = static_cast<std::string>(adapterRval);
+            const std::string movedTo = adapterRval;
             REQUIRE(movedTo == "world");
-
-            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
-            // of std::string when doing static cast here, which causes it to not be moved-from.
-            // See example here: https://godbolt.org/z/jPrhvMhWd
-            //REQUIRE(values[0] == "");
+            REQUIRE(values[0] == "");
 
             std::string fromStr = "hello";
             adapterRval = std::move(fromStr);
@@ -494,13 +486,9 @@ SCENARIO("convertible: Adapters")
             auto adapterRval = adapter::deref(std::move(&str));
 
             str = "hello";
-            const auto movedTo = static_cast<std::string>(adapterRval);
+            const std::string movedTo = adapterRval;
             REQUIRE(movedTo == "hello");
-
-            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
-            // of std::string when doing static cast here, which causes it to not be moved-from.
-            // See example here: https://godbolt.org/z/jPrhvMhWd
-            //REQUIRE(str == "");
+            REQUIRE(str == "");
 
             std::string fromStr = "hello";
             adapterRval = std::move(fromStr);
@@ -577,13 +565,9 @@ SCENARIO("convertible: Adapter composition")
             type obj{ &str };
             auto adapterRval = adapter::deref(adapter::member(&type::val, std::move(obj)));
 
-            const auto movedTo = static_cast<std::string>(adapterRval);
+            const std::string movedTo = adapterRval;
             REQUIRE(movedTo == "hello");
-
-            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
-            // of std::string when doing static cast here, which causes it to not be moved-from.
-            // See example here: https://godbolt.org/z/jPrhvMhWd
-            //REQUIRE(str == "");
+            REQUIRE(str == "");
 
             std::string fromStr = "hello";
             adapterRval = std::move(fromStr);
@@ -598,11 +582,7 @@ SCENARIO("convertible: Adapter composition")
 
             const auto movedTo = static_cast<std::string>(composedAdapter);
             REQUIRE(movedTo == "hello");
-
-            // GCC/Clang/MSVC choose the conversion template with std::string_view instead
-            // of std::string when doing static cast here, which causes it to not be moved-from.
-            // See example here: https://godbolt.org/z/jPrhvMhWd
-            //REQUIRE(str == "");
+            REQUIRE(str == "");
         }
     }
 }
