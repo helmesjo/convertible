@@ -20,6 +20,7 @@ exe{*.test}:
 {
   test = true
   install = false
+  test.arguments = --no-intro
 }
 
 for t: cxx{**.test...}
