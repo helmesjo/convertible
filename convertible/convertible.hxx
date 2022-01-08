@@ -456,8 +456,9 @@ namespace convertible
                 return read() == other;
             }
 
-            bool operator==(const concepts::adapter auto& other) const
-                requires (!std::same_as<object, std::decay_t<decltype(other)>>) && std::equality_comparable_with<value_t&, typename std::decay_t<decltype(other)>::out_t>
+            template<concepts::adapter adapter_t>
+            bool operator==(const adapter_t& other) const
+                requires (!std::same_as<object, std::decay_t<adapter_t>>) && std::equality_comparable_with<value_t&, typename std::decay_t<adapter_t>::out_t>
             {
                 return read() == other;
             }
