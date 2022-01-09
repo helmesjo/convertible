@@ -6,6 +6,7 @@ license: MIT
 description-file: README.md
 url: https://example.org/convertible
 email: helmesjo@gmail.com
+requires: c++20
 depends: * build2 >= 0.14.0
 depends: * bpkg >= 0.13.0
 depends: doctest ^2.4.7
