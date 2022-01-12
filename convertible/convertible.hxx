@@ -223,6 +223,12 @@ namespace convertible
         };
     }
 
+    namespace traits
+    {
+        template<typename arg_t, concepts::adapter... adapter_t>
+        constexpr std::size_t adaptable_count_v = (concepts::adaptable<arg_t, adapter_t> +...);
+    }
+
     namespace adapter
     {
         namespace details
@@ -678,17 +684,23 @@ namespace convertible
     template<concepts::adapter lhs_adapter_t, concepts::adapter rhs_adapter_t, typename converter_t = converter::identity>
     struct mapping
     {
-        constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
-            lhsAdapter_(std::move(lhsAdapter)),
-            rhsAdapter_(std::move(rhsAdapter)),
-            converter_(std::move(converter))
-        {}
+        using lsh_adapter_tt = lhs_adapter_t;
+        using rhs_adapter_tt = rhs_adapter_t;
 
         template<typename lhs_t>
         using lhs_make_t = adapter::make_t<lhs_adapter_t, lhs_t>;
 
         template<typename rhs_t>
         using rhs_make_t = adapter::make_t<rhs_adapter_t, rhs_t>;
+
+        template<typename arg_t>
+        using result_t = std::invoke_result_t<converter_t, typename lhs_make_t<arg_t>::value_t>;
+
+        constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
+            lhsAdapter_(std::move(lhsAdapter)),
+            rhsAdapter_(std::move(rhsAdapter)),
+            converter_(std::move(converter))
+        {}
 
         template<typename operator_t>
         decltype(auto) exec(concepts::adapter auto& lhs, concepts::adapter auto& rhs) const
@@ -731,6 +743,9 @@ namespace convertible
         return (FWD(callback)(FWD(args)) && ...);
     }
 
+    template<typename T>
+    struct detect;
+
     template<typename... mapping_ts>
     struct mapping_table
     {
@@ -770,6 +785,38 @@ namespace convertible
                 }, FWD(args)...);
             }, mappings_);
         }
+
+        template<typename arg_t,
+            auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lsh_adapter_tt...>,
+            auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
+           // requires (lhs_matches > rhs_matches)
+        auto operator()(arg_t&& arg) const
+        {
+            using result_t = typename std::tuple_element_t<0, std::tuple<mapping_ts...>>::rhs_adapter_tt::object_t;
+            std::remove_pointer_t<std::decay_t<result_t>> ret;
+
+            assign<direction::lhs_to_rhs>(arg, ret);
+
+            return ret;
+        }
+
+        //template<typename arg_t,
+        //    auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lsh_adapter_tt...>,
+        //    auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
+        //    requires (lhs_matches < rhs_matches)
+        //auto operator()(arg_t&& arg) const
+        //{
+        //    int i = 0;
+        //}
+
+        //template<typename arg_t,
+        //    auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lsh_adapter_tt...>,
+        //    auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
+        //    requires (lhs_matches == rhs_matches)
+        //auto operator()(arg_t&& arg) const
+        //{
+        //    int i = 0;
+        //}
 
         std::tuple<mapping_ts...> mappings_;
     };

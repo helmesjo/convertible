@@ -150,6 +150,37 @@ SCENARIO("convertible: Mapping table")
     }
 }
 
+SCENARIO("convertible: Mapping table as a converter")
+{
+    using namespace convertible;
+
+    struct type_a
+    {
+        std::string val;
+    };
+
+    struct type_b
+    {
+        std::string val;
+    };
+    GIVEN("mapping table between \n\n\ta <-> b\n")
+    {
+        mapping_table table{
+            mapping(adapter::member(&type_a::val), adapter::member(&type_b::val))
+        };
+
+        WHEN("invoked with a")
+        {
+            type_a a = { "hello" };
+            type_b b = table(a);
+            THEN("it returns b")
+            {
+                REQUIRE(b.val == a.val);
+            }
+        }
+    }
+}
+
 SCENARIO("convertible: Mapping table (misc use-cases)")
 {
     using namespace convertible;
