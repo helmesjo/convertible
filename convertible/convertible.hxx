@@ -106,6 +106,11 @@ namespace convertible
 
     namespace adapter
     {
+        namespace details
+        {
+            struct placeholder;
+        }
+
         template<typename obj_t, typename reader_t>
             requires std::invocable<reader_t, obj_t>
         struct object;
@@ -188,6 +193,9 @@ namespace convertible
             { adapter.make(arg) } -> class_type;
         };
 
+        template<typename adapter_t>
+        concept adapted_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, adapter::details::placeholder>);
+
         template<typename mapping_t, typename lhs_t, typename rhs_t>
         concept mappable = requires(mapping_t mapping, lhs_t lhs, rhs_t rhs)
         {
@@ -225,8 +233,8 @@ namespace convertible
 
     namespace traits
     {
-        template<typename arg_t, concepts::adapter... adapter_t>
-        constexpr std::size_t adaptable_count_v = (concepts::adaptable<arg_t, adapter_t> +...);
+        template<typename arg_t, concepts::adapter... adapter_ts>
+        constexpr std::size_t adaptable_count_v = ((concepts::adapted_type_known<adapter_ts> && concepts::adaptable<arg_t, adapter_ts>) +...);
     }
 
     namespace adapter
@@ -684,7 +692,7 @@ namespace convertible
     template<concepts::adapter lhs_adapter_t, concepts::adapter rhs_adapter_t, typename converter_t = converter::identity>
     struct mapping
     {
-        using lsh_adapter_tt = lhs_adapter_t;
+        using lhs_adapter_tt = lhs_adapter_t;
         using rhs_adapter_tt = rhs_adapter_t;
 
         template<typename lhs_t>
@@ -692,9 +700,6 @@ namespace convertible
 
         template<typename rhs_t>
         using rhs_make_t = adapter::make_t<rhs_adapter_t, rhs_t>;
-
-        template<typename arg_t>
-        using result_t = std::invoke_result_t<converter_t, typename lhs_make_t<arg_t>::value_t>;
 
         constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
             lhsAdapter_(std::move(lhsAdapter)),
@@ -787,9 +792,9 @@ namespace convertible
         }
 
         template<typename arg_t,
-            auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lsh_adapter_tt...>,
+            auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lhs_adapter_tt...>,
             auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
-           // requires (lhs_matches > rhs_matches)
+            requires (lhs_matches > rhs_matches)
         auto operator()(arg_t&& arg) const
         {
             using result_t = typename std::tuple_element_t<0, std::tuple<mapping_ts...>>::rhs_adapter_tt::object_t;
@@ -800,23 +805,19 @@ namespace convertible
             return ret;
         }
 
-        //template<typename arg_t,
-        //    auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lsh_adapter_tt...>,
-        //    auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
-        //    requires (lhs_matches < rhs_matches)
-        //auto operator()(arg_t&& arg) const
-        //{
-        //    int i = 0;
-        //}
+        template<typename arg_t,
+            auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lhs_adapter_tt...>,
+            auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
+            requires (lhs_matches < rhs_matches)
+        auto operator()(arg_t&& arg) const
+        {
+            using result_t = typename std::tuple_element_t<0, std::tuple<mapping_ts...>>::lhs_adapter_tt::object_t;
+            std::remove_pointer_t<std::decay_t<result_t>> ret;
 
-        //template<typename arg_t,
-        //    auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lsh_adapter_tt...>,
-        //    auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
-        //    requires (lhs_matches == rhs_matches)
-        //auto operator()(arg_t&& arg) const
-        //{
-        //    int i = 0;
-        //}
+            assign<direction::rhs_to_lhs>(ret, arg);
+
+            return ret;
+        }
 
         std::tuple<mapping_ts...> mappings_;
     };

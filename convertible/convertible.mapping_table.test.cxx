@@ -178,6 +178,15 @@ SCENARIO("convertible: Mapping table as a converter")
                 REQUIRE(b.val == a.val);
             }
         }
+        WHEN("invoked with b")
+        {
+            type_b b = { "hello" };
+            type_a a = table(b);
+            THEN("it returns a")
+            {
+                REQUIRE(a.val == b.val);
+            }
+        }
     }
 }
 
