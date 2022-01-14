@@ -111,6 +111,63 @@ SCENARIO("convertible: Mapping")
     }
 }
 
+SCENARIO("convertible: Mapping as a converter")
+{
+    using namespace convertible;
+
+    struct type_a
+    {
+        std::string val;
+    };
+
+    struct type_b
+    {
+        std::string val;
+    };
+
+    GIVEN("mapping between \n\n\ta <-> b\n")
+    {
+        auto map = mapping(adapter::member(&type_a::val), adapter::member(&type_b::val));
+
+        WHEN("invoked with a")
+        {
+            type_a a = { "hello" };
+            type_b b = map(a);
+            THEN("it returns b")
+            {
+                REQUIRE(b.val == a.val);
+            }
+        }
+        WHEN("invoked with a (r-value)")
+        {
+            type_a a = { "hello" };
+            (void)map(std::move(a));
+            THEN("a is moved from")
+            {
+                REQUIRE(a.val == "");
+            }
+        }
+        WHEN("invoked with b")
+        {
+            type_b b = { "hello" };
+            type_a a = map(b);
+            THEN("it returns a")
+            {
+                REQUIRE(a.val == b.val);
+            }
+        }
+        WHEN("invoked with b (r-value)")
+        {
+            type_b b = { "hello" };
+            (void)map(std::move(b));
+            THEN("b is moved from")
+            {
+                REQUIRE(b.val == "");
+            }
+        }
+    }
+}
+
 SCENARIO("convertible: Mapping (misc use-cases)")
 {
     using namespace convertible;
