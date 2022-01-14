@@ -52,6 +52,23 @@ SCENARIO("convertible: Traits")
     static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>>>);
     static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
     static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
+
+    // unique_types
+    static_assert(std::is_same_v<std::tuple<int, float>, traits::unique_types_t<int, float, int, float>>);
+    static_assert(std::is_same_v<std::tuple<float, int>, traits::unique_types_t<int, float, float, int>>);
+
+    // unique_derived_types
+    {
+        struct base {};
+        struct derived_a: base {};
+        struct derived_b: derived_a {};
+        struct derived_c: base {};
+
+        //detect<traits::unique_derived_types_t<base, derived>> ads;
+        static_assert(std::is_same_v<std::tuple<derived_a>, traits::unique_derived_types_t<base, derived_a>>);
+        static_assert(std::is_same_v<std::tuple<derived_b>, traits::unique_derived_types_t<base, derived_a, derived_b>>);
+        static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, traits::unique_derived_types_t<base, derived_a, derived_b, derived_c>>);
+    }
 }
 
 namespace tests

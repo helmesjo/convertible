@@ -146,6 +146,21 @@ namespace convertible
 
             template<typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
             struct executable<direction::lhs_to_rhs, callable_t, lhs_t, rhs_t, converter_t> : std::integral_constant<bool, std::is_invocable_v<callable_t, rhs_t, lhs_t, converter_t>> {};
+
+            template<template<typename, typename> typename op_t, typename... unique_ts>
+            struct unique_types
+            {
+                using type = decltype(std::tuple(std::declval<unique_ts...>()));
+            };
+
+            template<template<typename, typename> typename op_t, typename... unique_ts, typename head_t, typename... tail_ts>
+            struct unique_types<op_t, std::tuple<unique_ts...>, head_t, tail_ts...>
+            {
+                using type = typename std::conditional_t<(op_t<head_t, tail_ts>::value || ...),
+                    unique_types<op_t, std::tuple<unique_ts...>, tail_ts...>,
+                    unique_types<op_t, std::tuple<unique_ts..., head_t>, tail_ts...>
+                >::type;
+            };
         }
 
         template<typename member_ptr_t>
@@ -162,6 +177,12 @@ namespace convertible
 
         template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
         constexpr bool executable_v = details::executable<dir, callable_t, lhs_t, rhs_t, converter_t>::value;
+
+        template<typename... arg_ts>
+        using unique_types_t = typename details::unique_types<std::is_same, std::tuple<>, arg_ts...>::type;
+
+        template<typename... arg_ts>
+        using unique_derived_types_t = typename details::unique_types<std::is_base_of, std::tuple<>, arg_ts...>::type;
     }
 
     namespace concepts
