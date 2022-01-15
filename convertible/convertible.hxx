@@ -822,17 +822,13 @@ namespace convertible
 
     template<typename callback_t, typename... arg_ts>
         requires (sizeof...(arg_ts) > 1 || (!concepts::tuple_like<arg_ts> && ...))
-    constexpr auto for_each(callback_t&& callback, arg_ts&&... args)
+    constexpr bool for_each(callback_t&& callback, arg_ts&&... args)
     {
-        constexpr bool returns_bool = ((std::same_as<bool, std::invoke_result_t<callback_t, arg_ts>>) && ...);
-        if constexpr(returns_bool)
-            return (FWD(callback)(FWD(args)) && ...);
-        else
-            (FWD(callback)(FWD(args)), ...);
+        return (FWD(callback)(FWD(args)) && ...);
     }
 
     template<typename callback_t, concepts::tuple_like pack_t>
-    constexpr auto for_each(callback_t&& callback, pack_t&& pack)
+    constexpr bool for_each(callback_t&& callback, pack_t&& pack)
     {
         return std::apply([&](auto&&... args){
             return for_each(FWD(callback), FWD(args)...);
@@ -860,6 +856,7 @@ namespace convertible
                 {
                     map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
                 }
+                return true;
             }, mappings_);
         }
 
@@ -873,10 +870,7 @@ namespace convertible
                 {
                     return map.equal(lhs, rhs);
                 }
-                else
-                {
-                    return true;
-                }
+                return true;
             }, mappings_);
         }
 
@@ -891,12 +885,13 @@ namespace convertible
         {
             result_t rets;
 
-            for_each([&](auto&& rhs){
+            for_each([&](auto&& rhs) -> bool{
                 using rhs_t = decltype(rhs);
                 if constexpr((concepts::mappable<mapping_ts, operators::assign, direction::lhs_to_rhs, lhs_t, rhs_t> || ...))
                 {
                     assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), FWD(rhs));
                 }
+                return true;
             }, FWD(rets));
 
             if constexpr(std::tuple_size_v<result_t> == 1)
@@ -920,12 +915,13 @@ namespace convertible
         {
             result_t rets;
 
-            for_each([&](auto&& lhs){
+            for_each([&](auto&& lhs) -> bool{
                 using lhs_t = decltype(lhs);
                 if constexpr((concepts::mappable<mapping_ts, operators::assign, direction::rhs_to_lhs, lhs_t, rhs_t> || ...))
                 {
                     assign<direction::rhs_to_lhs>(FWD(lhs), std::forward<rhs_t>(rhs));
                 }
+                return true;
             }, FWD(rets));
 
             if constexpr(std::tuple_size_v<result_t> == 1)
