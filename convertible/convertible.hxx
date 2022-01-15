@@ -833,6 +833,9 @@ namespace convertible
     template<typename... mapping_ts>
     struct mapping_table
     {
+        using lhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::lhs_adapter_t::object_t>>...>;
+        using rhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::rhs_adapter_t::object_t>>...>;
+
         constexpr explicit mapping_table(mapping_ts... mappings):
             mappings_(std::move(mappings)...)
         {
@@ -875,12 +878,25 @@ namespace convertible
             )
         auto operator()(lhs_t&& lhs) const
         {
-            using result_t = typename std::tuple_element_t<0, std::tuple<mapping_ts...>>::rhs_adapter_tt::object_t;
-            std::remove_pointer_t<std::decay_t<result_t>> ret;
+            result_t rets;
 
-            assign<direction::lhs_to_rhs>(arg, ret);
+            for_each([&](auto&& rhs) -> bool{
+                using rhs_t = decltype(rhs);
+                if constexpr(requires{ assign<direction::lhs_to_rhs>(lhs, rhs); })
+                {
+                    assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), FWD(rhs));
+                }
+                return true;
+            }, FWD(rets));
 
-            return ret;
+            if constexpr(std::tuple_size_v<result_t> == 1)
+            {
+                return std::get<0>(rets);
+            }
+            else
+            {
+                return rets;
+            }
         }
 
         template<typename rhs_t, typename result_t = lhs_unique_types>
@@ -892,12 +908,25 @@ namespace convertible
             )
         auto operator()(rhs_t&& rhs) const
         {
-            using result_t = typename std::tuple_element_t<0, std::tuple<mapping_ts...>>::lhs_adapter_tt::object_t;
-            std::remove_pointer_t<std::decay_t<result_t>> ret;
+            result_t rets;
 
-            assign<direction::rhs_to_lhs>(ret, arg);
+            for_each([&](auto&& lhs) -> bool{
+                using lhs_t = decltype(lhs);
+                if constexpr(requires{ assign<direction::rhs_to_lhs>(lhs, rhs); })
+                {
+                    assign<direction::rhs_to_lhs>(FWD(lhs), std::forward<rhs_t>(rhs));
+                }
+                return true;
+            }, FWD(rets));
 
-            return ret;
+            if constexpr(std::tuple_size_v<result_t> == 1)
+            {
+                return std::get<0>(rets);
+            }
+            else
+            {
+                return rets;
+            }
         }
 
         std::tuple<mapping_ts...> mappings_;

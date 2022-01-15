@@ -163,6 +163,17 @@ SCENARIO("convertible: Mapping table as a converter")
     {
         std::string val;
     };
+
+    struct type_c
+    {
+        std::string val;
+    };
+
+    struct type_d
+    {
+        std::string val;
+    };
+
     GIVEN("mapping table between \n\n\ta <-> b\n")
     {
         mapping_table table{
@@ -185,6 +196,56 @@ SCENARIO("convertible: Mapping table as a converter")
             THEN("it returns a")
             {
                 REQUIRE(a.val == b.val);
+            }
+        }
+    }
+    GIVEN("mapping table between \n\n\ta <-> b\n\tc <-> d\n")
+    {
+        mapping_table table{
+            mapping(adapter::member(&type_a::val), adapter::member(&type_b::val)),
+            mapping(adapter::member(&type_c::val), adapter::member(&type_d::val))
+        };
+
+        WHEN("invoked with a")
+        {
+            type_a a = { "hello" };
+
+            auto [b, d] = table(a);
+            static_assert(std::same_as<decltype(b), type_b>);
+            static_assert(std::same_as<decltype(d), type_d>);
+
+            THEN("it returns b & d")
+            {
+                REQUIRE(b.val == a.val);
+                REQUIRE(d.val == "");
+            }
+        }
+        WHEN("invoked with b")
+        {
+            type_b b = { "hello" };
+
+            auto [a, c] = table(b);
+            static_assert(std::same_as<decltype(a), type_a>);
+            static_assert(std::same_as<decltype(c), type_c>);
+
+            THEN("it returns a & c")
+            {
+                REQUIRE(a.val == b.val);
+                REQUIRE(c.val == "");
+            }
+        }
+        WHEN("invoked with c")
+        {
+            type_c c = { "hello" };
+            
+            auto [b, d] = table(c);
+            static_assert(std::same_as<decltype(b), type_b>);
+            static_assert(std::same_as<decltype(d), type_d>);
+
+            THEN("it returns b & d")
+            {
+                REQUIRE(b.val == "");
+                REQUIRE(d.val == c.val);
             }
         }
     }
