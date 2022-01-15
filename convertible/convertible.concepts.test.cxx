@@ -33,6 +33,12 @@ namespace
             return std::to_string(val);
         }
     };
+
+    struct some_mapping
+    {
+        template<typename operator_t, MSVC_ENUM_FIX(convertible::direction) dir>
+        void exec(int, int){}
+    };
 }
 
 SCENARIO("convertible: Traits")
@@ -69,15 +75,6 @@ SCENARIO("convertible: Traits")
         static_assert(std::is_same_v<std::tuple<derived_b>, traits::unique_derived_types_t<base, derived_a, derived_b>>);
         static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, traits::unique_derived_types_t<base, derived_a, derived_b, derived_c>>);
     }
-}
-
-namespace tests
-{
-    struct mappable_type
-    {
-        template<MSVC_ENUM_FIX(convertible::direction) dir>
-        void assign(int, int){}
-    };
 }
 
 SCENARIO("convertible: Concepts")
@@ -136,8 +133,10 @@ SCENARIO("convertible: Concepts")
 
     // mappable:
     {
-        static_assert(concepts::mappable<tests::mappable_type, int, int>);
-        static_assert(concepts::mappable<tests::mappable_type, int, std::string> == false);
+        struct dummy_op{};
+        static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, int>);
+        struct dummy{};
+        static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, dummy> == false);
     }
 
     // executable

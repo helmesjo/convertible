@@ -217,12 +217,6 @@ namespace convertible
         template<typename adapter_t>
         concept adapted_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, adapter::details::placeholder>);
 
-        template<typename mapping_t, typename lhs_t, typename rhs_t>
-        concept mappable = requires(mapping_t mapping, lhs_t lhs, rhs_t rhs)
-        {
-            { mapping.template assign<direction::rhs_to_lhs>(lhs, rhs) };
-        };
-
         template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
         concept executable_with = traits::executable_v<dir, callable_t, lhs_t, rhs_t, converter_t>;
 
@@ -789,6 +783,15 @@ namespace convertible
         converter_t converter_;
     };
 
+    namespace concepts
+    {
+        template<typename mapping_t, typename operator_t, MSVC_ENUM_FIX(direction) dir, typename lhs_t, typename rhs_t>
+        concept mappable = requires(mapping_t m, lhs_t l, rhs_t r)
+        {
+            { m.template exec<operator_t, dir>(l, r) };
+        };
+    }
+
     template<typename callback_t, typename... arg_ts>
     constexpr bool for_each(callback_t&& callback, arg_ts&&... args)
     {
@@ -815,13 +818,13 @@ namespace convertible
         }
 
         template<MSVC_ENUM_FIX(direction) dir, typename lhs_t, typename rhs_t>
-            requires (concepts::mappable<mapping_ts, lhs_t, rhs_t> || ...)
+            requires (concepts::mappable<mapping_ts, operators::assign, dir, lhs_t, rhs_t> || ...)
         void assign(lhs_t&& lhs, rhs_t&& rhs) const
         {
             std::apply([&lhs, &rhs](auto&&... args){
                 for_each([&lhs, &rhs](auto&& map){
                     using mapping_t = decltype(map);
-                    if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
+                    if constexpr(concepts::mappable<mapping_t, operators::assign, dir, lhs_t, rhs_t>)
                     {
                         map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
                     }
@@ -831,15 +834,15 @@ namespace convertible
         }
 
         template<typename lhs_t, typename rhs_t>
-            requires (concepts::mappable<mapping_ts, lhs_t, rhs_t> || ...)
-        bool equal(lhs_t&& lhs, rhs_t&& rhs) const
+            requires (concepts::mappable<mapping_ts, operators::equal, direction::rhs_to_lhs, lhs_t, rhs_t> || ...)
+        bool equal(const lhs_t& lhs, const rhs_t& rhs) const
         {
             return std::apply([&lhs, &rhs](auto&&... args){
                 return for_each([&lhs, &rhs](auto&& map) -> bool{
                     using mapping_t = decltype(map);
-                    if constexpr(concepts::mappable<mapping_t, lhs_t, rhs_t>)
+                    if constexpr(concepts::mappable<mapping_t, operators::equal, direction::rhs_to_lhs, lhs_t, rhs_t>)
                     {
-                        return map.equal(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
+                        return map.equal(lhs, rhs);
                     }
                     return true;
                 }, FWD(args)...);
