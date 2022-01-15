@@ -241,6 +241,32 @@ namespace convertible
             std::begin(t); // equality-preserving for forward iterators
             std::end  (t);
         };
+
+        // Credit: https://stackoverflow.com/a/68444475
+        template<class T, std::size_t N>
+        concept has_tuple_element =
+        requires(T t) {
+            typename std::tuple_element_t<N, std::remove_const_t<T>>;
+            { get<N>(t) } -> std::convertible_to<const std::tuple_element_t<N, T>&>;
+        };
+
+        namespace details
+        {
+            template<typename T, std::size_t... N>
+            consteval bool has_tuple_element_v(std::index_sequence<N...>)
+            {
+                return (has_tuple_element<T, N> && ...); 
+            }
+        }
+
+        template<class U, class T = std::remove_reference_t<U>>
+        concept tuple_like = requires(T t) { 
+            typename std::tuple_size<T>::type; 
+            requires std::derived_from<
+            std::tuple_size<T>, 
+            std::integral_constant<std::size_t, std::tuple_size_v<T>>
+            >;
+        } && details::has_tuple_element_v<T>(std::make_index_sequence<std::tuple_size_v<T>>());
     }
 
     namespace traits
@@ -790,21 +816,19 @@ namespace convertible
     }
 
     template<typename callback_t, typename... arg_ts>
+        requires (sizeof...(arg_ts) > 1 || (!concepts::tuple_like<arg_ts> && ...))
     constexpr bool for_each(callback_t&& callback, arg_ts&&... args)
     {
         return (FWD(callback)(FWD(args)) && ...);
     }
 
-    template<typename callback_t, typename... arg_ts>
-    constexpr bool for_each(callback_t&& callback, std::tuple<arg_ts...>& tuple)
+    template<typename callback_t, concepts::tuple_like pack_t>
+    constexpr bool for_each(callback_t&& callback, pack_t&& pack)
     {
         return std::apply([&](auto&&... args){
             return for_each(FWD(callback), FWD(args)...);
-        }, FWD(tuple));
+        }, FWD(pack));
     }
-
-    template<typename T>
-    struct detect;
 
     template<typename... mapping_ts>
     struct mapping_table
@@ -818,15 +842,13 @@ namespace convertible
             requires (concepts::mappable<mapping_ts, operators::assign, dir, lhs_t, rhs_t> || ...)
         void assign(lhs_t&& lhs, rhs_t&& rhs) const
         {
-            std::apply([&lhs, &rhs](auto&&... args){
-                for_each([&lhs, &rhs](auto&& map){
-                    using mapping_t = decltype(map);
-                    if constexpr(concepts::mappable<mapping_t, operators::assign, dir, lhs_t, rhs_t>)
-                    {
-                        map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
-                    }
-                    return true;
-                }, FWD(args)...);
+            for_each([&lhs, &rhs](auto&& map){
+                using mapping_t = decltype(map);
+                if constexpr(requires{ map.template assign<dir>(lhs, rhs); })
+                {
+                    map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
+                }
+                return true;
             }, mappings_);
         }
 
@@ -834,15 +856,13 @@ namespace convertible
             requires (concepts::mappable<mapping_ts, operators::equal, direction::rhs_to_lhs, lhs_t, rhs_t> || ...)
         bool equal(const lhs_t& lhs, const rhs_t& rhs) const
         {
-            return std::apply([&lhs, &rhs](auto&&... args){
-                return for_each([&lhs, &rhs](auto&& map) -> bool{
-                    using mapping_t = decltype(map);
-                    if constexpr(concepts::mappable<mapping_t, operators::equal, direction::rhs_to_lhs, lhs_t, rhs_t>)
-                    {
-                        return map.equal(lhs, rhs);
-                    }
-                    return true;
-                }, FWD(args)...);
+            return for_each([&lhs, &rhs](auto&& map) -> bool{
+                using mapping_t = decltype(map);
+                if constexpr(requires{ map.equal(lhs, rhs); })
+                {
+                    return map.equal(lhs, rhs);
+                }
+                return true;
             }, mappings_);
         }
 
