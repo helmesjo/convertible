@@ -272,7 +272,7 @@ namespace convertible
     namespace traits
     {
         template<typename arg_t, concepts::adapter... adapter_ts>
-        constexpr std::size_t adaptable_count_v = ((concepts::adapted_type_known<adapter_ts> && concepts::adaptable<arg_t, adapter_ts>) +...);
+        constexpr std::size_t adaptable_count_v = (concepts::adaptable<arg_t, adapter_ts> +...);
     }
 
     namespace adapter
@@ -866,11 +866,14 @@ namespace convertible
             }, mappings_);
         }
 
-        template<typename arg_t,
-            auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lhs_adapter_tt...>,
-            auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
-            requires (lhs_matches > rhs_matches)
-        auto operator()(arg_t&& arg) const
+        template<typename lhs_t, typename result_t = rhs_unique_types>
+            requires (concepts::adapted_type_known<typename mapping_ts::rhs_adapter_t> || ...) &&
+            (
+                traits::adaptable_count_v<lhs_t, typename mapping_ts::lhs_adapter_t...>
+                >
+                traits::adaptable_count_v<lhs_t, typename mapping_ts::rhs_adapter_t...>
+            )
+        auto operator()(lhs_t&& lhs) const
         {
             using result_t = typename std::tuple_element_t<0, std::tuple<mapping_ts...>>::rhs_adapter_tt::object_t;
             std::remove_pointer_t<std::decay_t<result_t>> ret;
@@ -880,11 +883,14 @@ namespace convertible
             return ret;
         }
 
-        template<typename arg_t,
-            auto lhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::lhs_adapter_tt...>,
-            auto rhs_matches = traits::adaptable_count_v<arg_t, typename mapping_ts::rhs_adapter_tt...>>
-            requires (lhs_matches < rhs_matches)
-        auto operator()(arg_t&& arg) const
+        template<typename rhs_t, typename result_t = lhs_unique_types>
+            requires (concepts::adapted_type_known<typename mapping_ts::lhs_adapter_t> || ...) &&
+            (
+                traits::adaptable_count_v<rhs_t, typename mapping_ts::lhs_adapter_t...>
+                <
+                traits::adaptable_count_v<rhs_t, typename mapping_ts::rhs_adapter_t...>
+            )
+        auto operator()(rhs_t&& rhs) const
         {
             using result_t = typename std::tuple_element_t<0, std::tuple<mapping_ts...>>::lhs_adapter_tt::object_t;
             std::remove_pointer_t<std::decay_t<result_t>> ret;
