@@ -7,9 +7,9 @@
 #include <type_traits>
 
 #if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
-#define MSVC_ENUM_FIX(...) int
+#define DIR_DECL(...) int
 #else
-#define MSVC_ENUM_FIX(...) __VA_ARGS__
+#define DIR_DECL(...) __VA_ARGS__
 #endif
 
 namespace
@@ -36,7 +36,7 @@ namespace
 
     struct some_mapping
     {
-        template<typename operator_t, MSVC_ENUM_FIX(convertible::direction) dir>
+        template<typename operator_t, DIR_DECL(convertible::direction) dir>
         void exec(int, int){}
     };
 }

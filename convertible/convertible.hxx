@@ -93,15 +93,21 @@ namespace convertible
 {
     // Workaround for MSVC bug: https://developercommunity2.visualstudio.com/t/Concept-satisfaction-failure-for-member/1489332
 #if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
-#define MSVC_ENUM_FIX(...) int
+    #define DIR_DECL(...) int
+    #define DIR_READ(...) msvc_unpack_enum<__VA_ARGS__> // For bug with enum var used in requires-clause
 
     namespace direction
     {
-        static constexpr auto lhs_to_rhs = 0;
-        static constexpr auto rhs_to_lhs = 1;
+        static constexpr int lhs_to_rhs = 0;
+        static constexpr int rhs_to_lhs = 1;
     };
+    
+    template<DIR_DECL(direction) dir>
+    constexpr auto msvc_unpack_enum = dir;
 #else
-#define MSVC_ENUM_FIX(...) __VA_ARGS__
+    #define DIR_DECL(...) __VA_ARGS__
+    #define DIR_READ(...) __VA_ARGS__
+
     enum class direction
     {
         lhs_to_rhs,
@@ -143,7 +149,7 @@ namespace convertible
             template<typename... arg_ts>
             struct is_adapter<adapter::object<arg_ts...>>: std::true_type {};
 
-            template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+            template<DIR_DECL(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
             struct executable : std::false_type {};
 
             template<typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
@@ -180,7 +186,7 @@ namespace convertible
         template<typename T>
         constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
 
-        template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+        template<DIR_DECL(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
         constexpr bool executable_v = details::executable<dir, callable_t, lhs_t, rhs_t, converter_t>::value;
 
         template<typename... arg_ts>
@@ -219,7 +225,13 @@ namespace convertible
         template<typename adapter_t>
         concept adapted_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, adapter::details::placeholder>);
 
-        template<MSVC_ENUM_FIX(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
+        template<typename mapping_t, typename operator_t, DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
+        concept mappable = requires(mapping_t m, lhs_t&& l, rhs_t&& r)
+        {
+            { m.template exec<operator_t, dir>(l, r) };
+        };
+
+        template<DIR_DECL(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
         concept executable_with = traits::executable_v<dir, callable_t, lhs_t, rhs_t, converter_t>;
 
         template<typename lhs_t, typename rhs_t, typename converter_t>
@@ -759,7 +771,7 @@ namespace convertible
             return op(FWD(lhs), FWD(rhs), converter_);
         }
 
-        template<typename operator_t, MSVC_ENUM_FIX(direction) dir, typename lhs_t, typename rhs_t>
+        template<typename operator_t, DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
             requires (!concepts::adapter<lhs_t>) && (!concepts::adapter<rhs_t>)
         decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs) const
             requires concepts::executable_with<dir, operator_t, lhs_make_t<decltype(lhs)>&, rhs_make_t<decltype(rhs)>&, converter_t>
@@ -773,9 +785,9 @@ namespace convertible
                 return exec<operator_t>(rhsAdap, lhsAdap);
         }
 
-        template<MSVC_ENUM_FIX(direction) dir>
+        template<DIR_DECL(direction) dir>
         void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
-            requires requires(mapping m){ m.exec<operators::assign, dir>(lhs, rhs); }
+            requires requires(mapping m){ m.exec<operators::assign, DIR_READ(dir)>(lhs, rhs); }
         {
             (void)exec<operators::assign, dir>(FWD(lhs), FWD(rhs));
         }
@@ -811,15 +823,6 @@ namespace convertible
         converter_t converter_;
     };
 
-    namespace concepts
-    {
-        template<typename mapping_t, typename operator_t, MSVC_ENUM_FIX(direction) dir, typename lhs_t, typename rhs_t>
-        concept mappable = requires(mapping_t m, lhs_t l, rhs_t r)
-        {
-            { m.template exec<operator_t, dir>(l, r) };
-        };
-    }
-
     template<typename callback_t, typename... arg_ts>
         requires (sizeof...(arg_ts) > 1 || (!concepts::tuple_like<arg_ts> && ...))
     constexpr bool for_each(callback_t&& callback, arg_ts&&... args)
@@ -846,7 +849,7 @@ namespace convertible
         {
         }
 
-        template<MSVC_ENUM_FIX(direction) dir, typename lhs_t, typename rhs_t>
+        template<DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
             requires (concepts::mappable<mapping_ts, operators::assign, dir, lhs_t, rhs_t> || ...)
         void assign(lhs_t&& lhs, rhs_t&& rhs) const
         {
@@ -961,4 +964,5 @@ namespace std
 }
 
 #undef FWD
-#undef MSVC_ENUM_FIX
+#undef DIR_DECL
+#undef DIR_READ
