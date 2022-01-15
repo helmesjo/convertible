@@ -188,9 +188,6 @@ namespace convertible
     namespace concepts
     {
         template<typename T>
-        concept class_type = std::is_class_v<T>;
-
-        template<typename T>
         concept member_ptr = std::is_member_pointer_v<std::decay_t<T>>;
 
         template<typename T>
@@ -209,9 +206,9 @@ namespace convertible
         concept adapter = traits::is_adapter_v<T>;
 
         template<typename arg_t, typename adapter_t>
-        concept adaptable = requires(adapter_t adapter, arg_t arg)
+        concept adaptable = requires(adapter_t a, arg_t b)
         {
-            { adapter.make(arg) } -> class_type;
+            { a.make(b) } -> adapter;
         };
 
         template<typename adapter_t>

@@ -81,17 +81,6 @@ SCENARIO("convertible: Concepts")
 {
     using namespace convertible;
 
-    // class_type:
-    {
-        struct type
-        {
-            int member;
-        };
-
-        static_assert(concepts::class_type<type>);
-        static_assert(concepts::class_type<int> == false);
-    }
-
     // member_ptr:
     {
         struct type
