@@ -31,6 +31,11 @@ namespace std
             { lhs = std::forward<rhs_t>(rhs) } -> std::same_as<lhs_t>;
         };
 
+    template<class Derived, class Base>
+    concept derived_from =
+        std::is_base_of_v<Base, Derived> &&
+        std::is_convertible_v<const volatile Derived*, const volatile Base*>;
+
     template<class from_t, class to_t>
     concept convertible_to =
         std::is_convertible_v<from_t, to_t> &&
