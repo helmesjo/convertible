@@ -856,7 +856,7 @@ namespace convertible
         {
             for_each([&lhs, &rhs](auto&& map){
                 using mapping_t = decltype(map);
-                if constexpr(requires{ map.template assign<dir>(lhs, rhs); })
+                if constexpr(concepts::mappable<mapping_t, operators::assign, dir, lhs_t, rhs_t>)
                 {
                     map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
                 }
@@ -869,7 +869,7 @@ namespace convertible
         {
             return for_each([&lhs, &rhs](auto&& map) -> bool{
                 using mapping_t = decltype(map);
-                if constexpr(requires{ map.equal(lhs, rhs); })
+                if constexpr(concepts::mappable<mapping_t, operators::equal, direction::rhs_to_lhs, lhs_t, rhs_t>)
                 {
                     return map.equal(lhs, rhs);
                 }
@@ -893,7 +893,7 @@ namespace convertible
 
             for_each([&](auto&& rhs){
                 using rhs_t = decltype(rhs);
-                if constexpr(requires{ assign<direction::lhs_to_rhs>(lhs, rhs); })
+                if constexpr((concepts::mappable<mapping_ts, operators::assign, direction::lhs_to_rhs, lhs_t, rhs_t> || ...))
                 {
                     assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), FWD(rhs));
                 }
@@ -922,7 +922,7 @@ namespace convertible
 
             for_each([&](auto&& lhs){
                 using lhs_t = decltype(lhs);
-                if constexpr(requires{ assign<direction::rhs_to_lhs>(lhs, rhs); })
+                if constexpr((concepts::mappable<mapping_ts, operators::assign, direction::rhs_to_lhs, lhs_t, rhs_t> || ...))
                 {
                     assign<direction::rhs_to_lhs>(FWD(lhs), std::forward<rhs_t>(rhs));
                 }
