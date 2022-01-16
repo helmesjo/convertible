@@ -111,6 +111,42 @@ SCENARIO("convertible: Mapping")
     }
 }
 
+SCENARIO("convertible: Mapping constexpr-ness")
+{
+    using namespace convertible;
+
+    WHEN("mapping is constexpr")
+    {
+        struct type_a{ int val = 0; };
+        struct type_b{ int val = 0; };
+        static constexpr type_a lhsVal;
+        static constexpr type_b rhsVal;
+
+        constexpr auto lhsAdapter = adapter::member(&type_a::val);
+        constexpr auto rhsAdapter = adapter::member(&type_b::val);
+
+        constexpr auto map = mapping(lhsAdapter, rhsAdapter);
+
+        THEN("constexpr construction")
+        {
+            constexpr decltype(map) map2(map);
+            (void)map2;
+        }
+        THEN("constexpr conversion")
+        {
+            constexpr type_a a = map(type_b{5});
+            constexpr type_b b = map(type_a{6});
+            
+            static_assert(a.val == 5);
+            static_assert(b.val == 6);
+        }
+        THEN("constexpr comparison")
+        {
+            static_assert(map.equal(lhsVal, rhsVal));
+        }
+    }
+}
+
 SCENARIO("convertible: Mapping as a converter")
 {
     using namespace convertible;
