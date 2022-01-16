@@ -226,7 +226,7 @@ namespace convertible
         concept adapted_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, adapter::details::placeholder>);
 
         template<typename mapping_t, typename operator_t, DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
-        concept mappable = requires(mapping_t m, lhs_t&& l, rhs_t&& r)
+        concept mappable = requires(mapping_t m, lhs_t l, rhs_t r)
         {
             { m.template exec<operator_t, dir>(l, r) };
         };
