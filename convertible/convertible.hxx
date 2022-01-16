@@ -100,7 +100,7 @@ namespace convertible
     {
         static constexpr int lhs_to_rhs = 0;
         static constexpr int rhs_to_lhs = 1;
-    };
+    }
     
     template<DIR_DECL(direction) dir>
     constexpr auto msvc_unpack_enum = dir;
