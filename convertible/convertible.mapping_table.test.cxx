@@ -150,6 +150,42 @@ SCENARIO("convertible: Mapping table")
     }
 }
 
+SCENARIO("convertible: Mapping table constexpr-ness")
+{
+    using namespace convertible;
+
+    WHEN("mapping table is constexpr")
+    {
+        struct type_a{ int val = 0; };
+        struct type_b{ int val = 0; };
+        static constexpr type_a lhsVal;
+        static constexpr type_b rhsVal;
+
+        constexpr auto lhsAdapter = adapter::member(&type_a::val);
+        constexpr auto rhsAdapter = adapter::member(&type_b::val);
+
+        constexpr auto table = mapping_table(mapping(lhsAdapter, rhsAdapter));
+
+        THEN("constexpr construction")
+        {
+            constexpr decltype(table) table2(table);
+            (void)table2;
+        }
+        THEN("constexpr conversion")
+        {
+            constexpr type_a a = table(type_b{5});
+            constexpr type_b b = table(type_a{6});
+            
+            static_assert(a.val == 5);
+            static_assert(b.val == 6);
+        }
+        THEN("constexpr comparison")
+        {
+            static_assert(table.equal(lhsVal, rhsVal));
+        }
+    }
+}
+
 SCENARIO("convertible: Mapping table as a converter")
 {
     using namespace convertible;

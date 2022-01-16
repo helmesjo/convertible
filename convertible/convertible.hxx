@@ -823,7 +823,7 @@ namespace convertible
 
         template<DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
             requires (concepts::mappable<mapping_ts, operators::assign, dir, lhs_t, rhs_t> || ...)
-        void assign(lhs_t&& lhs, rhs_t&& rhs) const
+        constexpr void assign(lhs_t&& lhs, rhs_t&& rhs) const
         {
             for_each([&lhs, &rhs](auto&& map){
                 using mapping_t = decltype(map);
@@ -837,7 +837,7 @@ namespace convertible
 
         template<typename lhs_t, typename rhs_t>
             requires (concepts::mappable<mapping_ts, operators::equal, direction::rhs_to_lhs, lhs_t, rhs_t> || ...)
-        bool equal(const lhs_t& lhs, const rhs_t& rhs) const
+        constexpr bool equal(const lhs_t& lhs, const rhs_t& rhs) const
         {
             return for_each([&lhs, &rhs](auto&& map) -> bool{
                 using mapping_t = decltype(map);
@@ -856,7 +856,7 @@ namespace convertible
                 >
                 traits::adaptable_count_v<lhs_t, typename mapping_ts::rhs_adapter_t...>
             )
-        auto operator()(lhs_t&& lhs) const
+        constexpr auto operator()(lhs_t&& lhs) const
         {
             result_t rets;
 
@@ -886,7 +886,7 @@ namespace convertible
                 <
                 traits::adaptable_count_v<rhs_t, typename mapping_ts::rhs_adapter_t...>
             )
-        auto operator()(rhs_t&& rhs) const
+        constexpr auto operator()(rhs_t&& rhs) const
         {
             result_t rets;
 
