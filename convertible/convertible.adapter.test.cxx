@@ -586,3 +586,78 @@ SCENARIO("convertible: Adapter composition")
         }
     }
 }
+
+SCENARIO("convertible: Adapters constexpr-ness")
+{
+    using namespace convertible;
+
+    WHEN("object & adapter is constexpr")
+    {
+        static constexpr int intVal = 1;
+        static constexpr float floatVal = 1.0f;
+
+        constexpr auto intAdapter = adapter::object(intVal);
+        constexpr auto floatAdapter = adapter::object(floatVal);
+
+        // Exercise all overloads
+        THEN("constexpr construction")
+        {
+            constexpr decltype(intAdapter) adapter2(intAdapter);
+            constexpr adapter::object<const int> adapter3(intAdapter);
+            constexpr adapter::object<const int&> adapter4(intAdapter);
+            constexpr adapter::object<const int> adapter5(floatAdapter);
+
+            (void)adapter2;
+            (void)adapter3;
+            (void)adapter4;
+            (void)adapter5;
+        }
+        THEN("constexpr conversion")
+        {
+            constexpr int val1 = intAdapter;
+            constexpr const int& val2 = intAdapter;
+            constexpr float val3 = intAdapter;
+
+            static_assert(val1 == 1);
+            static_assert(val2 == 1);
+            static_assert(val3 == 1.0f);
+        }
+        THEN("constexpr assign")
+        {
+            constexpr decltype(intAdapter) adapter2 = intAdapter;
+            constexpr auto adapter3 = (adapter::object<int>(0) = adapter::object<int>(0)) = adapter::object<float>(0.0) = (adapter::object<float>(0.0) = adapter::object(intVal));
+
+            (void)adapter2;
+            (void)adapter3;
+        }
+        THEN("constexpr comparison")
+        {
+            static_assert(intVal == intAdapter);
+            static_assert(intAdapter == intVal);
+            static_assert(intAdapter == intAdapter);
+            static_assert(floatAdapter == intAdapter);
+        }
+        THEN("constexpr operators")
+        {
+            // *
+            {
+                constexpr auto ptrAdapter = adapter::object(&intVal);
+
+                static_assert(*ptrAdapter == intVal);
+            }
+            // &
+            {
+                static_assert(&intAdapter == &intVal);
+            }
+            // begin, end, size
+            {
+                static constexpr auto iterable = std::array<int, 1>{};
+                constexpr auto iterableAdapter = adapter::object(iterable);
+
+                static_assert(iterableAdapter.begin() == iterable.begin());
+                static_assert(iterableAdapter.end() == iterable.end());
+                static_assert(iterableAdapter.size() == iterable.size());
+            }
+        }
+    }
+}

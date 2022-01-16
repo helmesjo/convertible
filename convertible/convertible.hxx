@@ -401,19 +401,19 @@ namespace convertible
             {
             }
 
-            operator out_t() const noexcept
+            constexpr operator out_t() const noexcept
             {
                 return FWD(read());
             }
 
             template<typename to_t>
                 requires (!std::same_as<to_t, out_t>) && concepts::castable_to<out_t, to_t>
-            explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
+            constexpr explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
             {
                 return static_cast<to_t>(FWD(read()));
             }
 
-            constexpr decltype(auto) begin()
+            decltype(auto) begin()
                 requires concepts::range<out_t>
             {
                 using container_iterator_t = std::decay_t<decltype(std::begin(read_ref()))>;
@@ -430,7 +430,7 @@ namespace convertible
                 return std::begin(read_ref());
             }
 
-            constexpr decltype(auto) end()
+            decltype(auto) end()
                 requires concepts::range<out_t>
             {
                 using container_iterator_t = std::decay_t<decltype(std::end(read_ref()))>;
@@ -459,19 +459,24 @@ namespace convertible
                 return read_ref().resize(size);
             }
 
-            decltype(auto) operator*() const
+            constexpr decltype(auto) operator*() const
                 requires concepts::dereferencable<out_t>
             {
                 return *FWD(read());
             }
 
-            object& operator=(const object& other)
+            constexpr decltype(auto) operator&() const
+            {
+                return &FWD(read());
+            }
+
+            constexpr object& operator=(const object& other)
                 requires std::assignable_from<value_t&, value_t>
             {
                 return *this = other.read();
             }
 
-            object& operator=(object&& other) noexcept
+            constexpr object& operator=(object&& other) noexcept
                 requires std::assignable_from<value_t&, value_t>
             {
                 return *this = std::move(other.read());
@@ -479,7 +484,7 @@ namespace convertible
 
             // Workaround: MSVC (VS 16.11.4) fails with decltype on auto template parameters (sometimes? equality operator works fine...), but not "regular" ones.
             template<concepts::adapter adapter_t>
-            object& operator=(adapter_t&& other)
+            constexpr object& operator=(adapter_t&& other)
                 requires (!std::same_as<object, std::decay_t<adapter_t>>) && std::assignable_from<value_t&, typename std::decay_t<adapter_t>::value_t>
             {
                 (void)assign(FWD(other).read());
@@ -488,42 +493,42 @@ namespace convertible
 
             // Workaround: MSVC (VS 16.11.4) fails with decltype on auto template parameters (sometimes? equality operator works fine...), but not "regular" ones.
             template<std::assignable_to<value_t&> arg_t>
-            object& operator=(arg_t&& val)
+            constexpr object& operator=(arg_t&& val)
                 requires (!concepts::adapter<decltype(val)>)
             {
                 (void)assign(FWD(val));
                 return *this;
             }
 
-            bool operator==(const object& other) const
+            constexpr bool operator==(const object& other) const
             {
                 return read() == other;
             }
 
             template<concepts::adapter adapter_t>
-            bool operator==(const adapter_t& other) const
+            constexpr bool operator==(const adapter_t& other) const
                 requires (!std::same_as<object, std::decay_t<adapter_t>>) && std::equality_comparable_with<value_t&, typename std::decay_t<adapter_t>::out_t>
             {
                 return read() == other;
             }
 
-            bool operator==(const auto& val) const
+            constexpr bool operator==(const auto& val) const
                 requires (!concepts::adapter<decltype(val)>)
             {
                 return read() == val;
             }
 
-            decltype(auto) assign(auto&& val)
+            constexpr decltype(auto) assign(auto&& val)
             {
                 return reader_(obj_) = FWD(val);
             }
 
-            value_t& read_ref() const
+            constexpr value_t& read_ref() const
             {
                 return reader_(obj_);
             }
 
-            decltype(auto) read() const
+            constexpr decltype(auto) read() const
             {
                 if constexpr (is_rval)
                 {
