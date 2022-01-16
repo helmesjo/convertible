@@ -258,32 +258,6 @@ namespace convertible
             std::begin(t); // equality-preserving for forward iterators
             std::end  (t);
         };
-
-        // Credit: https://stackoverflow.com/a/68444475
-        template<class T, std::size_t N>
-        concept has_tuple_element =
-        requires(T t) {
-            typename std::tuple_element_t<N, std::remove_const_t<T>>;
-            { get<N>(t) } -> std::convertible_to<const std::tuple_element_t<N, T>&>;
-        };
-
-        namespace details
-        {
-            template<typename T, std::size_t... N>
-            consteval bool has_tuple_element_v(std::index_sequence<N...>)
-            {
-                return (has_tuple_element<T, N> && ...); 
-            }
-        }
-
-        template<class U, class T = std::remove_reference_t<U>>
-        concept tuple_like = requires(T t) { 
-            typename std::tuple_size<T>::type; 
-            requires std::derived_from<
-            std::tuple_size<T>, 
-            std::integral_constant<std::size_t, std::tuple_size_v<T>>
-            >;
-        } && details::has_tuple_element_v<T>(std::make_index_sequence<std::tuple_size_v<T>>());
     }
 
     namespace traits
@@ -823,18 +797,11 @@ namespace convertible
         converter_t converter_;
     };
 
-    template<typename callback_t, typename... arg_ts>
-        requires (sizeof...(arg_ts) > 1 || (!concepts::tuple_like<arg_ts> && ...))
-    constexpr bool for_each(callback_t&& callback, arg_ts&&... args)
-    {
-        return (FWD(callback)(FWD(args)) && ...);
-    }
-
-    template<typename callback_t, concepts::tuple_like pack_t>
-    constexpr bool for_each(callback_t&& callback, pack_t&& pack)
+    template<typename callback_t, typename tuple_t>
+    constexpr bool for_each(callback_t&& callback, tuple_t&& pack)
     {
         return std::apply([&](auto&&... args){
-            return for_each(FWD(callback), FWD(args)...);
+            return (FWD(callback)(FWD(args)) && ...);
         }, FWD(pack));
     }
 
