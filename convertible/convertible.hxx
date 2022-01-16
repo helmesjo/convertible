@@ -487,8 +487,7 @@ namespace convertible
             constexpr object& operator=(adapter_t&& other)
                 requires (!std::same_as<object, std::decay_t<adapter_t>>) && std::assignable_from<value_t&, typename std::decay_t<adapter_t>::value_t>
             {
-                (void)assign(FWD(other).read());
-                return *this;
+                return *this = FWD(other).read();
             }
 
             // Workaround: MSVC (VS 16.11.4) fails with decltype on auto template parameters (sometimes? equality operator works fine...), but not "regular" ones.
@@ -496,7 +495,7 @@ namespace convertible
             constexpr object& operator=(arg_t&& val)
                 requires (!concepts::adapter<decltype(val)>)
             {
-                (void)assign(FWD(val));
+                assign(FWD(val));
                 return *this;
             }
 
@@ -520,7 +519,7 @@ namespace convertible
 
             constexpr decltype(auto) assign(auto&& val)
             {
-                return reader_(obj_) = FWD(val);
+                reader_(obj_) = FWD(val);
             }
 
             constexpr value_t& read_ref() const
