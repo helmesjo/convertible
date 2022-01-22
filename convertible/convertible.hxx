@@ -529,13 +529,16 @@ namespace convertible
 
             constexpr decltype(auto) read() const
             {
+                // We are not "owning" this object, so our constness doesn't apply to it.
+                // Note: Only GCC10 complains if we don't const_cast, newer versions work without it.
+                auto& mutThis = const_cast<object&>(*this);
                 if constexpr (is_rval)
                 {
-                    return std::move(reader_(obj_));
+                    return std::move(reader_(mutThis.obj_));
                 }
                 else
                 {
-                    return reader_(obj_);
+                    return reader_(mutThis.obj_);
                 }
             }
 
