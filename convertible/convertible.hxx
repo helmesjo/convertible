@@ -403,14 +403,14 @@ namespace convertible
 
             constexpr operator out_t() const noexcept
             {
-                return FWD(read());
+                return read();
             }
 
             template<typename to_t>
                 requires (!std::same_as<to_t, out_t>) && concepts::castable_to<out_t, to_t>
             constexpr explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
             {
-                return static_cast<to_t>(FWD(read()));
+                return static_cast<to_t>(read());
             }
 
             decltype(auto) begin()
@@ -462,12 +462,12 @@ namespace convertible
             constexpr decltype(auto) operator*() const
                 requires concepts::dereferencable<out_t>
             {
-                return *FWD(read());
+                return *read();
             }
 
             constexpr decltype(auto) operator&() const
             {
-                return &FWD(read());
+                return &read();
             }
 
             constexpr object& operator=(const object& other)
