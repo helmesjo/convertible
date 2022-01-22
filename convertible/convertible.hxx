@@ -767,7 +767,15 @@ namespace convertible
         constexpr void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
             requires requires(mapping m){ m.exec<operators::assign, DIR_READ(dir)>(lhs, rhs); }
         {
-            (void)exec<operators::assign, dir>(FWD(lhs), FWD(rhs));
+            // Temp duplication to circumvent MSVC complaining about exec() returning ref to temporary.
+            // TODO: When object::make has been fixed to handle the different situations (make(obj), make(adapter) etc)
+            //       this duplication can be removed.
+            auto lhsAdap = lhsAdapter_.make(FWD(lhs));
+            auto rhsAdap = rhsAdapter_.make(FWD(rhs));
+            if constexpr(dir == direction::rhs_to_lhs)
+                (void)exec<operators::assign>(lhsAdap, rhsAdap);
+            else
+                (void)exec<operators::assign>(rhsAdap, lhsAdap);
         }
 
         constexpr bool equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
