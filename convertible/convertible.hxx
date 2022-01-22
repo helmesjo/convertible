@@ -355,12 +355,17 @@ namespace convertible
             requires std::invocable<reader_t, obj_t>
         struct object
         {
-            using object_t = obj_t;
-            using object_decay_t = std::remove_pointer_t<std::decay_t<object_t>>;
-            using reader_result_t = std::invoke_result_t<reader_t, obj_t>;
-
             static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<obj_t>>;
             static constexpr bool is_rval = details::is_rval<obj_t>();
+
+            using object_t =
+                std::conditional_t<is_ptr || concepts::adapter<obj_t>,
+                    std::remove_reference_t<obj_t>,
+                    obj_t
+                >;
+            using object_decay_t = std::remove_pointer_t<std::decay_t<object_t>>;
+            using reader_result_t = std::invoke_result_t<reader_t, object_t>;
+
             static constexpr bool is_result_ptr = std::is_pointer_v<std::remove_reference_t<reader_result_t>>;
 
             using out_t = 
@@ -374,9 +379,9 @@ namespace convertible
             using value_t = std::remove_reference_t<reader_result_t>;
 
             constexpr auto make(auto&& obj) const
-                requires std::invocable<reader_t, decltype(obj)> || concepts::adaptable<decltype(obj), obj_t>
+                requires std::invocable<reader_t, decltype(obj)> || concepts::adaptable<decltype(obj), object_t>
             {
-                if constexpr(concepts::adaptable<decltype(obj), obj_t>)
+                if constexpr(concepts::adaptable<decltype(obj), object_t>)
                 {
                     auto tmp = obj_.make(FWD(obj));
                     return object<decltype(tmp), reader_t>(std::move(tmp), reader_);
@@ -390,13 +395,13 @@ namespace convertible
             constexpr object() = default;
             constexpr object(const object&) = default;
             constexpr object(object&&) = default;
-            constexpr explicit object(std::convertible_to<obj_t> auto&& obj)
+            constexpr explicit object(std::convertible_to<object_t> auto&& obj)
                 requires std::invocable<reader_t, decltype(obj)>
                 : obj_(FWD(obj))
             {
             }
 
-            constexpr explicit object(std::convertible_to<obj_t> auto&& obj, std::invocable<obj_t> auto&& reader)
+            constexpr explicit object(std::convertible_to<object_t> auto&& obj, std::invocable<object_t> auto&& reader)
                 : obj_(FWD(obj)), reader_(FWD(reader))
             {
             }
@@ -542,7 +547,7 @@ namespace convertible
                 }
             }
 
-            std::conditional_t<is_ptr || concepts::adapter<obj_t>, std::remove_reference_t<obj_t>, obj_t> obj_;
+            object_t obj_;
             reader_t reader_;
         };
 
