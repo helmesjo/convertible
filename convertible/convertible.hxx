@@ -378,30 +378,52 @@ namespace convertible
                 >;
             using value_t = std::remove_reference_t<reader_result_t>;
 
+            // 1. obj is adaptable by this (reader can be invoked with obj)
             constexpr auto make(auto&& obj) const
-                requires std::invocable<reader_t, decltype(obj)> || concepts::adaptable<decltype(obj), object_t>
+                requires std::invocable<reader_t, decltype(obj)>
             {
-                if constexpr(concepts::adaptable<decltype(obj), object_t>)
-                {
-                    auto tmp = obj_.make(FWD(obj));
-                    return object<decltype(tmp), reader_t>(std::move(tmp), reader_);
-                }
-                else
-                {
-                    return object<decltype(obj), reader_t>(FWD(obj), reader_);
-                }
+                return object<decltype(obj), reader_t>(FWD(obj), reader_);
+            }
+
+            // 2. obj is adaptable by nested object_t (object_t's reader can be invoked with obj)
+            template<typename arg_t>
+                requires (!std::invocable<reader_t, arg_t>)
+            constexpr auto make(arg_t&& obj) const
+                requires concepts::adaptable<arg_t, object_t>
+            {
+                decltype(auto) tmp = obj_.make(FWD(obj));
+                return object<decltype(tmp), reader_t>(std::move(tmp), reader_);
+            }
+
+            // 3. obj is an _adapter_ whose obj fulfills 1 or 2.
+            template<concepts::adapter arg_t>
+                requires (!std::invocable<reader_t, arg_t> && !concepts::adaptable<arg_t, object_t>)
+            constexpr auto make(arg_t&& obj) const
+                requires concepts::adaptable<typename std::decay_t<arg_t>::object_t, object>
+            {
+                //return *this;
+
+                return make<typename std::decay_t<arg_t>::object_t>(FWD(obj.obj_));
             }
 
             constexpr object() = default;
-            constexpr object(const object&) = default;
-            constexpr object(object&&) = default;
-            constexpr explicit object(std::convertible_to<object_t> auto&& obj)
+            constexpr object(const object& other)
+                : obj_(FWD(const_cast<object&>(other).obj_)), reader_(other.reader_)
+            {
+            }
+            
+            constexpr object(object&& other)
+                : obj_(FWD(const_cast<object&&>(other).obj_)), reader_(other.reader_)
+            {
+            }
+
+            constexpr explicit object(auto&& obj)
                 requires std::invocable<reader_t, decltype(obj)>
                 : obj_(FWD(obj))
             {
             }
 
-            constexpr explicit object(std::convertible_to<object_t> auto&& obj, std::invocable<object_t> auto&& reader)
+            constexpr explicit object(auto&& obj, std::invocable<object_t> auto&& reader)
                 : obj_(FWD(obj)), reader_(FWD(reader))
             {
             }

@@ -313,13 +313,20 @@ SCENARIO("convertible: Adapters")
             REQUIRE(adapter == adapter);
             REQUIRE_FALSE(adapter != adapter);
         }
-
         THEN("it's explicitly castable to valid type")
         {
             enum class enum_a{ val = 1 };
             enum class enum_b{ val = 1 };
 
             REQUIRE(static_cast<enum_b>(adapter::object(enum_a::val)) == enum_b::val);
+        }
+        THEN("it can make an adapter")
+        {
+            auto adapter2 = adapter.make(str);
+            auto adapter3 = adapter.make(adapter);
+
+            static_assert(concepts::adapter<decltype(adapter2)>);
+            static_assert(concepts::adapter<decltype(adapter3)>);
         }
     }
     GIVEN("member adapter")
@@ -383,6 +390,14 @@ SCENARIO("convertible: Adapters")
             REQUIRE(adapter == "world");
             REQUIRE(adapter != "hello");
         }
+        THEN("it can make an adapter")
+        {
+            auto adapter2 = adapter.make(obj);
+            auto adapter3 = adapter.make(adapter);
+
+            static_assert(concepts::adapter<decltype(adapter2)>);
+            static_assert(concepts::adapter<decltype(adapter3)>);
+        }
     }
     GIVEN("index adapter")
     {
@@ -437,6 +452,14 @@ SCENARIO("convertible: Adapters")
             values[0] = "world";
             REQUIRE(adapter == "world");
             REQUIRE(adapter != "hello");
+        }
+        THEN("it can make an adapter")
+        {
+            auto adapter2 = adapter.make(values);
+            auto adapter3 = adapter.make(adapter);
+
+            static_assert(concepts::adapter<decltype(adapter2)>);
+            static_assert(concepts::adapter<decltype(adapter3)>);
         }
     }
     GIVEN("dereference adapter")
@@ -500,8 +523,19 @@ SCENARIO("convertible: Adapters")
             REQUIRE(adapter == "hello");
             REQUIRE(adapter != "world");
         }
+        THEN("it can make an adapter")
+        {
+            auto adapter2 = adapter.make(ptr);
+            auto adapter3 = adapter.make(adapter);
+
+            static_assert(concepts::adapter<decltype(adapter2)>);
+            static_assert(concepts::adapter<decltype(adapter3)>);
+        }
     }
 }
+
+template<typename T>
+struct detect;
 
 SCENARIO("convertible: Adapter composition")
 {
@@ -579,6 +613,11 @@ SCENARIO("convertible: Adapter composition")
             type obj2{ &str2 };
             auto adapterTemplate = adapter::deref(adapter::member(&type::val));
             auto composedAdapter = adapterTemplate.make(std::move(obj2));
+            auto adapter2 = adapterTemplate.make(std::move(composedAdapter));
+
+            static_assert(concepts::adapter<decltype(composedAdapter)>);
+            static_assert(concepts::adapter<decltype(adapter2)>);
+            static_assert(std::is_same_v<decltype(adapter2), decltype(composedAdapter)>);
 
             const auto movedTo = static_cast<std::string>(composedAdapter);
             REQUIRE(movedTo == "hello");
