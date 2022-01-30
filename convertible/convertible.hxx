@@ -123,7 +123,6 @@ namespace convertible
         }
 
         template<typename obj_t, typename reader_t>
-            requires std::invocable<reader_t, obj_t>
         struct object;
     }
 
@@ -356,12 +355,9 @@ namespace convertible
         }
 
         template<typename obj_t = details::placeholder, typename reader_t = reader::identity>
-            // Workaround: Clang doesn't approve it in template parameter declaration.
-            requires std::invocable<reader_t, obj_t>
         struct object
         {
             static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<obj_t>>;
-            static constexpr bool is_rval = details::is_rval<obj_t>();
 
             using object_t =
                 std::conditional_t<is_ptr || concepts::adapter<obj_t>,
@@ -369,25 +365,12 @@ namespace convertible
                     obj_t
                 >;
             using object_decay_t = std::remove_pointer_t<std::decay_t<object_t>>;
-            using reader_result_t = std::invoke_result_t<reader_t, object_t>;
-
-            static constexpr bool is_result_ptr = std::is_pointer_v<std::remove_reference_t<reader_result_t>>;
-
-            using out_t = 
-                std::conditional_t<is_result_ptr,
-                    std::remove_reference_t<reader_result_t>,
-                    std::conditional_t<is_rval, 
-                        std::remove_reference_t<reader_result_t>&&, 
-                        std::remove_reference_t<reader_result_t>&
-                    >
-                >;
-            using value_t = std::remove_reference_t<reader_result_t>;
 
             constexpr object() = default;
             constexpr object(const object&) = default;
             constexpr object(object&&) = default;
             constexpr explicit object(std::convertible_to<object_t> auto&& obj)
-                requires std::invocable<reader_t, decltype(obj)>
+              //requires (std::invocable<reader_t, decltype(obj)>)
                 : obj_(FWD(obj))
             {
             }
@@ -395,84 +378,6 @@ namespace convertible
             constexpr explicit object(std::convertible_to<object_t> auto&& obj, std::invocable<object_t> auto&& reader)
                 : obj_(FWD(obj)), reader_(FWD(reader))
             {
-            }
-
-            constexpr decltype(auto) operator*() const
-                requires concepts::dereferencable<out_t>
-            {
-                return *read();
-            }
-
-            constexpr object& operator=(const object& other)
-                requires std::assignable_from<value_t&, value_t>
-            {
-                return *this = other.read();
-            }
-
-            constexpr object& operator=(object&& other) noexcept
-                requires std::assignable_from<value_t&, value_t>
-            {
-                return *this = std::move(other.read());
-            }
-
-            // Workaround: MSVC (VS 16.11.4) fails with decltype on auto template parameters (sometimes? equality operator works fine...), but not "regular" ones.
-            template<concepts::adapter adapter_t>
-            constexpr object& operator=(adapter_t&& other)
-                requires (!std::same_as<object, std::decay_t<adapter_t>>) && std::assignable_from<value_t&, typename std::decay_t<adapter_t>::value_t>
-            {
-                return *this = FWD(other).read();
-            }
-
-            // Workaround: MSVC (VS 16.11.4) fails with decltype on auto template parameters (sometimes? equality operator works fine...), but not "regular" ones.
-            template<std::assignable_to<value_t&> arg_t>
-            constexpr object& operator=(arg_t&& val)
-                requires (!concepts::adapter<decltype(val)>)
-            {
-                assign(FWD(val));
-                return *this;
-            }
-
-            constexpr bool operator==(const object& other) const
-            {
-                return read() == other;
-            }
-
-            template<concepts::adapter adapter_t>
-            constexpr bool operator==(const adapter_t& other) const
-                requires (!std::same_as<object, std::decay_t<adapter_t>>) && std::equality_comparable_with<value_t&, typename std::decay_t<adapter_t>::out_t>
-            {
-                return read() == other;
-            }
-
-            constexpr bool operator==(const auto& val) const
-                requires (!concepts::adapter<decltype(val)>)
-            {
-                return read() == val;
-            }
-
-            constexpr decltype(auto) assign(auto&& val)
-            {
-                reader_(obj_) = FWD(val);
-            }
-
-            constexpr value_t& read_ref() const
-            {
-                return reader_(obj_);
-            }
-
-            constexpr decltype(auto) read() const
-            {
-                // We are not "owning" this object, so our constness doesn't apply to it.
-                // Note: Only GCC10 complains if we don't const_cast, newer versions work without it.
-                auto& mutThis = const_cast<object&>(*this);
-                if constexpr (is_rval)
-                {
-                    return std::move(reader_(mutThis.obj_));
-                }
-                else
-                {
-                    return reader_(mutThis.obj_);
-                }
             }
 
             constexpr decltype(auto) operator()(auto&& obj) const
@@ -508,9 +413,6 @@ namespace convertible
             reader_t reader_;
         };
 
-        template<concepts::adapter adapter_t, typename arg_t>
-        using make_t = decltype(std::declval<adapter_t>().make(std::declval<arg_t>()));
-
         // Workaround: MSVC does not like auto parameters in deduction guides.
 
         template<typename obj_t>
@@ -538,7 +440,7 @@ namespace convertible
         }
 
         template<std::size_t i>
-        constexpr auto index(concepts::indexable auto&& obj)
+        constexpr auto index(concepts::adapter auto&& obj)
         {
             return object<decltype(obj), reader::index<i>>(FWD(obj));
         }
@@ -549,7 +451,7 @@ namespace convertible
             return object<details::placeholder, reader::index<i>>();
         }
 
-        constexpr auto deref(concepts::dereferencable auto&& obj)
+        constexpr auto deref(concepts::adapter auto&& obj)
         {
             return object<decltype(obj), reader::deref>(FWD(obj));
         }
