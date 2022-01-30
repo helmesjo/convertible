@@ -403,11 +403,6 @@ namespace convertible
                 return *read();
             }
 
-            constexpr decltype(auto) operator&() const
-            {
-                return &read();
-            }
-
             constexpr object& operator=(const object& other)
                 requires std::assignable_from<value_t&, value_t>
             {
