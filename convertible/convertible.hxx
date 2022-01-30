@@ -766,57 +766,32 @@ namespace convertible
         using lhs_adapter_t = lhs_adapt_t;
         using rhs_adapter_t = rhs_adapt_t;
 
-        template<typename lhs_t>
-        using lhs_make_t = adapter::make_t<lhs_adapter_t, lhs_t>;
-
-        template<typename rhs_t>
-        using rhs_make_t = adapter::make_t<rhs_adapter_t, rhs_t>;
-
         constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
             lhsAdapter_(std::move(lhsAdapter)),
             rhsAdapter_(std::move(rhsAdapter)),
             converter_(std::move(converter))
         {}
 
-        template<typename operator_t>
-        constexpr decltype(auto) exec(concepts::adapter auto&& lhs, concepts::adapter auto&& rhs) const
-            requires std::invocable<operator_t, decltype(lhs), decltype(rhs), converter_t> 
+      template<typename operator_t, DIR_DECL(direction) dir, concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t>
+          requires concepts::executable_with<dir, operator_t, std::invoke_result_t<lhs_adapter_t, lhs_t>, std::invoke_result_t<rhs_adapter_t, rhs_t>, converter_t>
+        constexpr decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs) const 
         {
             constexpr operator_t op;
-            return op(FWD(lhs), FWD(rhs), converter_);
-        }
-
-        template<typename operator_t, DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
-            requires (!concepts::adapter<lhs_t>) && (!concepts::adapter<rhs_t>)
-        constexpr decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs) const
-            requires concepts::executable_with<dir, operator_t, lhs_make_t<decltype(lhs)>&, rhs_make_t<decltype(rhs)>&, converter_t>
-        {
-            auto lhsAdap = lhsAdapter_.make(FWD(lhs));
-            auto rhsAdap = rhsAdapter_.make(FWD(rhs));
-
             if constexpr(dir == direction::rhs_to_lhs)
-                return exec<operator_t>(lhsAdap, rhsAdap);
+                return op(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)), converter_);
             else
-                return exec<operator_t>(rhsAdap, lhsAdap);
+                return op(rhsAdapter_(FWD(rhs)), lhsAdapter_(FWD(lhs)), converter_);
         }
 
         template<DIR_DECL(direction) dir>
-        constexpr void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
-            requires requires(mapping m){ m.exec<operators::assign, DIR_READ(dir)>(lhs, rhs); }
+        constexpr void assign(auto&& lhs, auto&& rhs) const
+          requires requires(mapping m){ m.exec<operators::assign, DIR_READ(dir)>(FWD(lhs), FWD(rhs)); }
         {
-            // Temp duplication to circumvent MSVC complaining about exec() returning ref to temporary.
-            // TODO: When object::make has been fixed to handle the different situations (make(obj), make(adapter) etc)
-            //       this duplication can be removed.
-            auto lhsAdap = lhsAdapter_.make(FWD(lhs));
-            auto rhsAdap = rhsAdapter_.make(FWD(rhs));
-            if constexpr(dir == direction::rhs_to_lhs)
-                (void)exec<operators::assign>(lhsAdap, rhsAdap);
-            else
-                (void)exec<operators::assign>(rhsAdap, lhsAdap);
+            (void)exec<operators::assign, dir>(FWD(lhs), FWD(rhs));
         }
 
-        constexpr bool equal(const concepts::adaptable<lhs_adapter_t> auto& lhs, const concepts::adaptable<rhs_adapter_t> auto& rhs) const
-            requires requires(mapping m){ m.exec<operators::equal, direction::rhs_to_lhs>(lhs, rhs); }
+        constexpr bool equal(auto& lhs, auto& rhs) const
+          requires requires(mapping m){ m.exec<operators::equal, direction::rhs_to_lhs>(lhs, rhs); }
         {
             return exec<operators::equal, direction::rhs_to_lhs>(FWD(lhs), FWD(rhs));
         }
