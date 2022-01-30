@@ -311,6 +311,27 @@ namespace convertible
                 }
             };
 
+            template<typename reader1_t, typename reader2_t>
+            struct composed
+            {
+              constexpr composed(reader1_t reader1, reader2_t reader2):
+                  reader1_(std::move(reader1)),
+                  reader2_(std::move(reader2))
+              {}
+
+              constexpr decltype(auto) operator()(auto&& obj) const
+                requires
+                  (std::invocable<reader1_t, decltype(obj)> &&
+                   std::invocable<reader2_t, std::invoke_result_t<reader1_t, decltype(obj)>>)
+                
+              {
+                  return reader2_(reader1_(FWD(obj)));
+              }
+
+              reader1_t reader1_;
+              reader2_t reader2_;
+            };
+
             template<concepts::member_ptr member_ptr_t>
             struct member
             {
@@ -439,10 +460,10 @@ namespace convertible
             return object<traits::member_class_t<member_ptr_t>*, reader::member<member_ptr_t>>(nullptr, ptr);
         }
 
-        template<std::size_t i>
-        constexpr auto index(concepts::adapter auto&& obj)
+        template<std::size_t i, concepts::adapter obj_t>
+        constexpr auto index(obj_t obj)
         {
-            return object<decltype(obj), reader::index<i>>(FWD(obj));
+          return object(details::placeholder{}, reader::composed(obj, reader::index<i>{}));
         }
 
         template<std::size_t i>
