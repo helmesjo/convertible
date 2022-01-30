@@ -401,8 +401,6 @@ namespace convertible
             constexpr auto make(arg_t&& obj) const
                 requires concepts::adaptable<typename std::decay_t<arg_t>::object_t, object>
             {
-                //return *this;
-
                 return make<typename std::decay_t<arg_t>::object_t>(FWD(obj.obj_));
             }
 
@@ -423,7 +421,9 @@ namespace convertible
             {
             }
 
-            constexpr explicit object(auto&& obj, std::invocable<object_t> auto&& reader)
+            template<typename arg_t>
+                requires std::constructible_from<object_t, arg_t>
+            constexpr explicit object(arg_t&& obj, std::invocable<object_t> auto&& reader)
                 : obj_(FWD(obj)), reader_(FWD(reader))
             {
             }
