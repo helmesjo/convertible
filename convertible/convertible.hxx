@@ -303,8 +303,7 @@ namespace convertible
         {
             struct identity
             {
-                template<typename T>
-                constexpr auto operator()(T&& obj) const -> T
+                constexpr decltype(auto) operator()(auto&& obj) const
                 {
                     return FWD(obj);
                 }
@@ -319,12 +318,15 @@ namespace convertible
                     ptr_(std::move(ptr))
                 {}
 
-                constexpr decltype(auto) operator()(std::convertible_to<class_t> auto&& obj) const
+                template<typename obj_t>
+                    requires std::derived_from<class_t, std::decay_t<obj_t>>
+                constexpr decltype(auto) operator()(obj_t&& obj) const
                 {
                     return obj.*ptr_;
                 }
-
-                constexpr decltype(auto) operator()(std::convertible_to<class_t> auto* obj) const
+                template<typename obj_t>
+                    requires std::derived_from<class_t, obj_t>
+                constexpr decltype(auto) operator()(obj_t* obj) const
                 {
                     return (*this)(*obj);
                 }
