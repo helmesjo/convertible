@@ -800,7 +800,7 @@ namespace convertible
             requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::lhs_to_rhs>(l, r); }
         {
             rhs_t rhs;
-            assign<direction::lhs_to_rhs>(FWD(lhs), FWD(rhs));
+            assign<direction::lhs_to_rhs>(FWD(lhs), rhs);
             return rhs;
         }
 
@@ -810,7 +810,7 @@ namespace convertible
             requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::rhs_to_lhs>(l, r); }
         {
             lhs_t lhs;
-            assign<direction::rhs_to_lhs>(FWD(lhs), FWD(rhs));
+            assign<direction::rhs_to_lhs>(lhs, FWD(rhs));
             return lhs;
         }
 
@@ -881,7 +881,7 @@ namespace convertible
                 using rhs_t = decltype(rhs);
                 if constexpr((concepts::mappable<mapping_ts, operators::assign, direction::lhs_to_rhs, lhs_t, rhs_t> || ...))
                 {
-                    assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), FWD(rhs));
+                    assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs);
                 }
                 return true;
             }, FWD(rets));
@@ -911,7 +911,7 @@ namespace convertible
                 using lhs_t = decltype(lhs);
                 if constexpr((concepts::mappable<mapping_ts, operators::assign, direction::rhs_to_lhs, lhs_t, rhs_t> || ...))
                 {
-                    assign<direction::rhs_to_lhs>(FWD(lhs), std::forward<rhs_t>(rhs));
+                    assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs));
                 }
                 return true;
             }, FWD(rets));
