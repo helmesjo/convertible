@@ -66,7 +66,7 @@ void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
 
     auto op = convertible::operators::assign{};
 
-    //static_assert(std::movable<std::decay_t<rhs_t>>, "rhs must be a movable type");
+    static_assert(std::movable<std::decay_t<rhs_t>>, "rhs must be a movable type");
     
     AND_WHEN("passed lhs & rhs (r-value)")
     {
@@ -128,55 +128,40 @@ SCENARIO("convertible: Operators")
         TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
             std::tuple<
                 operators::assign,
-                adapter::object<int&>&, 
-                adapter::object<int&>&
+                int&, 
+                int&
             >,
             std::tuple<
                 operators::assign,
-                adapter::object<int&>&, 
-                adapter::object<const int&>&
+                int&, 
+                const int&
             >,
             std::tuple<
                 operators::assign,
-                adapter::object<int&&>&, 
-                adapter::object<int&&>&
+                int&, 
+                int&&
             >,
             std::tuple<
                 operators::assign,
-                adapter::object<int&&>&, 
-                adapter::object<const int&>&
+                int&, 
+                const int&
             >,
             std::tuple<
                 operators::assign,
-                adapter::object<int&>&, 
-                adapter::object<std::string&>&,
+                int&, 
+                std::string&,
                 int_string_converter
             >,
             std::tuple<
                 operators::assign,
-                adapter::object<std::vector<int>&>&, 
-                adapter::object<std::vector<std::string>&>&,
+                std::vector<int>&, 
+                std::vector<std::string>&,
                 int_string_converter
             >,
             std::tuple<
                 operators::assign,
-                adapter::object<enum_a&>&, 
-                adapter::object<enum_b&>&
-            >,
-            std::tuple<
-                operators::assign,
-                adapter::object<int&>&, 
-                adapter::object<adapter::object<int&>&>&
-            >,
-            std::tuple<
-                operators::assign,
-                adapter::object<adapter::object<int&>&>&,
-                adapter::object<int&>&
-            >,
-            std::tuple<
-                operators::assign,
-                adapter::object<adapter::object<int&>&>&,
-                adapter::object<adapter::object<float&>&>&
+                enum_a&, 
+                enum_b&
             >
         );
 
@@ -356,60 +341,35 @@ SCENARIO("convertible: Operators")
         TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
             std::tuple<
                 operators::equal,
-                const adapter::object<int&>&, 
-                const adapter::object<int&>&
+                int&, 
+                int&
             >,
             std::tuple<
                 operators::equal,
-                const adapter::object<int&>&, 
-                const adapter::object<const int&>&
+                int&&, 
+                int&&
             >,
             std::tuple<
                 operators::equal,
-                const adapter::object<const int&>&, 
-                const adapter::object<const int&>&
+                int&&, 
+                int&
             >,
             std::tuple<
                 operators::equal,
-                const adapter::object<int&&>&, 
-                const adapter::object<int&&>&
-            >,
-            std::tuple<
-                operators::equal,
-                const adapter::object<int&&>&, 
-                const adapter::object<const int&>&
-            >,
-            std::tuple<
-                operators::equal,
-                adapter::object<int&>&, 
-                adapter::object<std::string&>&,
+                int&, 
+                std::string&,
                 int_string_converter
             >,
             std::tuple<
                 operators::equal,
-                adapter::object<std::vector<int>&>&, 
-                adapter::object<std::vector<std::string>&>&,
+                std::vector<int>&, 
+                std::vector<std::string>&,
                 int_string_converter
             >,
             std::tuple<
                 operators::equal,
-                adapter::object<enum_a&>&, 
-                adapter::object<enum_b&>&
-            >,
-            std::tuple<
-                operators::equal,
-                adapter::object<int&>&, 
-                adapter::object<adapter::object<int&>&>&
-            >,
-            std::tuple<
-                operators::equal,
-                adapter::object<adapter::object<int&>&>&,
-                adapter::object<int&>&
-            >,
-            std::tuple<
-                operators::equal,
-                adapter::object<adapter::object<int&>&>&,
-                adapter::object<adapter::object<float&>&>&
+                enum_a&, 
+                enum_b&
             >
         );
 

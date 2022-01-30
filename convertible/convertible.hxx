@@ -383,20 +383,6 @@ namespace convertible
                 >;
             using value_t = std::remove_reference_t<reader_result_t>;
 
-            constexpr auto make(auto&& obj) const
-                requires std::invocable<reader_t, decltype(obj)> || concepts::adaptable<decltype(obj), object_t>
-            {
-                if constexpr(concepts::adaptable<decltype(obj), object_t>)
-                {
-                    auto tmp = obj_.make(FWD(obj));
-                    return object<decltype(tmp), reader_t>(std::move(tmp), reader_);
-                }
-                else
-                {
-                    return object<decltype(obj), reader_t>(FWD(obj), reader_);
-                }
-            }
-
             constexpr object() = default;
             constexpr object(const object&) = default;
             constexpr object(object&&) = default;
@@ -409,64 +395,6 @@ namespace convertible
             constexpr explicit object(std::convertible_to<object_t> auto&& obj, std::invocable<object_t> auto&& reader)
                 : obj_(FWD(obj)), reader_(FWD(reader))
             {
-            }
-
-            constexpr operator out_t() const noexcept
-            {
-                return read();
-            }
-
-            template<typename to_t>
-                requires (!std::same_as<to_t, out_t>) && concepts::castable_to<out_t, to_t>
-            constexpr explicit(!std::convertible_to<out_t, to_t>) operator const to_t() const
-            {
-                return static_cast<to_t>(read());
-            }
-
-            decltype(auto) begin()
-                requires concepts::range<out_t>
-            {
-                using container_iterator_t = std::decay_t<decltype(std::begin(read_ref()))>;
-                using iterator_t = std::conditional_t<is_rval,
-                        std::move_iterator<container_iterator_t>, 
-                        container_iterator_t
-                    >;
-                return iterator_t{std::begin(read_ref())};
-            }
-
-            constexpr decltype(auto) begin() const
-                requires concepts::range<out_t>
-            {
-                return std::begin(read_ref());
-            }
-
-            decltype(auto) end()
-                requires concepts::range<out_t>
-            {
-                using container_iterator_t = std::decay_t<decltype(std::end(read_ref()))>;
-                using iterator_t = std::conditional_t<is_rval,
-                        std::move_iterator<container_iterator_t>, 
-                        container_iterator_t
-                    >;
-                return iterator_t{std::end(read_ref())};
-            }
-
-            constexpr decltype(auto) end() const
-                requires concepts::range<out_t>
-            {
-                return std::end(read_ref());
-            }
-
-            constexpr decltype(auto) size() const
-                requires concepts::range<out_t>
-            {
-                return std::size(read_ref());
-            }
-
-            decltype(auto) resize(std::size_t size) const
-                requires concepts::resizable<out_t>
-            {
-                return read_ref().resize(size);
             }
 
             constexpr decltype(auto) operator*() const

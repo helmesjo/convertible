@@ -102,7 +102,6 @@ SCENARIO("convertible: Concepts")
     // dereferencable
     {
         static_assert(concepts::dereferencable<int*>);
-        static_assert(concepts::dereferencable<adapter::object<int*>>);
         static_assert(concepts::dereferencable<int> == false);
     }
 
@@ -135,14 +134,12 @@ SCENARIO("convertible: Concepts")
         static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, std::string&, int_string_converter>);
         static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
         static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<std::string>&&, std::vector<std::string>&, converter::identity>);
-        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, adapter::object<adapter::object<int&>>&, adapter::object<int&>&, converter::identity>);
 
         constexpr auto rhs_to_lhs = direction::rhs_to_lhs;
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, int&, converter::identity>);
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, std::string&, int_string_converter>);
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
         static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<std::string>&, std::vector<std::string>&&, converter::identity>);
-        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, adapter::object<adapter::object<int&>>&, adapter::object<int&>&, converter::identity>);
     }
 
     // castable_to
