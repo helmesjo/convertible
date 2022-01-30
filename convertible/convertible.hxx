@@ -549,6 +549,33 @@ namespace convertible
                 }
             }
 
+            constexpr decltype(auto) operator()(auto&& obj) const
+                requires std::invocable<reader_t, decltype(obj)>
+            {
+                if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
+                {
+		    return std::move(reader_(FWD(obj)));
+                }
+                else
+                {
+		    return reader_(FWD(obj));
+                }
+            }
+
+            constexpr decltype(auto) operator()(auto&& obj) const
+                requires std::invocable<obj_t, decltype(obj)>
+            {
+                //TODO: Remove duplication by calling self (error about ambiguity)
+                if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
+                {
+                    return std::move(reader_(obj_(FWD(obj))));
+                }
+                else
+                {
+                    return reader_(obj_(FWD(obj)));
+                }
+            }
+
             object_t obj_;
             reader_t reader_;
         };
