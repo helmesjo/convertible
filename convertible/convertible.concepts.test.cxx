@@ -110,13 +110,13 @@ SCENARIO("convertible: Concepts")
     {
         struct type
         {
-            int make(float) { return {}; }
-            void make(double) { }
+            float& operator()(float& a) { return a; }
+            double operator()(double& a) { return a; }
         };
 
         static_assert(concepts::adaptable<int, adapter::object<int&>>);
         static_assert(concepts::adaptable<int, adapter::object<adapter::object<int&>>>);
-        static_assert(concepts::adaptable<float, type> == false);
+        static_assert(concepts::adaptable<float, type>);
         static_assert(concepts::adaptable<double, type> == false);
     }
 

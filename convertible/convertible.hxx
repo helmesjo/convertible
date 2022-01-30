@@ -214,12 +214,15 @@ namespace convertible
         };
 
         template<typename T>
+        concept reference = std::is_reference_v<T>;
+
+        template<typename T>
         concept adapter = traits::is_adapter_v<T>;
 
         template<typename arg_t, typename adapter_t>
         concept adaptable = requires(adapter_t a, arg_t b)
         {
-            { a.make(b) } -> adapter;
+            { a(b) } -> reference;
         };
 
         template<typename adapter_t>
@@ -550,7 +553,9 @@ namespace convertible
             }
 
             constexpr decltype(auto) operator()(auto&& obj) const
-                requires std::invocable<reader_t, decltype(obj)>
+                requires
+                    std::invocable<reader_t, decltype(obj)> &&
+                    (!std::invocable<obj_t, decltype(obj)>)
             {
                 if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
                 {
