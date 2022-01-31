@@ -272,20 +272,20 @@ namespace convertible
     {
         namespace details
         {
-            struct placeholder
+            struct any
             {
-                constexpr placeholder& operator[](std::size_t)
+                constexpr any& operator[](std::size_t)
                 {
                     return *this;
                 }
 
-                constexpr placeholder& operator*()
+                constexpr any& operator*()
                 {
                     return *this;
                 }
             };
-            static_assert(concepts::indexable<placeholder>);
-            static_assert(concepts::dereferencable<placeholder>);
+            static_assert(concepts::indexable<any>);
+            static_assert(concepts::dereferencable<any>);
         }
 
         namespace reader
@@ -362,16 +362,10 @@ namespace convertible
             };
         }
 
-        template<typename obj_t = details::placeholder, typename reader_t = reader::identity>
+        template<typename reader_t = reader::identity, typename adapted_t = details::any>
         struct object
         {
-            static constexpr bool is_ptr = std::is_pointer_v<std::remove_reference_t<obj_t>>;
-
-            using object_t =
-                std::conditional_t<is_ptr || concepts::adapter<obj_t>,
-                    std::remove_reference_t<obj_t>,
-                    obj_t
-                >;
+            using object_t = adapted_t;
             using object_decay_t = std::remove_pointer_t<std::decay_t<object_t>>;
 
             constexpr object() = default;
@@ -384,8 +378,7 @@ namespace convertible
 
             constexpr decltype(auto) operator()(auto&& obj) const
                 requires
-                    std::invocable<reader_t, decltype(obj)> &&
-                    (!std::invocable<obj_t, decltype(obj)>)
+                    std::invocable<reader_t, decltype(obj)>
             {
                 if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
                 {
@@ -400,13 +393,17 @@ namespace convertible
             reader_t reader_;
         };
 
-        template<typename reader_t>
-        object(reader_t)->object<details::placeholder, reader_t>;
-
         template<concepts::member_ptr member_ptr_t>
         consteval auto member(member_ptr_t ptr)
         {
-            return object<traits::member_class_t<member_ptr_t>*, reader::member<member_ptr_t>>(ptr);
+            return object<reader::member<member_ptr_t>, traits::member_class_t<member_ptr_t>*>(ptr);
+        }
+
+        template<concepts::member_ptr member_ptr_t>
+        constexpr auto member(member_ptr_t ptr, concepts::adapter auto&& inner)
+        {
+            auto read = reader::composed(inner, reader::member<member_ptr_t>{ptr});
+            return object<decltype(read), traits::member_class_t<member_ptr_t>*>(read);
         }
 
         template<std::size_t i>
@@ -418,7 +415,7 @@ namespace convertible
         template<std::size_t i>
         consteval auto index()
         {
-            return object<details::placeholder, reader::index<i>>();
+            return object(reader::index<i>{});
         }
 
         constexpr auto deref(concepts::adapter auto&& inner)
@@ -428,7 +425,7 @@ namespace convertible
 
         consteval auto deref()
         {
-            return object<details::placeholder*, reader::deref>();
+            return object(reader::deref{});
         }
     }
 
@@ -597,7 +594,6 @@ namespace convertible
         }
 
         template<concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::object_decay_t>
-            requires concepts::adapted_type_known<rhs_adapter_t>
         constexpr auto operator()(lhs_t&& lhs) const
             requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::lhs_to_rhs>(l, r); }
         {
@@ -607,7 +603,7 @@ namespace convertible
         }
 
         template<concepts::adaptable<rhs_adapter_t> rhs_t, concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::object_decay_t>
-            requires concepts::adapted_type_known<lhs_adapter_t> && (!concepts::adaptable<lhs_t, rhs_adapter_t>)
+            requires (!concepts::adaptable<lhs_t, rhs_adapter_t>)
         constexpr auto operator()(rhs_t&& rhs) const
             requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::rhs_to_lhs>(l, r); }
         {

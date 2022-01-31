@@ -194,7 +194,9 @@ SCENARIO("convertible: Adapter composition")
         THEN("it's constexpr constructible")
         {
             constexpr auto constexprAdapter = adapter::deref(adapter::object(adapter::member(&type::val)));
+            constexpr auto constexprAdapter2 = adapter::member(&type::val, adapter::deref());
             (void)constexprAdapter;
+            (void)constexprAdapter2;
         }
         THEN("it implicitly assigns member value")
         {
