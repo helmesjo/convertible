@@ -114,7 +114,7 @@ SCENARIO("convertible: Concepts")
         };
 
         static_assert(concepts::adaptable<int, adapter::object<int&>>);
-        static_assert(concepts::adaptable<int, adapter::object<adapter::object<int&>>>);
+        static_assert(concepts::adaptable<int, adapter::object<adapter::details::placeholder, adapter::object<int&>>>);
         static_assert(concepts::adaptable<float, type>);
         static_assert(concepts::adaptable<double, type> == false);
     }

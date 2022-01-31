@@ -286,19 +286,6 @@ namespace convertible
             };
             static_assert(concepts::indexable<placeholder>);
             static_assert(concepts::dereferencable<placeholder>);
-
-            template<typename obj_t>
-            consteval bool is_rval()
-            {
-                if constexpr(concepts::adapter<obj_t>)
-                {
-                    return std::decay_t<obj_t>::is_rval;
-                }
-                else
-                {
-                    return std::is_rvalue_reference_v<obj_t>;
-                }
-            }
         }
 
         namespace reader
@@ -390,14 +377,8 @@ namespace convertible
             constexpr object() = default;
             constexpr object(const object&) = default;
             constexpr object(object&&) = default;
-            constexpr explicit object(std::convertible_to<object_t> auto&& obj)
-              //requires (std::invocable<reader_t, decltype(obj)>)
-                : obj_(FWD(obj))
-            {
-            }
-
-            constexpr explicit object(std::convertible_to<object_t> auto&& obj, std::invocable<object_t> auto&& reader)
-                : obj_(FWD(obj)), reader_(FWD(reader))
+            constexpr explicit object(reader_t reader)
+                : reader_(FWD(reader))
             {
             }
 
@@ -415,55 +396,23 @@ namespace convertible
                     return reader_(FWD(obj));
                 }
             }
-
-            constexpr decltype(auto) operator()(auto&& obj) const
-                requires std::invocable<obj_t, decltype(obj)>
-            {
-                //TODO: Remove duplication by calling self (error about ambiguity)
-                if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
-                {
-                    return std::move(reader_(obj_(FWD(obj))));
-                }
-                else
-                {
-                    return reader_(obj_(FWD(obj)));
-                }
-            }
-
-            object_t obj_;
+          
             reader_t reader_;
         };
 
-        // Workaround: MSVC does not like auto parameters in deduction guides.
-
-        template<typename obj_t>
-        object(obj_t& obj)->object<obj_t&>;
-        
-        template<typename obj_t>
-        object(obj_t&& obj)->object<obj_t&&>;
-
-        template<typename obj_t, typename reader_t>
-        object(obj_t& obj, reader_t&& reader)->object<obj_t&, std::remove_reference_t<reader_t>>;
-
-        template<typename obj_t, typename reader_t>
-        object(obj_t&& obj, reader_t&& reader)->object<obj_t&&, std::remove_reference_t<reader_t>>;
-
-        template<concepts::member_ptr member_ptr_t>
-        constexpr auto member(member_ptr_t ptr, auto&& obj)
-        {
-            return object<decltype(obj), reader::member<member_ptr_t>>(FWD(obj), ptr);
-        }
+        template<typename reader_t>
+        object(reader_t)->object<details::placeholder, reader_t>;
 
         template<concepts::member_ptr member_ptr_t>
         consteval auto member(member_ptr_t ptr)
         {
-            return object<traits::member_class_t<member_ptr_t>*, reader::member<member_ptr_t>>(nullptr, ptr);
+            return object<traits::member_class_t<member_ptr_t>*, reader::member<member_ptr_t>>(ptr);
         }
 
-        template<std::size_t i, concepts::adapter obj_t>
-        constexpr auto index(obj_t obj)
+        template<std::size_t i>
+        constexpr auto index(concepts::adapter auto&& inner)
         {
-          return object(details::placeholder{}, reader::composed(obj, reader::index<i>{}));
+            return object(reader::composed(inner, reader::index<i>{}));
         }
 
         template<std::size_t i>
@@ -472,9 +421,9 @@ namespace convertible
             return object<details::placeholder, reader::index<i>>();
         }
 
-        constexpr auto deref(concepts::adapter auto&& obj)
+        constexpr auto deref(concepts::adapter auto&& inner)
         {
-            return object<decltype(obj), reader::deref>(FWD(obj));
+            return object(reader::composed(inner, reader::deref{}));
         }
 
         consteval auto deref()
