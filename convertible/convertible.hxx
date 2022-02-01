@@ -439,11 +439,7 @@ namespace convertible
             template<typename in_t>
             using converted_t = std::invoke_result_t<converter_t, in_t>;
 
-            template<typename adapter_t>
-            using adapter_value_t = typename std::decay_t<adapter_t>::value_t;
-
             template<typename target_t = to_t>
-                requires (!concepts::adapter<target_t>)
             constexpr decltype(auto) operator()(auto&& val) const
                 requires 
                     std::assignable_from<target_t&, converted_t<decltype(val)>>
@@ -457,16 +453,6 @@ namespace convertible
                 {
                     return static_cast<target_t>(converter_(FWD(val)));
                 }
-            }
-
-            template<typename target_t = to_t>
-                requires concepts::adapter<target_t>
-            constexpr decltype(auto) operator()(auto&& val) const
-                requires 
-                    std::assignable_from<adapter_value_t<target_t>&, converted_t<decltype(val)>>
-                    || concepts::castable_to<converted_t<decltype(val)>, adapter_value_t<target_t>>
-            {
-                return this->template operator()<adapter_value_t<target_t>>(FWD(val));
             }
 
             converter_t& converter_;
