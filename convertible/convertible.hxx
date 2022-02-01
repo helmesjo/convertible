@@ -532,7 +532,7 @@ namespace convertible
             converter_(std::move(converter))
         {}
 
-      template<typename operator_t, DIR_DECL(direction) dir, concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t>
+        template<typename operator_t, DIR_DECL(direction) dir, concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t>
           requires concepts::executable_with<dir, operator_t, std::invoke_result_t<lhs_adapter_t, lhs_t>, std::invoke_result_t<rhs_adapter_t, rhs_t>, converter_t>
         constexpr decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs) const 
         {
