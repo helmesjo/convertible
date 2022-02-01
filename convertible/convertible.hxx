@@ -318,12 +318,6 @@ namespace convertible
                 {
                     return obj.*ptr_;
                 }
-                template<typename obj_t>
-                    requires std::derived_from<class_t, obj_t>
-                constexpr decltype(auto) operator()(obj_t* obj) const
-                {
-                    return (*this)(*obj);
-                }
 
                 member_ptr_t ptr_;
             };
