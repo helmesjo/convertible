@@ -41,21 +41,6 @@ namespace std
         std::is_convertible_v<from_t, to_t> &&
         requires { static_cast<to_t>(std::declval<from_t>()); };
 
-    template<class lhs_t, class rhs_t>
-    struct common_reference
-    {
-        using type = const std::common_type_t<lhs_t, rhs_t>&;
-    };
-
-    template<class lhs_t, class rhs_t>
-    using common_reference_t = typename std::common_reference<lhs_t, rhs_t>::type;
-
-    template<class T, class U>
-    concept common_reference_with =
-        std::same_as<std::common_reference_t<T, U>, std::common_reference_t<U, T>> &&
-        std::convertible_to<T, std::common_reference_t<T, U>> &&
-        std::convertible_to<U, std::common_reference_t<T, U>>;
-
     template<class T, class U>
     concept equality_comparable_with =
         requires(const std::remove_reference_t<T>&t,
@@ -741,28 +726,6 @@ namespace convertible
         }
 
         std::tuple<mapping_ts...> mappings_;
-    };
-}
-
-namespace std
-{
-    /* 
-    Specialization of:
-        `std::common_type<object<...>, object<...>>`
-    Specifically enables:
-        `std::assignable_from<object<...>, object<...>>`
-    */
-    template<typename... a_ts, typename... b_ts>
-    struct common_type<convertible::adapter::object<a_ts...>, convertible::adapter::object<b_ts...>>
-        : 
-        ::std::common_type<
-            // AFAIK, this should rather be <a::out_t, b::value_t>, but that fails with libc++ (and a few MSVC variants),
-            // eg. with libc++ common_reference_t<const char*, string&> is 'string&', but obviously 'const char*' can't be bound to 'string&'...
-            // TODO: Figure out what is the most correct.
-            typename convertible::adapter::object<a_ts...>::value_t,
-            typename convertible::adapter::object<b_ts...>::value_t
-        >
-    {
     };
 }
 
