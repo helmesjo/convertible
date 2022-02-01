@@ -89,13 +89,36 @@ namespace convertible
     };
 #endif
 
+    namespace details
+    {
+        struct any
+        {
+            constexpr any& operator[](std::size_t)
+            {
+                return *this;
+            }
+
+            constexpr any& operator*()
+            {
+                return *this;
+            }
+        };
+      
+        template<typename T>
+        constexpr decltype(auto) fn_compose (auto&& arg, T&& t)
+        {
+            return FWD(t)(FWD(arg));
+        }
+        
+        template<typename F, typename... Rest>
+        constexpr decltype(auto) fn_compose(auto&& arg, F&& f, Rest&&... rest)
+        {
+            return FWD(f)(fn_compose(FWD(arg), FWD(rest)...));
+        }
+    }
+
     namespace adapter
     {
-        namespace details
-        {
-            struct placeholder;
-        }
-
         template<typename obj_t, typename reader_t>
         struct object;
     }
@@ -199,7 +222,7 @@ namespace convertible
         };
 
         template<typename adapter_t>
-        concept adapted_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, adapter::details::placeholder>);
+        concept adapted_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, details::any>);
 
         template<typename mapping_t, typename operator_t, DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
         concept mappable = requires(mapping_t m, lhs_t l, rhs_t r)
@@ -242,104 +265,74 @@ namespace convertible
         constexpr std::size_t adaptable_count_v = (concepts::adaptable<arg_t, adapter_ts> +...);
     }
 
-    namespace adapter
+    namespace reader
     {
-        namespace details
+        struct identity
         {
-            struct any
+            constexpr decltype(auto) operator()(auto&& obj) const
             {
-                constexpr any& operator[](std::size_t)
-                {
-                    return *this;
-                }
+                return FWD(obj);
+            }
+        };
 
-                constexpr any& operator*()
-                {
-                    return *this;
-                }
-            };
-            static_assert(concepts::indexable<any>);
-            static_assert(concepts::dereferencable<any>);
-
-            template<typename T>
-            constexpr decltype(auto) fn_compose (auto&& arg, T&& t)
+        template<typename... adapter_ts>
+        struct composed
+        {
+            constexpr composed(adapter_ts... adapters):
+                adapters_(std::move(adapters)...)
+            {}
+            
+            constexpr decltype(auto) operator()(auto&& obj) const
+              requires requires(adapter_ts... args){ details::fn_compose(FWD(obj), args...); }
+              
             {
-                return FWD(t)(FWD(arg));
+                return std::apply([&obj](auto&&... args) -> decltype(auto) {
+                    return details::fn_compose(FWD(obj), args...);
+                }, adapters_);
             }
             
-            template<typename F, typename... Rest>
-            constexpr decltype(auto) fn_compose(auto&& arg, F&& f, Rest&&... rest)
-            {
-                return FWD(f)(fn_compose(FWD(arg), FWD(rest)...));
-            }
-        }
+            std::tuple<adapter_ts...> adapters_;
+        };
 
-        namespace reader
+        template<concepts::member_ptr member_ptr_t>
+        struct member
         {
-            struct identity
+            using class_t = traits::member_class_t<member_ptr_t>;
+
+            constexpr member(member_ptr_t ptr):
+                ptr_(std::move(ptr))
+            {}
+
+            template<typename obj_t>
+                requires std::derived_from<class_t, std::decay_t<obj_t>>
+            constexpr decltype(auto) operator()(obj_t&& obj) const
             {
-                constexpr decltype(auto) operator()(auto&& obj) const
-                {
-                    return FWD(obj);
-                }
-            };
+                return obj.*ptr_;
+            }
 
-            template<typename... adapter_ts>
-            struct composed
+            member_ptr_t ptr_;
+        };
+
+        template<std::size_t i>
+        struct index
+        {
+            constexpr decltype(auto) operator()(concepts::indexable auto&& obj) const
             {
-                constexpr composed(adapter_ts... adapters):
-                    adapters_(std::move(adapters)...)
-                {}
-                
-                constexpr decltype(auto) operator()(auto&& obj) const
-                  requires requires(adapter_ts... args){ details::fn_compose(FWD(obj), args...); }
-                  
-                {
-                    return std::apply([&obj](auto&&... args) -> decltype(auto) {
-                        return details::fn_compose(FWD(obj), args...);
-                    }, adapters_);
-                }
-                
-                std::tuple<adapter_ts...> adapters_;
-            };
+                return obj[i];
+            }
+        };
 
-            template<concepts::member_ptr member_ptr_t>
-            struct member
+        struct deref
+        {
+            constexpr decltype(auto) operator()(concepts::dereferencable auto&& obj) const
             {
-                using class_t = traits::member_class_t<member_ptr_t>;
+                return *obj;
+            }
+        };
+    }
 
-                constexpr member(member_ptr_t ptr):
-                    ptr_(std::move(ptr))
-                {}
-
-                template<typename obj_t>
-                    requires std::derived_from<class_t, std::decay_t<obj_t>>
-                constexpr decltype(auto) operator()(obj_t&& obj) const
-                {
-                    return obj.*ptr_;
-                }
-
-                member_ptr_t ptr_;
-            };
-
-            template<std::size_t i>
-            struct index
-            {
-                constexpr decltype(auto) operator()(concepts::indexable auto&& obj) const
-                {
-                    return obj[i];
-                }
-            };
-
-            struct deref
-            {
-                constexpr decltype(auto) operator()(concepts::dereferencable auto&& obj) const
-                {
-                    return *obj;
-                }
-            };
-        }
-
+    namespace adapter
+    {
         template<typename reader_t = reader::identity, typename adapted_t = details::any>
         struct object
         {
