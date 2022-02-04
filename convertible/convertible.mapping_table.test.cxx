@@ -28,15 +28,15 @@ SCENARIO("convertible: Mapping table")
     THEN("it's constexpr constructible")
     {
         constexpr mapping_table table{
-            mapping( adapter::object(), adapter::object() )
+            mapping( object(), object() )
         };
         (void)table;
     }
     GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val2 <-> b.val2\n")
     {
         mapping_table table{
-            mapping( adapter::member(&type_a::val1), adapter::member(&type_b::val1) ),
-            mapping( adapter::member(&type_a::val2), adapter::member(&type_b::val2) )
+            mapping( member(&type_a::val1), member(&type_b::val1) ),
+            mapping( member(&type_a::val2), member(&type_b::val2) )
         };
 
         type_a lhs;
@@ -115,8 +115,8 @@ SCENARIO("convertible: Mapping table")
         };
 
         mapping_table table{
-            mapping( adapter::member(&type_a::val1), adapter::member(&type_b::val1) ),
-            mapping( adapter::member(&type_a::val1), adapter::member(&type_c::val1) )
+            mapping( member(&type_a::val1), member(&type_b::val1) ),
+            mapping( member(&type_a::val1), member(&type_c::val1) )
         };
 
         type_a lhs_a;
@@ -161,8 +161,8 @@ SCENARIO("convertible: Mapping table constexpr-ness")
         static constexpr type_a lhsVal;
         static constexpr type_b rhsVal;
 
-        constexpr auto lhsAdapter = adapter::member(&type_a::val);
-        constexpr auto rhsAdapter = adapter::member(&type_b::val);
+        constexpr auto lhsAdapter = member(&type_a::val);
+        constexpr auto rhsAdapter = member(&type_b::val);
 
         constexpr auto table = mapping_table(mapping(lhsAdapter, rhsAdapter));
 
@@ -213,7 +213,7 @@ SCENARIO("convertible: Mapping table as a converter")
     GIVEN("mapping table between \n\n\ta <-> b\n")
     {
         mapping_table table{
-            mapping(adapter::member(&type_a::val), adapter::member(&type_b::val))
+            mapping(member(&type_a::val), member(&type_b::val))
         };
 
         WHEN("invoked with a")
@@ -238,8 +238,8 @@ SCENARIO("convertible: Mapping table as a converter")
     GIVEN("mapping table between \n\n\ta <-> b\n\tc <-> d\n")
     {
         mapping_table table{
-            mapping(adapter::member(&type_a::val), adapter::member(&type_b::val)),
-            mapping(adapter::member(&type_c::val), adapter::member(&type_d::val))
+            mapping(member(&type_a::val), member(&type_b::val)),
+            mapping(member(&type_c::val), member(&type_d::val))
         };
 
         WHEN("invoked with a")
@@ -360,8 +360,8 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
         };
 
         mapping_table table{
-            mapping( adapter::member(&type_a::val), adapter::member(&type_b::val) ),
-            mapping( adapter::deref(adapter::member(&type_a::node)), adapter::deref(adapter::member(&type_b::node)), a_b_converter{} )
+            mapping( member(&type_a::val), member(&type_b::val) ),
+            mapping( deref(member(&type_a::node)), deref(member(&type_b::node)), a_b_converter{} )
         };
 
         type_a lhs;

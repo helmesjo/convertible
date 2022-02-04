@@ -79,7 +79,7 @@ SCENARIO("convertible: Mapping")
 
     THEN("it's constexpr constructible")
     {
-        constexpr auto map = mapping(adapter::object(), adapter::object());
+        constexpr auto map = mapping(object(), object());
         (void)map;
     }
     GIVEN("a mapping between a <-> b")
@@ -87,7 +87,7 @@ SCENARIO("convertible: Mapping")
         using lhs_t = std::string;
         using rhs_t = std::string;
 
-        auto map = mapping(adapter::object(), adapter::object());
+        auto map = mapping(object(), object());
 
         auto lhs = lhs_t{"hello"};
         auto rhs = rhs_t{"world"};
@@ -98,7 +98,7 @@ SCENARIO("convertible: Mapping")
         using lhs_t = int;
         using rhs_t = std::string;
 
-        auto map = mapping(adapter::object(), adapter::object(), int_string_converter{});
+        auto map = mapping(object(), object(), int_string_converter{});
 
         auto lhs = lhs_t{11};
         auto rhs = rhs_t{"22"};
@@ -122,8 +122,8 @@ SCENARIO("convertible: Mapping constexpr-ness")
         static constexpr type_a lhsVal;
         static constexpr type_b rhsVal;
 
-        constexpr auto lhsAdapter = adapter::member(&type_a::val);
-        constexpr auto rhsAdapter = adapter::member(&type_b::val);
+        constexpr auto lhsAdapter = member(&type_a::val);
+        constexpr auto rhsAdapter = member(&type_b::val);
 
         constexpr auto map = mapping(lhsAdapter, rhsAdapter);
 
@@ -163,7 +163,7 @@ SCENARIO("convertible: Mapping as a converter")
 
     GIVEN("mapping between \n\n\ta <-> b\n")
     {
-        auto map = mapping(adapter::member(&type_a::val), adapter::member(&type_b::val));
+        auto map = mapping(member(&type_a::val), member(&type_b::val));
 
         WHEN("invoked with a")
         {
@@ -216,7 +216,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
         using lhs_t = enum_a;
         using rhs_t = enum_b;
 
-        auto map = mapping(adapter::object(), adapter::object());
+        auto map = mapping(object(), object());
 
         auto lhs = lhs_t::val;
         auto rhs = rhs_t::val;
@@ -229,7 +229,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
         using lhs_t = std::vector<std::string>;
         using rhs_t = std::vector<std::string>;
 
-        auto map = mapping(adapter::object(), adapter::object());
+        auto map = mapping(object(), object());
 
         auto lhs = lhs_t{"1", "2", "3"};
         auto rhs = rhs_t{"3", "2", "1"};
@@ -240,7 +240,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
         using lhs_t = std::vector<std::string>;
         using rhs_t = std::vector<int>;
 
-        auto map = mapping(adapter::object(), adapter::object(), int_string_converter{});
+        auto map = mapping(object(), object(), int_string_converter{});
 
         auto lhs = lhs_t{"1", "2", "3"};
         auto rhs = rhs_t{1, 2, 3};

@@ -12,12 +12,12 @@ SCENARIO("convertible: Adapters")
 
     GIVEN("object adapter")
     {
-        auto adapter = adapter::object();
+        auto adapter = object();
         std::string str = "hello";
 
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapter::object();
+            constexpr auto constexprAdapter = object();
             (void)constexprAdapter;
         }
         THEN("it implicitly assigns value")
@@ -58,11 +58,11 @@ SCENARIO("convertible: Adapters")
             std::string str;
         } obj;
 
-        auto adapter = adapter::member(&type::str);
+        auto adapter = member(&type::str);
 
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapter::member(&type::str);
+            constexpr auto constexprAdapter = member(&type::str);
             (void)constexprAdapter;
         }
         THEN("it implicitly assigns member value")
@@ -95,12 +95,12 @@ SCENARIO("convertible: Adapters")
     }
     GIVEN("index adapter")
     {
-        auto adapter = adapter::index<0>();
+        auto adapter = index<0>();
         std::array values = {std::string("1")};
 
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapter::index<0>();
+            constexpr auto constexprAdapter = index<0>();
             (void)constexprAdapter;
         }
         THEN("it implicitly assigns member value")
@@ -134,14 +134,14 @@ SCENARIO("convertible: Adapters")
     }
     GIVEN("dereference adapter")
     {   
-        auto adapter = adapter::deref();
+        auto adapter = deref();
 
         auto str = std::string();
         auto ptr = &str;
         
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapter::deref();
+            constexpr auto constexprAdapter = deref();
             (void)constexprAdapter;
         }
         THEN("it implicitly assigns member value")
@@ -189,12 +189,12 @@ SCENARIO("convertible: Adapter composition")
 
     GIVEN("composed adapter")
     {
-        auto adapter = adapter::deref(adapter::member(&type::val));
+        auto adapter = deref(member(&type::val));
 
         THEN("it's constexpr constructible")
         {
-            constexpr auto constexprAdapter = adapter::deref(adapter::object(adapter::member(&type::val)));
-            constexpr auto constexprAdapter2 = adapter::member(&type::val, adapter::deref());
+            constexpr auto constexprAdapter = deref(object(member(&type::val)));
+            constexpr auto constexprAdapter2 = member(&type::val, deref());
             (void)constexprAdapter;
             (void)constexprAdapter2;
         }
@@ -234,7 +234,7 @@ SCENARIO("convertible: Adapters constexpr-ness")
         static constexpr int intVal = 1;
         static constexpr float floatVal = 1.0f;
 
-        constexpr auto adapter = adapter::object();
+        constexpr auto adapter = object();
 
         THEN("constexpr construction")
         {

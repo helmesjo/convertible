@@ -113,8 +113,8 @@ SCENARIO("convertible: Concepts")
             double operator()(double& a) { return a; }
         };
 
-        static_assert(concepts::adaptable<int, adapter::object<>>);
-        static_assert(concepts::adaptable<int, adapter::object<adapter::object<>>>);
+        static_assert(concepts::adaptable<int, object<>>);
+        static_assert(concepts::adaptable<int, object<object<>>>);
         static_assert(concepts::adaptable<float, type>);
         static_assert(concepts::adaptable<double, type> == false);
     }

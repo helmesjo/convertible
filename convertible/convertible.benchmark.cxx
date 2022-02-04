@@ -109,10 +109,10 @@ static void mapping_conversion(benchmark::State& state)
     constexpr auto table = 
         mapping_table
         {
-            mapping( adapter::member(&type_a::val1), adapter::member(&type_b::val1) ),
-            mapping( adapter::member(&type_a::val2), adapter::member(&type_b::val2) ),
-            mapping( adapter::member(&type_a::val3), adapter::member(&type_b::val3), int_string_converter{} ),
-            mapping( adapter::deref(adapter::member(&type_a::val4)), adapter::member(&type_b::val4) )
+            mapping( member(&type_a::val1), member(&type_b::val1) ),
+            mapping( member(&type_a::val2), member(&type_b::val2) ),
+            mapping( member(&type_a::val3), member(&type_b::val3), int_string_converter{} ),
+            mapping( deref(member(&type_a::val4)), member(&type_b::val4) )
         };
 
     for (auto _ : state)
