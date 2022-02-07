@@ -14,141 +14,141 @@
 
 namespace
 {
-    struct int_string_converter
+  struct int_string_converter
+  {
+    int operator()(std::string val) const
     {
-        int operator()(std::string val) const
-        {
-            try
-            {
-                return std::stoi(val);
-            }
-            catch(const std::exception&)
-            {
-                return 0;
-            }
-        }
+      try
+      {
+        return std::stoi(val);
+      }
+      catch(const std::exception&)
+      {
+        return 0;
+      }
+    }
 
-        std::string operator()(int val) const
-        {
-            return std::to_string(val);
-        }
-    };
-
-    struct some_mapping
+    std::string operator()(int val) const
     {
-        template<typename operator_t, DIR_DECL(convertible::direction) dir>
-        void exec(int, int){}
-    };
+      return std::to_string(val);
+    }
+  };
+
+  struct some_mapping
+  {
+    template<typename operator_t, DIR_DECL(convertible::direction) dir>
+    void exec(int, int){}
+  };
 }
 
 SCENARIO("convertible: Traits")
 {
-    using namespace convertible;
+  using namespace convertible;
 
-    // member pointer
-    struct type
-    {
-        int member;
-    };
+  // member pointer
+  struct type
+  {
+    int member;
+  };
 
-    static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::member)>>);
-    static_assert(std::is_same_v<int, convertible::traits::member_value_t<decltype(&type::member)>>);
+  static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::member)>>);
+  static_assert(std::is_same_v<int, convertible::traits::member_value_t<decltype(&type::member)>>);
 
-    // range_value
-    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>>>);
-    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
-    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
+  // range_value
+  static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>>>);
+  static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
+  static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
 
-    // unique_types
-    static_assert(std::is_same_v<std::tuple<int, float>, traits::unique_types_t<int, float, int, float>>);
-    static_assert(std::is_same_v<std::tuple<float, int>, traits::unique_types_t<int, float, float, int>>);
+  // unique_types
+  static_assert(std::is_same_v<std::tuple<int, float>, traits::unique_types_t<int, float, int, float>>);
+  static_assert(std::is_same_v<std::tuple<float, int>, traits::unique_types_t<int, float, float, int>>);
 
-    // unique_derived_types
-    {
-        struct base {};
-        struct derived_a: base {};
-        struct derived_b: derived_a {};
-        struct derived_c: base {};
+  // unique_derived_types
+  {
+    struct base {};
+    struct derived_a: base {};
+    struct derived_b: derived_a {};
+    struct derived_c: base {};
 
-        //detect<traits::unique_derived_types_t<base, derived>> ads;
-        static_assert(std::is_same_v<std::tuple<derived_a>, traits::unique_derived_types_t<base, derived_a>>);
-        static_assert(std::is_same_v<std::tuple<derived_b>, traits::unique_derived_types_t<base, derived_a, derived_b>>);
-        static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, traits::unique_derived_types_t<base, derived_a, derived_b, derived_c>>);
-    }
+    //detect<traits::unique_derived_types_t<base, derived>> ads;
+    static_assert(std::is_same_v<std::tuple<derived_a>, traits::unique_derived_types_t<base, derived_a>>);
+    static_assert(std::is_same_v<std::tuple<derived_b>, traits::unique_derived_types_t<base, derived_a, derived_b>>);
+    static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, traits::unique_derived_types_t<base, derived_a, derived_b, derived_c>>);
+  }
 }
 
 SCENARIO("convertible: Concepts")
 {
-    using namespace convertible;
+  using namespace convertible;
 
-    // member_ptr:
+  // member_ptr:
+  {
+    struct type
     {
-        struct type
-        {
-            int member;
-        };
+      int member;
+    };
 
-        static_assert(concepts::member_ptr<decltype(&type::member)>);
-        static_assert(concepts::member_ptr<type> == false);
-    }
+    static_assert(concepts::member_ptr<decltype(&type::member)>);
+    static_assert(concepts::member_ptr<type> == false);
+  }
 
-    // indexable
+  // indexable
+  {
+    static_assert(concepts::indexable<std::array<int, 1>>);
+    static_assert(concepts::indexable<int*>);
+    static_assert(concepts::indexable<int> == false);
+  }
+
+  // dereferencable
+  {
+    static_assert(concepts::dereferencable<int*>);
+    static_assert(concepts::dereferencable<int> == false);
+  }
+
+  // adaptable:
+  {
+    struct type
     {
-        static_assert(concepts::indexable<std::array<int, 1>>);
-        static_assert(concepts::indexable<int*>);
-        static_assert(concepts::indexable<int> == false);
-    }
+      float& operator()(float& a) { return a; }
+      double operator()(double& a) { return a; }
+    };
 
-    // dereferencable
-    {
-        static_assert(concepts::dereferencable<int*>);
-        static_assert(concepts::dereferencable<int> == false);
-    }
+    static_assert(concepts::adaptable<int, object<>>);
+    static_assert(concepts::adaptable<int, object<object<>>>);
+    static_assert(concepts::adaptable<float, type>);
+    static_assert(concepts::adaptable<double, type> == false);
+  }
 
-    // adaptable:
-    {
-        struct type
-        {
-            float& operator()(float& a) { return a; }
-            double operator()(double& a) { return a; }
-        };
+  // mappable:
+  {
+    struct dummy_op{};
+    static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, int>);
+    struct dummy{};
+    static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, dummy> == false);
+  }
 
-        static_assert(concepts::adaptable<int, object<>>);
-        static_assert(concepts::adaptable<int, object<object<>>>);
-        static_assert(concepts::adaptable<float, type>);
-        static_assert(concepts::adaptable<double, type> == false);
-    }
+  // executable
+  {
+    constexpr auto lhs_to_rhs = direction::lhs_to_rhs;
+    static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, int&, converter::identity>);
+    static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, std::string&, int_string_converter>);
+    static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
+    static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<std::string>&&, std::vector<std::string>&, converter::identity>);
 
-    // mappable:
-    {
-        struct dummy_op{};
-        static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, int>);
-        struct dummy{};
-        static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, dummy> == false);
-    }
+    constexpr auto rhs_to_lhs = direction::rhs_to_lhs;
+    static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, int&, converter::identity>);
+    static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, std::string&, int_string_converter>);
+    static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
+    static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<std::string>&, std::vector<std::string>&&, converter::identity>);
+  }
 
-    // executable
-    {
-        constexpr auto lhs_to_rhs = direction::lhs_to_rhs;
-        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, int&, converter::identity>);
-        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, int&, std::string&, int_string_converter>);
-        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
-        static_assert(concepts::executable_with<lhs_to_rhs, operators::assign, std::vector<std::string>&&, std::vector<std::string>&, converter::identity>);
+  // castable_to
+  {
+    static_assert(concepts::castable_to<int, int>);
+    static_assert(concepts::castable_to<int, float>);
+    static_assert(concepts::castable_to<float, int>);
 
-        constexpr auto rhs_to_lhs = direction::rhs_to_lhs;
-        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, int&, converter::identity>);
-        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, int&, std::string&, int_string_converter>);
-        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<int>&, std::vector<std::string>&, int_string_converter>);
-        static_assert(concepts::executable_with<rhs_to_lhs, operators::assign, std::vector<std::string>&, std::vector<std::string>&&, converter::identity>);
-    }
-
-    // castable_to
-    {
-        static_assert(concepts::castable_to<int, int>);
-        static_assert(concepts::castable_to<int, float>);
-        static_assert(concepts::castable_to<float, int>);
-
-        static_assert(!concepts::castable_to<std::string, int>);
-        static_assert(!concepts::castable_to<int, std::string>);
-    }
+    static_assert(!concepts::castable_to<std::string, int>);
+    static_assert(!concepts::castable_to<int, std::string>);
+  }
 }
