@@ -12,7 +12,7 @@ using namespace convertible;
 
 struct type_a {
   int val;
-  string vals;
+  vector<int> vals;
 };
 
 struct type_b {
