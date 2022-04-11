@@ -60,7 +60,7 @@ $ b install config.install.root=../out              // Install
 Great care has been taken to ensure there are no runtime penalties (compared to the equivalent "manual" conversion code). This is achieved simply by only relying on compile-time indirections (to figure out type compatibility, return types etc) & perfect forwarding.
 The result is a solution that is equally fast given optimization is turned on:
 ```
-$ bdep test config.cxx.coptions="-O3 -DNDEBUG" config.convertible.benchmark=true
+$ bdep test config.cxx.coptions="-O3 -DNDEBUG" config.convertible.benchmarks=true
 
 -------------------------------------------------------------
 Benchmark                   Time             CPU   Iterations
