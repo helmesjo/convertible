@@ -328,41 +328,14 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       }
     };
 
-    struct a_b_converter
-    {
-      a_b_converter():
-        ref(*this)
-      {}
-      a_b_converter& ref;
-      type_a operator()(type_b obj) const
-      {
-        if(obj.node)
-        {
-          return { obj.val, std::make_shared<type_a>(ref(*obj.node)) };
-        }
-        else
-        {
-          return { obj.val, nullptr };
-        }
-      }
 
-      type_b operator()(type_a obj) const
-      {
-        if(obj.node)
-        {
-          return { obj.val, std::make_shared<type_b>(ref(*obj.node)) };
-        }
-        else
-        {
-          return { obj.val, nullptr };
-        }
-      }
+    mapping_table tableBase{
+      mapping( member(&type_a::val), member(&type_b::val) )
     };
 
-    mapping_table table{
-      mapping( member(&type_a::val), member(&type_b::val) ),
-      mapping( deref(member(&type_a::node)), deref(member(&type_b::node)), a_b_converter{} )
-    };
+    auto table = extend(tableBase,
+      mapping( deref(member(&type_a::node)), deref(member(&type_b::node)), tableBase )
+    );
 
     type_a lhs;
     type_b rhs;
