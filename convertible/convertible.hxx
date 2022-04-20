@@ -681,6 +681,14 @@ namespace convertible
 
     std::tuple<mapping_ts...> mappings_;
   };
+
+  template<typename... mapping_ts>
+  constexpr auto extend(mapping_table<mapping_ts...> table, auto&&... mappings)
+  {
+    return std::apply([&](auto&&... mappings1){
+      return mapping_table(std::forward<mapping_ts>(mappings1)..., std::forward<decltype(mappings)>(mappings)...);
+    }, table.mappings_);
+  }
 }
 
 #undef FWD
