@@ -17,7 +17,7 @@
 
 namespace std
 {
-#if (__clang_major__ <= 13 && (defined(__APPLE__) || defined(__EMSCRIPTEN__))) || __clang_major__ < 13
+#if ((__clang_major__ < 13 || (__clang_major__ == 13 && __clang_minor__ == 0)) && (defined(__APPLE__) || defined(__EMSCRIPTEN__))) || __clang_major__ < 13
   // Credit: https://en.cppreference.com
 
   template<class lhs_t, class rhs_t>
