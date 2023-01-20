@@ -46,23 +46,29 @@ SCENARIO("convertible: Traits")
   using namespace convertible;
 
   // member pointer
-  struct type
   {
-    int member;
-  };
+    struct type
+    {
+      int member;
+      double& fun(int, char*);
+    };
 
-  static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::member)>>);
-  static_assert(std::is_same_v<int, convertible::traits::member_value_t<decltype(&type::member)>>);
-
+    static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::member)>>);
+    static_assert(std::is_same_v<int, convertible::traits::member_value_t<decltype(&type::member)>>);
+    static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::fun)>>);
+    static_assert(std::is_same_v<double&, convertible::traits::member_value_t<decltype(&type::fun)>>);
+  }
   // range_value
-  static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>>>);
-  static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
-  static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
-
+  {
+    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>>>);
+    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
+    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
+  }
   // unique_types
-  static_assert(std::is_same_v<std::tuple<int, float>, traits::unique_types_t<int, float, int, float>>);
-  static_assert(std::is_same_v<std::tuple<float, int>, traits::unique_types_t<int, float, float, int>>);
-
+  {
+    static_assert(std::is_same_v<std::tuple<int, float>, traits::unique_types_t<int, float, int, float>>);
+    static_assert(std::is_same_v<std::tuple<float, int>, traits::unique_types_t<int, float, float, int>>);
+  }
   // unique_derived_types
   {
     struct base {};
@@ -86,9 +92,11 @@ SCENARIO("convertible: Concepts")
     struct type
     {
       int member;
+      double& fun(int, char*);
     };
 
     static_assert(concepts::member_ptr<decltype(&type::member)>);
+    static_assert(concepts::member_ptr<decltype(&type::fun)>);
     static_assert(concepts::member_ptr<type> == false);
   }
 

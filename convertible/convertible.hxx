@@ -124,13 +124,16 @@ namespace convertible
   {
     namespace details
     {
-      template<typename C, typename R>
-      struct member_ptr_meta
+      template<typename C, typename R, typename... Args>
+      struct member_meta
       {
         using class_t = C;
         using value_t = R;
-        constexpr member_ptr_meta(R C::*){}
       };
+      template<typename class_t, typename return_t>
+      constexpr member_meta<class_t, return_t> member_ptr_meta(return_t class_t::*){}
+      template<typename class_t, typename return_t, typename... args_t>
+      constexpr member_meta<class_t, return_t, args_t...> member_ptr_meta(return_t (class_t::*)(args_t...)){}
 
       template<typename M>
       requires std::is_member_pointer_v<M>
@@ -302,7 +305,10 @@ namespace convertible
         requires std::derived_from<class_t, std::decay_t<obj_t>>
       constexpr decltype(auto) operator()(obj_t&& obj) const
       {
-        return obj.*ptr_;
+        if constexpr(std::is_member_object_pointer_v<member_ptr_t>)
+          return obj.*ptr_;
+        if constexpr(std::is_member_function_pointer_v<member_ptr_t>)
+          return (obj.*ptr_)();
       }
 
       member_ptr_t ptr_;

@@ -51,7 +51,7 @@ SCENARIO("convertible: Adapters")
       REQUIRE("hello" != adapter(str));
     }
   }
-  GIVEN("member adapter")
+  GIVEN("member adapter (field)")
   {
     struct type
     {
@@ -89,6 +89,50 @@ SCENARIO("convertible: Adapters")
     THEN("equality operator works")
     {
       obj.str = "world";
+      REQUIRE(adapter(obj) == "world");
+      REQUIRE(adapter(obj) != "hello");
+    }
+  }
+  GIVEN("member adapter (function)")
+  {
+    struct type
+    {
+      std::string& str(){ return str_; }
+    private:
+      std::string str_;
+    } obj;
+
+    auto adapter = member(&type::str);
+
+    THEN("it's constexpr constructible")
+    {
+      constexpr auto constexprAdapter = member(&type::str);
+      (void)constexprAdapter;
+    }
+    THEN("it implicitly assigns member value")
+    {
+      adapter(obj) = "hello";
+      REQUIRE(obj.str() == "hello");
+    }
+    THEN("it implicitly converts to type")
+    {
+      std::string val = adapter(obj);
+      REQUIRE(val == obj.str());
+    }
+    THEN("it 'moves from' r-value reference")
+    {
+      obj.str() = "world";
+      const std::string movedTo = adapter(std::move(obj));
+      REQUIRE(movedTo == "world");
+      REQUIRE(obj.str() == "");
+
+      std::string fromStr = "hello";
+      adapter(obj) = std::move(fromStr);
+      REQUIRE(fromStr == "");
+    }
+    THEN("equality operator works")
+    {
+      obj.str() = "world";
       REQUIRE(adapter(obj) == "world");
       REQUIRE(adapter(obj) != "hello");
     }
@@ -194,7 +238,7 @@ SCENARIO("convertible: Adapter composition")
     THEN("it's constexpr constructible")
     {
       constexpr auto constexprAdapter = deref(object(member(&type::val)));
-      constexpr auto constexprAdapter2 = member(&type::val, deref());
+      constexpr auto constexprAdapter2 = member(&std::string::c_str, member(&type::val, deref()));
       (void)constexprAdapter;
       (void)constexprAdapter2;
     }
