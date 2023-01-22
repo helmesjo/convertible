@@ -40,7 +40,7 @@ namespace
 
       THEN("lhs == rhs")
       {
-        REQUIRE(map.equal(lhs, rhs));
+        REQUIRE(map.template equal<direction::rhs_to_lhs>(lhs, rhs));
       }
     }
     WHEN("assigning rhs (r-value) to lhs")
@@ -58,7 +58,7 @@ namespace
 
       THEN("rhs == lhs")
       {
-        REQUIRE(map.equal(rhs, lhs));
+        REQUIRE(map.template equal<direction::lhs_to_rhs>(lhs, rhs));
       }
     }
     WHEN("assigning lhs (r-value) to rhs")

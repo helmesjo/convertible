@@ -554,10 +554,11 @@ namespace convertible
       (void)exec<operators::assign, dir>(FWD(lhs), FWD(rhs));
     }
 
-    constexpr bool equal(auto& lhs, auto& rhs) const
-      requires requires(mapping m){ m.exec<operators::equal, direction::rhs_to_lhs>(lhs, rhs); }
+    template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
+    constexpr bool equal(auto&& lhs, auto&& rhs) const
+      requires requires(mapping m){ m.exec<operators::equal, dir>(lhs, rhs); }
     {
-      return exec<operators::equal, direction::rhs_to_lhs>(FWD(lhs), FWD(rhs));
+      return exec<operators::equal, dir>(FWD(lhs), FWD(rhs));
     }
 
     template<concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::object_decay_t>
