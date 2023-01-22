@@ -1,6 +1,7 @@
 #include <convertible/convertible.hxx>
 #include <convertible/doctest_include.hxx>
 
+#include <cstring>
 #include <string>
 
 namespace
@@ -249,6 +250,87 @@ SCENARIO("convertible: Mapping (misc use-cases)")
         return std::all_of(std::begin(obj), std::end(obj), [](const auto& elem){ return elem == ""; });
       else
         return obj[0] == 1;
+    });
+  }
+  GIVEN("custom <-> string")
+  {
+    struct type_custom
+    {
+      char* data = nullptr;
+      std::size_t size = 0;
+
+      bool operator==(const type_custom& rhs) const
+      {
+        return std::strcmp(data, rhs.data) == 0;
+      }
+      bool operator!=(const type_custom& rhs) const
+      {
+        return !(*this == rhs);
+      }
+    };
+
+    struct proxy
+    {
+      operator std::string() const
+      {
+        return obj_->data ? std::string(obj_->data, obj_->size) : std::string();
+      }
+      proxy& operator=(const std::string& rhs)
+      {
+        delete obj_->data;
+        obj_->size = rhs.size()+1;
+        obj_->data = new char[obj_->size];
+        std::memcpy(obj_->data, rhs.data(), obj_->size);
+        return *this;
+      }
+      bool operator==(const proxy& rhs) const
+      {
+        return obj_ == rhs.obj_;
+      }
+      bool operator!=(const proxy& rhs) const
+      {
+        return !(*this == rhs);
+      }
+      bool operator==(const std::string& rhs) const
+      {
+        return obj_->data ? std::strcmp(obj_->data, rhs.c_str()) == 0 : rhs.empty();
+      }
+      bool operator!=(const std::string& rhs) const
+      {
+        return !(*this == rhs);
+      }
+
+      type_custom* obj_ = nullptr;
+    };
+    static_assert(std::common_reference_with<proxy, std::string>);
+
+    struct custom_reader
+    {
+      proxy& operator()(type_custom& obj) const
+      {
+        proxy_.obj_ = &obj;
+        return proxy_;
+      }
+      // Can't move from obj, but must support the operator
+      proxy& operator()(type_custom&& obj) const
+      {
+        return (*this)(obj);
+      }
+      // Note: This is an example for how a proxy type can be used, but
+      //       using mutable (at lest in this way) is obviously discouraged.
+      mutable proxy proxy_;
+    };
+    static_assert(concepts::adaptable<type_custom&, custom_reader>);
+
+    using lhs_t = type_custom;
+    using rhs_t = std::string;
+
+    auto map = mapping(custom(custom_reader{}), object());
+
+    auto lhs = lhs_t{};
+    auto rhs = rhs_t{"def"};
+    MAPS_CORRECTLY(lhs, rhs, map, [](const auto&){
+      return true;
     });
   }
 }
