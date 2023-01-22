@@ -2,6 +2,7 @@
 #include <convertible/doctest_include.hxx>
 
 #include <array>
+#include <cstring>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -294,6 +295,82 @@ SCENARIO("convertible: Adapters constexpr-ness")
     {
       static_assert(adapter(intVal) == intVal);
       static_assert(adapter(floatVal) == floatVal);
+    }
+  }
+}
+
+SCENARIO("convertible: Adapters (proxies)")
+{
+  using namespace convertible;
+
+  GIVEN("string proxy adapter for custom type")
+  {
+    struct type_custom
+    {
+      char* data = nullptr;
+      std::size_t size = 0;
+    };
+
+    struct proxy
+    {
+      operator std::string() const
+      {
+        return obj_->data ? std::string(obj_->data, obj_->size) : std::string();
+      }
+      proxy& operator=(const std::string& rhs)
+      {
+        delete obj_->data;
+        obj_->size = rhs.size()+1;
+        obj_->data = new char[obj_->size];
+        std::memcpy(obj_->data, rhs.data(), obj_->size);
+        return *this;
+      }
+      bool operator==(const std::string& rhs) const
+      {
+        return obj_->data ? std::strcmp(obj_->data, rhs.c_str()) == 0 : rhs.empty();
+      }
+      bool operator!=(const std::string& rhs) const
+      {
+        return !(*this == rhs);
+      }
+
+      type_custom* obj_ = nullptr;
+    };
+    static_assert(std::common_reference_with<proxy, std::string>);
+
+    struct custom_reader
+    {
+      proxy& operator()(type_custom& obj) const
+      {
+        proxy_.obj_ = &obj;
+        return proxy_;
+      }
+      // Note: This is an example for how a proxy type can be used, but
+      //       using mutable (at lest in this way) is obviously discouraged.
+      mutable proxy proxy_;
+    };
+    static_assert(concepts::adaptable<type_custom&, custom_reader>);
+
+    constexpr auto adapter = custom<type_custom>(custom_reader{});
+    type_custom custom{};
+
+    THEN("it implicitly assigns value")
+    {
+      adapter(custom) = "world";
+      REQUIRE(adapter(custom) == std::string("world"));
+    }
+    THEN("it implicitly converts to type")
+    {
+      adapter(custom) = "hello";
+      REQUIRE(adapter(custom) == "hello");
+    }
+    THEN("equality operator works")
+    {
+      adapter(custom) = "world";
+      REQUIRE(adapter(custom) == "world");
+      REQUIRE(adapter(custom) != "hello");
+      REQUIRE("world" == adapter(custom));
+      REQUIRE("hello" != adapter(custom));
     }
   }
 }

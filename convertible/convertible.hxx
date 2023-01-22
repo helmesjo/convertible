@@ -368,6 +368,12 @@ namespace convertible
     return object(reader::composed(FWD(adapters)...));
   }
 
+  template<typename adapted_t = details::any>
+  constexpr auto custom(auto&& reader)
+  {
+    return object<std::decay_t<decltype(reader)>, adapted_t>(FWD(reader));
+  }
+
   template<concepts::member_ptr member_ptr_t>
   consteval auto member(member_ptr_t ptr)
   {
