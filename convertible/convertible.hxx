@@ -231,7 +231,7 @@ namespace convertible
     };
 
     template<typename lhs_t, typename rhs_t, typename converter_t>
-    concept assignable_from_converted = std::assignable_from<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
+    concept assignable_from_converted = std::is_assignable_v<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
 
     template<typename lhs_t, typename rhs_t, typename converter_t>
     concept equality_comparable_with_converted = std::equality_comparable_with<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
@@ -455,9 +455,9 @@ namespace convertible
     struct assign
     {
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<lhs_t, converter_t>>
-        requires concepts::assignable_from_converted<lhs_t&, rhs_t, cast_t>
-      constexpr decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<std::remove_reference_t<lhs_t>, converter_t>>
+        requires concepts::assignable_from_converted<lhs_t, rhs_t, cast_t>
+      constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       {
         return lhs = cast_t(converter)(FWD(rhs));
       }
@@ -467,7 +467,7 @@ namespace convertible
         requires 
           (!concepts::assignable_from_converted<lhs_t&, rhs_t, explicit_cast<lhs_t, converter_t>>)
           && concepts::assignable_from_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, cast_t>
-      constexpr decltype(auto) operator()(lhs_t& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       {
         using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
         using iterator_t = std::conditional_t<
@@ -495,8 +495,8 @@ namespace convertible
     {
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
       template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<lhs_t, converter_t>>
-      constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
         requires concepts::equality_comparable_with_converted<lhs_t, rhs_t, cast_t>
+      constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
       {
         return FWD(lhs) == cast_t(converter)(FWD(rhs));
       }
