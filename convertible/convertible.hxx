@@ -145,15 +145,6 @@ namespace convertible
       template<typename... arg_ts>
       struct is_adapter<object<arg_ts...>>: std::true_type {};
 
-      template<DIR_DECL(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
-      struct executable : std::false_type {};
-
-      template<typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
-      struct executable<direction::rhs_to_lhs, callable_t, lhs_t, rhs_t, converter_t> : std::integral_constant<bool, std::is_invocable_v<callable_t, lhs_t, rhs_t, converter_t>> {};
-
-      template<typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
-      struct executable<direction::lhs_to_rhs, callable_t, lhs_t, rhs_t, converter_t> : std::integral_constant<bool, std::is_invocable_v<callable_t, rhs_t, lhs_t, converter_t>> {};
-
       template<template<typename, typename> typename op_t, typename... unique_ts>
       struct unique_types
       {
@@ -182,8 +173,11 @@ namespace convertible
     template<typename T>
     constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
 
-    template<DIR_DECL(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
-    constexpr bool executable_v = details::executable<dir, callable_t, lhs_t, rhs_t, converter_t>::value;
+    template<DIR_DECL(direction) dir, typename arg1_t, typename arg2_t>
+    using lhs_t = std::conditional_t<dir == direction::rhs_to_lhs, arg1_t, arg2_t>;
+
+    template<DIR_DECL(direction) dir, typename arg1_t, typename arg2_t>
+    using rhs_t = std::conditional_t<dir == direction::rhs_to_lhs, arg2_t, arg1_t>;
 
     template<typename... arg_ts>
     using unique_types_t = typename details::unique_types<std::is_same, std::tuple<>, arg_ts...>::type;
@@ -230,8 +224,11 @@ namespace convertible
       { m.template exec<operator_t, dir>(l, r) };
     };
 
-    template<DIR_DECL(direction) dir, typename callable_t, typename lhs_t, typename rhs_t, typename converter_t>
-    concept executable_with = traits::executable_v<dir, callable_t, lhs_t, rhs_t, converter_t>;
+    template<DIR_DECL(direction) dir, typename callable_t, typename arg1_t, typename arg2_t, typename converter_t>
+    concept executable_with = requires(callable_t callable, traits::lhs_t<dir, arg1_t, arg2_t> l, traits::rhs_t<dir, arg1_t, arg2_t> r, converter_t converter)
+    {
+      { callable(l, r, converter) };
+    };
 
     template<typename lhs_t, typename rhs_t, typename converter_t>
     concept assignable_from_converted = std::assignable_from<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
