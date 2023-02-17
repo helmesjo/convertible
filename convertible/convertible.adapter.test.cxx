@@ -313,45 +313,46 @@ SCENARIO("convertible: Adapters (proxies)")
 
     struct proxy
     {
+      explicit proxy(type_custom& obj):
+        obj_(obj)
+      {}
+
       operator std::string() const
       {
-        return obj_->data ? std::string(obj_->data, obj_->size) : std::string();
+        return std::string(obj_.data, obj_.size);
       }
       proxy& operator=(const std::string& rhs)
       {
-        delete obj_->data;
-        obj_->size = rhs.size()+1;
-        obj_->data = new char[obj_->size];
-        std::memcpy(obj_->data, rhs.data(), obj_->size);
+        delete[] obj_.data;
+        obj_.size = rhs.size()+1;
+        obj_.data = new char[obj_.size];
+        std::memcpy(obj_.data, rhs.data(), obj_.size);
         return *this;
       }
       bool operator==(const std::string& rhs) const
       {
-        return obj_->data ? std::strcmp(obj_->data, rhs.c_str()) == 0 : rhs.empty();
+        return std::strcmp(obj_.data, rhs.c_str()) == 0;
       }
       bool operator!=(const std::string& rhs) const
       {
         return !(*this == rhs);
       }
 
-      type_custom* obj_ = nullptr;
+    private:
+      type_custom& obj_;
     };
     static_assert(std::common_reference_with<proxy, std::string>);
 
     struct custom_reader
     {
-      proxy& operator()(type_custom& obj) const
+      proxy operator()(type_custom& obj) const
       {
-        proxy_.obj_ = &obj;
-        return proxy_;
+        return proxy(obj);
       }
-      // Note: This is an example for how a proxy type can be used, but
-      //       using mutable (at lest in this way) is obviously discouraged.
-      mutable proxy proxy_;
     };
     static_assert(concepts::adaptable<type_custom&, custom_reader>);
 
-    constexpr auto adapter = custom<type_custom>(custom_reader{});
+    constexpr auto adapter = custom(custom_reader{});
     type_custom custom{};
 
     THEN("it implicitly assigns value")

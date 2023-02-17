@@ -212,7 +212,7 @@ namespace convertible
     template<typename arg_t, typename adapter_t>
     concept adaptable = requires(adapter_t a, arg_t b)
     {
-      { a(b) } -> reference;
+      { a(b) };
     };
 
     template<typename adapter_t>
