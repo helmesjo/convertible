@@ -66,7 +66,7 @@ void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
 
   auto op = convertible::operators::assign{};
 
-  //static_assert(std::movable<std::decay_t<rhs_t>>, "rhs must be a movable type");
+  static_assert(std::movable<std::decay_t<rhs_t>>, "rhs must be a movable type");
 
   AND_WHEN("passed lhs & rhs (r-value)")
   {
@@ -128,39 +128,49 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        int&, 
+        int&,
         int&
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        int&, 
+        int&,
         const int&
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        int&, 
+        int&,
         int&&
       >,
       std::tuple<
         operators::assign,
-        int&, 
+        int&,
         const int&
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        int&, 
+        int&,
         std::string&,
         int_string_converter
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::vector<int>&, 
+        std::vector<int>&,
         std::vector<std::string>&,
         int_string_converter
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        enum_a&, 
+        enum_a&,
         enum_b&
       >
     );
@@ -341,34 +351,44 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        int&, 
+        int&,
         int&
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        int&&, 
+        int&&,
         int&&
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        int&&, 
+        int&&,
         int&
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        int&, 
+        int&,
         std::string&,
         int_string_converter
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::vector<int>&, 
+        std::vector<int>&,
         std::vector<std::string>&,
         int_string_converter
-      >,
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        enum_a&, 
+        enum_a&,
         enum_b&
       >
     );
