@@ -1,0 +1,40 @@
+intf_libs = # Interface dependencies.
+impl_libs = # Implementation dependencies.
+#import xxxx_libs += libhello%lib{hello}
+
+lib{convertible}: libul{convertible}: {hxx ixx txx cxx}{**} $impl_libs $intf_libs
+
+# Build options.
+#
+cxx.poptions =+ "-I$out_root" "-I$src_root"
+
+# Export options.
+#
+libs{convertible}: def{convertible}: include = ($cxx.target.system == 'win32-msvc')
+def{convertible}: libul{convertible}
+
+if ($cxx.target.system == 'mingw32')
+  cxx.loptions += -Wl,--export-all-symbols
+
+lib{convertible}:
+{
+  cxx.export.poptions = "-I$out_root" "-I$src_root"
+  cxx.export.libs = $intf_libs
+}
+
+# For pre-releases use the complete version to make sure they cannot be used
+# in place of another pre-release or the final version. See the version module
+# for details on the version.* variable values.
+#
+if $version.pre_release
+  lib{convertible}: bin.lib.version = "-$version.project_id"
+else
+  lib{convertible}: bin.lib.version = "-$version.major.$version.minor"
+
+# Install recreating subdirectories.
+#
+{hxx ixx txx}{**}:
+{
+  install         = include/convertible/
+  install.subdirs = true
+}

@@ -1,0 +1,12 @@
+libs =
+import libs += \
+  libconvertible%lib{convertible} \
+  doctest%lib{doctest} \
+  libnanobench%lib{nanobench}
+
+exe{libconvertible-benchmarks}: {hxx ixx txx cxx}{**} $libs
+{
+  test.arguments = --quiet
+}
+
+cxx.poptions =+ "-I$out_root" "-I$src_root"

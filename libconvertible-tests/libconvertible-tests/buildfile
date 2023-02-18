@@ -1,0 +1,11 @@
+libs =
+import libs += \
+  libconvertible%lib{convertible} \
+  doctest%lib{doctest}
+
+exe{libconvertible-tests}: {hxx ixx txx cxx}{**} $libs
+{
+  test.arguments = --no-intro
+}
+
+cxx.poptions =+ "-I$out_root" "-I$src_root"

@@ -1,5 +1,5 @@
 #include <convertible/convertible.hxx>
-#include <convertible/doctest_include.hxx>
+#include <doctest/doctest.h>
 
 #include <array>
 #include <concepts>

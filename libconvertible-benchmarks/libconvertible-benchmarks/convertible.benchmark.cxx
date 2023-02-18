@@ -1,5 +1,6 @@
-#include <benchmark/benchmark.h>
 #include <convertible/convertible.hxx>
+#include <nanobench.h>
+#include <doctest/doctest.h>
 
 #include <cstdlib>
 #include <optional>
@@ -7,6 +8,7 @@
 #include <vector>
 
 using namespace convertible;
+namespace bench = ankerl::nanobench;
 
 namespace
 {
@@ -104,9 +106,9 @@ namespace
   }
 }
 
-static void mapping_conversion(benchmark::State& state)
+TEST_CASE("mapping_table")
 {
-  constexpr auto table = 
+  static constexpr auto table = 
     mapping_table
     {
       mapping( member(&type_a::val1), member(&type_b::val1) ),
@@ -115,58 +117,43 @@ static void mapping_conversion(benchmark::State& state)
       mapping( deref(member(&type_a::val4)), member(&type_b::val4) )
     };
 
-  for (auto _ : state)
-  {
-    auto lhs = create_type_a();
-    auto rhs = create_type_b();
+  auto lhs = create_type_a();
+  auto rhs = create_type_b();
 
-    table.assign<direction::rhs_to_lhs>(lhs, rhs);
+  bench::Bench b;
+  b.warmup(500).relative(true);
 
-    bool equal = table.equal(lhs, rhs);
-
-    benchmark::DoNotOptimize(equal);
-    benchmark::DoNotOptimize(lhs);
-    benchmark::DoNotOptimize(rhs);
-  }
-}
-
-static void manual_conversion(benchmark::State& state)
-{
-  for (auto _ : state)
-  {
-    auto lhs = create_type_a();
-    auto rhs = create_type_b();
-
-    lhs.val1 = rhs.val1;
-    lhs.val2 = rhs.val2;
-    lhs.val3.resize(rhs.val3.size());
-    for(std::size_t i = 0; i < rhs.val3.size(); ++i)
-    {
-      lhs.val3[i] = int_string_converter{}(rhs.val3[i]);
-    }
-    lhs.val4 = rhs.val4;
-
-    bool equal = true;
-    for(std::size_t i = 0; i < rhs.val3.size(); ++i)
-    {
-      if(lhs.val3[i] != int_string_converter{}(rhs.val3[i]))
+  b.title("conversion")
+    .run("convertible", [&] {
+      table.assign<direction::rhs_to_lhs>(lhs, rhs);
+      bench::doNotOptimizeAway(lhs);
+      bench::doNotOptimizeAway(rhs);
+  }).run("manual", [&] {
+      lhs.val1 = rhs.val1;
+      lhs.val2 = rhs.val2;
+      lhs.val3.resize(rhs.val3.size());
+      for(std::size_t i = 0; i < rhs.val3.size(); ++i)
       {
-        equal = false;
-        break;
+        lhs.val3[i] = int_string_converter{}(rhs.val3[i]);
       }
-    }
-
-    equal = equal &&
-      lhs.val1 == rhs.val1 &&
-      lhs.val2 == rhs.val2;
-
-    benchmark::DoNotOptimize(equal);
-    benchmark::DoNotOptimize(lhs);
-    benchmark::DoNotOptimize(rhs);
-  }
+      lhs.val4 = rhs.val4;
+      bench::doNotOptimizeAway(lhs);
+      bench::doNotOptimizeAway(rhs);
+  });
+  b.title("equality")
+    .run("convertible", [&] {
+      bool equal;
+      bench::doNotOptimizeAway(equal = table.equal(lhs, rhs));
+  }).run("manual", [&] {
+      bool equal = true;
+      for(std::size_t i = 0; i < rhs.val3.size(); ++i)
+      {
+        if(lhs.val3[i] != int_string_converter{}(rhs.val3[i]))
+        {
+          equal = false;
+          break;
+        }
+      }
+      bench::doNotOptimizeAway(equal = equal && lhs.val1 == rhs.val1 && lhs.val2 == rhs.val2);
+  });
 }
-
-BENCHMARK(mapping_conversion)->Unit(benchmark::kMillisecond);
-BENCHMARK(manual_conversion )->Unit(benchmark::kMillisecond);
-
-BENCHMARK_MAIN();

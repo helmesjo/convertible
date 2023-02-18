@@ -1,0 +1,6 @@
+: 1
+location: libconvertible/
+:
+location: libconvertible-tests/
+:
+location: libconvertible-benchmarks/

@@ -1,3 +1,7 @@
+# Uncomment to suppress warnings coming from external libraries.
+#
+#cxx.internal.scope = current
+
 cxx.std = latest
 
 using cxx
@@ -7,7 +11,11 @@ ixx{*}: extension = ixx
 txx{*}: extension = txx
 cxx{*}: extension = cxx
 
-# Every exe{} in this subproject is by default a test.
+# Assume headers are importable unless stated otherwise.
+#
+hxx{*}: cxx.importable = true
+
+# All executables are tests
 #
 exe{*}: test = true
 

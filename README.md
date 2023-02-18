@@ -58,14 +58,18 @@ $ b install config.install.root=../out              // Install
 
 ## Performance
 Great care has been taken to ensure there are no runtime penalties (compared to the equivalent "manual" conversion code). This is achieved simply by only relying on compile-time indirections (to figure out type compatibility, return types etc) & perfect forwarding.
-The result is a solution that is equally fast given optimization is turned on:
+The result is a solution that is equally fast (or even marginally faster) given optimization is turned on:
 ```
-$ bdep test config.cxx.coptions="-O3 -DNDEBUG" config.convertible.benchmarks=true
+$ bdep test config.cxx.coptions="-O3 -DNDEBUG"
 
--------------------------------------------------------------
-Benchmark                   Time             CPU   Iterations
--------------------------------------------------------------
-mapping_conversion      0.197 ms        0.197 ms         3518
-manual_conversion       0.200 ms        0.201 ms         3413
+| relative |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | conversion
+|---------:|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:-----------
+|   100.0% |            7,129.69 |          140,258.56 |    0.1% |      196,571.09 |       38,504.24 |  5.105 |      38,006.02 |    0.0% |      0.01 | `convertible`
+|    96.1% |            7,415.42 |          134,854.09 |    0.1% |      203,558.09 |       39,835.78 |  5.110 |      38,005.02 |    0.0% |      0.01 | `manual`
+
+| relative |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | equality
+|---------:|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:---------
+|   100.0% |            8,894.39 |          112,430.40 |    0.1% |      189,198.10 |       48,028.87 |  3.939 |      36,013.02 |    0.0% |      0.01 | `convertible`
+|    98.6% |            9,018.78 |          110,879.75 |    0.0% |      196,586.11 |       48,923.54 |  4.018 |      36,011.03 |    0.0% |      0.01 | `manual`
 ```
-
+_Tested on Ryzen 7950X with GCC 12.2.1._
