@@ -353,9 +353,9 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       THEN("lhs == rhs")
       {
         REQUIRE(lhs.val == rhs.val);
-        REQUIRE(lhs.node != nullptr);
+        REQUIRE((lhs.node != nullptr));
         REQUIRE(lhs.node->val == rhs.node->val);
-        REQUIRE(lhs.node->node == nullptr);
+        REQUIRE((lhs.node->node == nullptr));
         REQUIRE(table.equal(lhs, rhs));
       }
     }
@@ -371,9 +371,9 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       THEN("lhs != rhs")
       {
         REQUIRE(lhs.val == rhs.val);
-        REQUIRE(lhs.node != nullptr);
+        REQUIRE((lhs.node != nullptr));
         REQUIRE(lhs.node->val != rhs.node->val);
-        REQUIRE(lhs.node->node == nullptr);
+        REQUIRE((lhs.node->node == nullptr));
         REQUIRE_FALSE(table.equal(lhs, rhs));
       }
     }
