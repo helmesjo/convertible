@@ -45,6 +45,15 @@ SCENARIO("convertible: Traits")
 {
   using namespace convertible;
 
+  // direction
+  {
+    static_assert(std::is_same_v<traits::lhs_t<direction::rhs_to_lhs, int&, double&>, int&>);
+    static_assert(std::is_same_v<traits::rhs_t<direction::rhs_to_lhs, int&, double&>, double&>);
+
+    static_assert(std::is_same_v<traits::lhs_t<direction::lhs_to_rhs, int&, double&>, double&>);
+    static_assert(std::is_same_v<traits::rhs_t<direction::lhs_to_rhs, int&, double&>, int&>);
+  }
+
   // member pointer
   {
     struct type
