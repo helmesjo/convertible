@@ -427,19 +427,17 @@ namespace convertible
       template<typename in_t>
       using converted_t = std::invoke_result_t<converter_t, in_t>;
 
-      template<typename target_t = to_t>
       constexpr decltype(auto) operator()(auto&& val) const
-        requires 
-          std::assignable_from<target_t&, converted_t<decltype(val)>>
-          || concepts::castable_to<converted_t<decltype(val)>, target_t>
+        requires std::is_assignable_v<to_t&, converted_t<decltype(val)>>
+              || concepts::castable_to<converted_t<decltype(val)>, to_t>
       {
-        if constexpr(std::assignable_from<target_t&, converted_t<decltype(val)>>)
+        if constexpr(std::is_assignable_v<to_t&, converted_t<decltype(val)>>)
         {
           return converter_(FWD(val));
         }
         else
         {
-          return static_cast<target_t>(converter_(FWD(val)));
+          return static_cast<to_t>(converter_(FWD(val)));
         }
       }
 
@@ -471,8 +469,8 @@ namespace convertible
       {
         using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
         using iterator_t = std::conditional_t<
-            std::is_rvalue_reference_v<decltype(rhs)>, 
-            std::move_iterator<container_iterator_t>, 
+            std::is_rvalue_reference_v<decltype(rhs)>,
+            std::move_iterator<container_iterator_t>,
             container_iterator_t
           >;
 
@@ -482,7 +480,7 @@ namespace convertible
         }
 
         const auto size = std::min(lhs.size(), rhs.size());
-        std::for_each(iterator_t{std::begin(rhs)}, iterator_t{std::begin(rhs) + size}, 
+        std::for_each(iterator_t{std::begin(rhs)}, iterator_t{std::begin(rhs) + size},
           [this, lhsItr = std::begin(lhs), &converter](auto&& rhs) mutable {
             this->operator()(*lhsItr++, FWD(rhs), converter);
           });
