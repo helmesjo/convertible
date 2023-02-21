@@ -234,7 +234,10 @@ namespace convertible
     concept assignable_from_converted = std::is_assignable_v<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
 
     template<typename lhs_t, typename rhs_t, typename converter_t>
-    concept equality_comparable_with_converted = std::equality_comparable_with<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
+    concept equality_comparable_with_converted = requires(std::remove_reference_t<lhs_t>& lhs, std::invoke_result_t<converter_t, rhs_t> rhs)
+    {
+      { lhs == rhs } -> std::same_as<bool>;
+    };
 
     template<class T>
     concept resizable = requires(T container)
@@ -448,12 +451,12 @@ namespace convertible
   namespace operators
   {
     template<typename to_t, typename converter_t>
-    using explicit_cast = converter::explicit_cast<to_t, converter_t>;
+    using explicit_cast = converter::explicit_cast<std::remove_reference_t<to_t>, converter_t>;
 
     struct assign
     {
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<std::remove_reference_t<lhs_t>, converter_t>>
+      template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<lhs_t, converter_t>>
         requires concepts::assignable_from_converted<lhs_t, rhs_t, cast_t>
       constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       {
@@ -502,7 +505,7 @@ namespace convertible
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
       template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
         requires 
-          (!concepts::equality_comparable_with_converted<lhs_t&, rhs_t, explicit_cast<lhs_t, converter_t>>)
+          (!concepts::equality_comparable_with_converted<lhs_t, rhs_t, explicit_cast<lhs_t, converter_t>>)
           && concepts::equality_comparable_with_converted<traits::range_value_t<lhs_t>, traits::range_value_t<rhs_t>, cast_t>
       constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
       {
