@@ -34,6 +34,9 @@ namespace
   void MAPS_CORRECTLY(auto&& lhs, auto&& rhs, const auto& map, verify_t verifyMoved = verify_empty)
   {
     using namespace convertible;
+    using map_t = std::remove_cvref_t<decltype(map)>;
+    using lhs_t = std::remove_cvref_t<decltype(lhs)>;
+    using rhs_t = std::remove_cvref_t<decltype(rhs)>;
 
     WHEN("assigning rhs to lhs")
     {
@@ -62,13 +65,16 @@ namespace
         REQUIRE(map.template equal<direction::lhs_to_rhs>(lhs, rhs));
       }
     }
-    WHEN("assigning lhs (r-value) to rhs")
+    if constexpr(std::is_invocable_v<typename map_t::lhs_adapter_t, decltype(std::move(lhs))>)
     {
-      map.template assign<direction::lhs_to_rhs>(std::move(lhs), rhs);
-
-      THEN("lhs is moved from")
+      WHEN("assigning lhs (r-value) to rhs")
       {
-        REQUIRE(verifyMoved(lhs));
+        map.template assign<direction::lhs_to_rhs>(std::move(lhs), rhs);
+
+        THEN("lhs is moved from")
+        {
+          REQUIRE(verifyMoved(lhs));
+        }
       }
     }
   }
@@ -252,83 +258,67 @@ SCENARIO("convertible: Mapping (misc use-cases)")
         return obj[0] == 1;
     });
   }
-  GIVEN("custom <-> string")
+  GIVEN("proxy <-> string")
   {
-    struct type_custom
-    {
-      char* data = nullptr;
-      std::size_t size = 0;
-
-      bool operator==(const type_custom& rhs) const
-      {
-        return std::strcmp(data, rhs.data) == 0;
-      }
-      bool operator!=(const type_custom& rhs) const
-      {
-        return !(*this == rhs);
-      }
-    };
-
     struct proxy
     {
-      operator std::string() const
+      explicit proxy(std::common_reference_with<std::string> auto& str) :
+        str_(str)
+      {}
+
+      explicit operator std::string() const
       {
-        return obj_->data ? std::string(obj_->data, obj_->size) : std::string();
+        return str_;
       }
-      proxy& operator=(const std::string& rhs)
+      proxy& operator=(std::common_reference_with<std::string> auto& rhs)
       {
-        delete obj_->data;
-        obj_->size = rhs.size()+1;
-        obj_->data = new char[obj_->size];
-        std::memcpy(obj_->data, rhs.data(), obj_->size);
+        str_ = rhs;
+        return *this;
+      }
+      proxy& operator=(std::common_reference_with<std::string> auto&& rhs)
+      {
+        str_ = std::move(rhs);
         return *this;
       }
       bool operator==(const proxy& rhs) const
       {
-        return obj_ == rhs.obj_;
+        return str_ == rhs.str_;
       }
       bool operator!=(const proxy& rhs) const
       {
         return !(*this == rhs);
       }
-      bool operator==(const std::string& rhs) const
+      bool operator==(const std::common_reference_with<std::string> auto& rhs) const
       {
-        return obj_->data ? std::strcmp(obj_->data, rhs.c_str()) == 0 : rhs.empty();
+        return str_ == rhs;
       }
-      bool operator!=(const std::string& rhs) const
+      bool operator!=(const std::common_reference_with<std::string> auto& rhs) const
       {
         return !(*this == rhs);
       }
 
-      type_custom* obj_ = nullptr;
+    private:
+      std::string& str_;
     };
-    static_assert(std::common_reference_with<proxy, std::string>);
+    static_assert(!std::is_assignable_v<std::string&, proxy>);
+    static_assert(concepts::castable_to<proxy&, std::string>);
 
     struct custom_reader
     {
-      proxy& operator()(type_custom& obj) const
+      proxy operator()(std::common_reference_with<std::string> auto& obj) const
       {
-        proxy_.obj_ = &obj;
-        return proxy_;
+        return proxy(obj);
       }
-      // Can't move from obj, but must support the operator
-      proxy& operator()(type_custom&& obj) const
-      {
-        return (*this)(obj);
-      }
-      // Note: This is an example for how a proxy type can be used, but
-      //       using mutable (at lest in this way) is obviously discouraged.
-      mutable proxy proxy_;
     };
-    static_assert(concepts::adaptable<type_custom&, custom_reader>);
+    static_assert(concepts::adaptable<std::string&, custom_reader>);
 
-    using lhs_t = type_custom;
+    using lhs_t = std::string;
     using rhs_t = std::string;
 
-    auto map = mapping(custom(custom_reader{}), object());
+    auto map = mapping(custom<std::string>(custom_reader{}), object());
 
-    auto lhs = lhs_t{};
-    auto rhs = rhs_t{"def"};
+    auto lhs = lhs_t{"hello"};
+    auto rhs = rhs_t{"world"};
     MAPS_CORRECTLY(lhs, rhs, map, [](const auto&){
       return true;
     });

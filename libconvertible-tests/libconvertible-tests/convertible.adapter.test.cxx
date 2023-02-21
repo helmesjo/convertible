@@ -305,73 +305,79 @@ SCENARIO("convertible: Adapters (proxies)")
 
   GIVEN("string proxy adapter for custom type")
   {
-    struct type_custom
-    {
-      char* data = nullptr;
-      std::size_t size = 0;
-    };
-
     struct proxy
     {
-      explicit proxy(type_custom& obj):
-        obj_(obj)
+      explicit proxy(std::common_reference_with<std::string> auto& str) :
+        str_(str)
       {}
 
-      operator std::string() const
+      explicit operator std::string() const
       {
-        return std::string(obj_.data, obj_.size);
+        return str_;
       }
-      proxy& operator=(const std::string& rhs)
+      proxy& operator=(std::common_reference_with<std::string> auto& rhs)
       {
-        delete[] obj_.data;
-        obj_.size = rhs.size()+1;
-        obj_.data = new char[obj_.size];
-        std::memcpy(obj_.data, rhs.data(), obj_.size);
+        str_ = rhs;
         return *this;
       }
-      bool operator==(const std::string& rhs) const
+      proxy& operator=(std::common_reference_with<std::string> auto&& rhs)
       {
-        return std::strcmp(obj_.data, rhs.c_str()) == 0;
+        str_ = std::move(rhs);
+        return *this;
       }
-      bool operator!=(const std::string& rhs) const
+      bool operator==(const proxy& rhs) const
+      {
+        return str_ == rhs.str_;
+      }
+      bool operator!=(const proxy& rhs) const
+      {
+        return !(*this == rhs);
+      }
+      bool operator==(const std::common_reference_with<std::string> auto& rhs) const
+      {
+        return str_ == rhs;
+      }
+      bool operator!=(const std::common_reference_with<std::string> auto& rhs) const
       {
         return !(*this == rhs);
       }
 
     private:
-      type_custom& obj_;
+      std::string& str_;
     };
-    static_assert(std::common_reference_with<proxy, std::string>);
+    static_assert(!std::is_assignable_v<std::string&, proxy>);
+    static_assert(concepts::castable_to<proxy&, std::string>);
 
     struct custom_reader
     {
-      proxy operator()(type_custom& obj) const
+      proxy operator()(std::string& obj) const
       {
         return proxy(obj);
       }
     };
-    static_assert(concepts::adaptable<type_custom&, custom_reader>);
+    static_assert(concepts::adaptable<std::string&, custom_reader>);
 
     constexpr auto adapter = custom(custom_reader{});
-    type_custom custom{};
+    std::string str;
 
     THEN("it implicitly assigns value")
     {
-      adapter(custom) = "world";
-      REQUIRE(adapter(custom) == std::string("world"));
+      adapter(str) = "world";
+      REQUIRE(adapter(str) == std::string("world"));
     }
-    THEN("it implicitly converts to type")
+    THEN("it explicitly converts to type")
     {
-      adapter(custom) = "hello";
-      REQUIRE(adapter(custom) == "hello");
+      adapter(str) = "hello";
+      auto val = static_cast<std::string>(adapter(str));
+      REQUIRE(val == "hello");
     }
     THEN("equality operator works")
     {
-      adapter(custom) = "world";
-      REQUIRE(adapter(custom) == "world");
-      REQUIRE(adapter(custom) != "hello");
-      REQUIRE("world" == adapter(custom));
-      REQUIRE("hello" != adapter(custom));
+      adapter(str) = "world";
+      REQUIRE(adapter(str) == "world");
+      REQUIRE(adapter(str) != "hello");
+      REQUIRE("world" == adapter(str));
+      REQUIRE("hello" != adapter(str));
     }
   }
 }

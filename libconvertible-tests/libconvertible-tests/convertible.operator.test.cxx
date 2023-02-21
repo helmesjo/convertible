@@ -345,6 +345,61 @@ SCENARIO("convertible: Operators")
         });
       }
     }
+    WHEN("lhs is std::string, rhs is string proxy type")
+    {
+          struct proxy
+      {
+        explicit proxy(std::common_reference_with<std::string> auto& str) :
+          str_(str)
+        {}
+
+        explicit operator std::string() const
+        {
+          return str_;
+        }
+        proxy& operator=(std::common_reference_with<std::string> auto& rhs)
+        {
+          str_ = rhs;
+          return *this;
+        }
+        proxy& operator=(std::common_reference_with<std::string> auto&& rhs)
+        {
+          str_ = std::move(rhs);
+          return *this;
+        }
+        bool operator==(const proxy& rhs) const
+        {
+          return str_ == rhs.str_;
+        }
+        bool operator!=(const proxy& rhs) const
+        {
+          return !(*this == rhs);
+        }
+        bool operator==(const std::common_reference_with<std::string> auto& rhs) const
+        {
+          return str_ == rhs;
+        }
+        bool operator!=(const std::common_reference_with<std::string> auto& rhs) const
+        {
+          return !(*this == rhs);
+        }
+
+      private:
+        std::string& str_;
+      };
+      static_assert(!std::is_assignable_v<std::string&, proxy>);
+      static_assert(concepts::castable_to<proxy&, std::string>);
+
+      auto lhs = std::string{ "hello" };
+      std::string str = "world";
+      auto rhs = proxy(str);
+
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{});
+      // Proxy does not support "move from"
+      // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
+      //   return rhs == "";
+      // });
+    }
   }
 
   GIVEN("equal operator")
