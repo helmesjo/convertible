@@ -642,8 +642,7 @@ namespace convertible
       result_t rets;
 
       for_each([&](auto&& rhs) -> bool{
-        using rhs_t = decltype(rhs);
-        if constexpr(requires{ { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs) }; })
+        if constexpr(requires{ { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), FWD(rhs)) }; })
         {
           assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs);
         }
@@ -672,8 +671,7 @@ namespace convertible
       result_t rets;
 
       for_each([&](auto&& lhs) -> bool{
-        using lhs_t = decltype(lhs);
-        if constexpr(requires{ { assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs)) }; })
+        if constexpr(requires{ { assign<direction::rhs_to_lhs>(FWD(lhs), std::forward<rhs_t>(rhs)) }; })
         {
           assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs));
         }

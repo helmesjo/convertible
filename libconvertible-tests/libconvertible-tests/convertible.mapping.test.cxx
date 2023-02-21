@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -35,8 +36,8 @@ namespace
   {
     using namespace convertible;
     using map_t = std::remove_cvref_t<decltype(map)>;
-    using lhs_t = std::remove_cvref_t<decltype(lhs)>;
-    using rhs_t = std::remove_cvref_t<decltype(rhs)>;
+    // using lhs_t = std::remove_cvref_t<decltype(lhs)>;
+    // using rhs_t = std::remove_cvref_t<decltype(rhs)>;
 
     WHEN("assigning rhs to lhs")
     {
@@ -262,7 +263,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
   {
     struct proxy
     {
-      explicit proxy(std::common_reference_with<std::string> auto& str) :
+      explicit proxy(std::string& str) :
         str_(str)
       {}
 
@@ -270,12 +271,12 @@ SCENARIO("convertible: Mapping (misc use-cases)")
       {
         return str_;
       }
-      proxy& operator=(std::common_reference_with<std::string> auto& rhs)
+      proxy& operator=(const std::string& rhs)
       {
         str_ = rhs;
         return *this;
       }
-      proxy& operator=(std::common_reference_with<std::string> auto&& rhs)
+      proxy& operator=(std::string&& rhs)
       {
         str_ = std::move(rhs);
         return *this;
@@ -288,11 +289,11 @@ SCENARIO("convertible: Mapping (misc use-cases)")
       {
         return !(*this == rhs);
       }
-      bool operator==(const std::common_reference_with<std::string> auto& rhs) const
+      bool operator==(const std::string& rhs) const
       {
         return str_ == rhs;
       }
-      bool operator!=(const std::common_reference_with<std::string> auto& rhs) const
+      bool operator!=(const std::string& rhs) const
       {
         return !(*this == rhs);
       }
@@ -305,7 +306,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
 
     struct custom_reader
     {
-      proxy operator()(std::common_reference_with<std::string> auto& obj) const
+      proxy operator()(std::string& obj) const
       {
         return proxy(obj);
       }

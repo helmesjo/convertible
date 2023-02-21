@@ -349,7 +349,7 @@ SCENARIO("convertible: Operators")
     {
           struct proxy
       {
-        explicit proxy(std::common_reference_with<std::string> auto& str) :
+        explicit proxy(std::string& str) :
           str_(str)
         {}
 
@@ -357,12 +357,12 @@ SCENARIO("convertible: Operators")
         {
           return str_;
         }
-        proxy& operator=(std::common_reference_with<std::string> auto& rhs)
+        proxy& operator=(const std::string& rhs)
         {
           str_ = rhs;
           return *this;
         }
-        proxy& operator=(std::common_reference_with<std::string> auto&& rhs)
+        proxy& operator=(std::string&& rhs)
         {
           str_ = std::move(rhs);
           return *this;
@@ -375,11 +375,11 @@ SCENARIO("convertible: Operators")
         {
           return !(*this == rhs);
         }
-        bool operator==(const std::common_reference_with<std::string> auto& rhs) const
+        bool operator==(const std::string& rhs) const
         {
           return str_ == rhs;
         }
-        bool operator!=(const std::common_reference_with<std::string> auto& rhs) const
+        bool operator!=(const std::string& rhs) const
         {
           return !(*this == rhs);
         }
@@ -475,7 +475,7 @@ SCENARIO("convertible: Operators")
       auto rhs = std::string{"1"};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      rhs = "2";
+      rhs = std::string{ "2" };
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 

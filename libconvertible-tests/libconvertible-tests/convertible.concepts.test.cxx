@@ -5,6 +5,7 @@
 #include <concepts>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
 #define DIR_DECL(...) int

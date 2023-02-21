@@ -307,7 +307,7 @@ SCENARIO("convertible: Adapters (proxies)")
   {
     struct proxy
     {
-      explicit proxy(std::common_reference_with<std::string> auto& str) :
+      explicit proxy(std::string& str) :
         str_(str)
       {}
 
@@ -315,12 +315,12 @@ SCENARIO("convertible: Adapters (proxies)")
       {
         return str_;
       }
-      proxy& operator=(std::common_reference_with<std::string> auto& rhs)
+      proxy& operator=(const std::string& rhs)
       {
         str_ = rhs;
         return *this;
       }
-      proxy& operator=(std::common_reference_with<std::string> auto&& rhs)
+      proxy& operator=(std::string&& rhs)
       {
         str_ = std::move(rhs);
         return *this;
@@ -333,11 +333,11 @@ SCENARIO("convertible: Adapters (proxies)")
       {
         return !(*this == rhs);
       }
-      bool operator==(const std::common_reference_with<std::string> auto& rhs) const
+      bool operator==(const std::string& rhs) const
       {
         return str_ == rhs;
       }
-      bool operator!=(const std::common_reference_with<std::string> auto& rhs) const
+      bool operator!=(const std::string& rhs) const
       {
         return !(*this == rhs);
       }
