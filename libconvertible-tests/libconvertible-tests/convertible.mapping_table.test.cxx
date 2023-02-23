@@ -10,18 +10,21 @@ SCENARIO("convertible: Mapping table")
 
   struct type_a
   {
+    auto operator<=>(const type_a&) const = default;
     int val1;
     std::string val2;
   };
 
   struct type_b
   {
+    auto operator<=>(const type_b&) const = default;
     int val1;
     std::string val2;
   };
 
   struct type_c
   {
+    auto operator<=>(const type_c&) const = default;
     int val1;
   };
 
@@ -109,11 +112,6 @@ SCENARIO("convertible: Mapping table")
 
   GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val1 <-> c.val1\n")
   {
-    struct type_c
-    {
-      int val1;
-    };
-
     mapping_table table{
       mapping( member(&type_a::val1), member(&type_b::val1) ),
       mapping( member(&type_a::val1), member(&type_c::val1) )
@@ -146,6 +144,49 @@ SCENARIO("convertible: Mapping table")
         REQUIRE(lhs_a.val1 == rhs_c.val1);
         REQUIRE(table.equal(lhs_a, rhs_c));
       }
+    }
+  }
+  GIVEN("mapping table with known lhs & rhs types")
+  {
+    type_a lhs_a;
+    lhs_a.val1 = 3;
+    lhs_a.val2 = "hello";
+    type_b rhs_b;
+    rhs_b.val1 = 6;
+    rhs_b.val2 = "world";
+    type_c rhs_c;
+    rhs_c.val1 = 9;
+
+    mapping_table table{
+      mapping( member(&type_a::val1, lhs_a), member(&type_b::val1, rhs_b) ),
+      mapping( member(&type_a::val1, lhs_a), member(&type_c::val1, rhs_c) )
+    };
+    using table_t = decltype(table);
+
+    THEN("defaulted lhs type can be constructed")
+    {
+      auto copy = table.defaulted_lhs();
+      auto copy_a = std::get<0>(copy);
+
+      static_assert(std::same_as<decltype(copy_a), type_a>);
+      INFO("lhs a:  ", lhs_a.val1, ", ", lhs_a.val2);
+      INFO("copy a: ", copy_a.val1, ", ", copy_a.val2);
+      REQUIRE(copy_a == lhs_a);
+    }
+    THEN("defaulted rhs type can be constructed")
+    {
+      auto copy = table.defaulted_rhs();
+      auto copy_b = std::get<0>(copy);
+      auto copy_c = std::get<1>(copy);
+
+      static_assert(std::same_as<decltype(copy_b), type_b>);
+      static_assert(std::same_as<decltype(copy_c), type_c>);
+      INFO("rhs b:  ", rhs_b.val1, ", ", rhs_b.val2);
+      INFO("copy b: ", copy_b.val1, ", ", copy_b.val2);
+      REQUIRE(copy_b == rhs_b);
+      INFO("rhs c:  ", rhs_c.val1);
+      INFO("copy c: ", copy_c.val1);
+      REQUIRE(copy_c == rhs_c);
     }
   }
 }

@@ -610,7 +610,7 @@ namespace convertible
     constexpr auto operator()(lhs_t&& lhs) const
       requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::lhs_to_rhs>(l, r); }
     {
-      rhs_t rhs;
+      rhs_t rhs = defaulted_rhs();
       assign<direction::lhs_to_rhs>(FWD(lhs), rhs);
       return rhs;
     }
@@ -620,13 +620,12 @@ namespace convertible
     constexpr auto operator()(rhs_t&& rhs) const
       requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::rhs_to_lhs>(l, r); }
     {
-      lhs_t lhs;
+      lhs_t lhs = defaulted_lhs();
       assign<direction::rhs_to_lhs>(lhs, FWD(rhs));
       return lhs;
     }
 
     constexpr auto defaulted_lhs() const
-      // requires lhs_adapter_t::adapted_type_known
     {
       return lhsAdapter_.defaulted_adapted();
     }
@@ -655,11 +654,40 @@ namespace convertible
     using lhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::lhs_adapter_t::object_t>>...>;
     using rhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::rhs_adapter_t::object_t>>...>;
 
-    constexpr auto rhs_defaulted() const
+    constexpr lhs_unique_types defaulted_lhs() const
     {
-      return std::apply([](auto&&... mappings){
-        return std::tuple{ mappings.defaulted_adapted()... };
-      }, mappings_);
+      lhs_unique_types rets;
+      for_each([this](auto&& lhs){
+        using lhs_t = std::remove_reference_t<decltype(lhs)>;
+        for_each([&lhs](auto&& mapping){
+          using defaulted_lhs_t = decltype(mapping.defaulted_lhs());
+          if constexpr(std::is_same_v<defaulted_lhs_t, lhs_t>)
+          {
+            lhs = mapping.defaulted_lhs();
+          }
+          return true;
+        }, mappings_);
+        return true;
+      }, rets);
+      return rets;
+    }
+
+    constexpr rhs_unique_types defaulted_rhs() const
+    {
+      rhs_unique_types rets;
+      for_each([this](auto&& rhs){
+        using rhs_t = std::remove_reference_t<decltype(rhs)>;
+        for_each([&rhs](auto&& mapping){
+          using defaulted_rhs_t = decltype(mapping.defaulted_rhs());
+          if constexpr(std::is_same_v<defaulted_rhs_t, rhs_t>)
+          {
+            rhs = mapping.defaulted_rhs();
+          }
+          return true;
+        }, mappings_);
+        return true;
+      }, rets);
+      return rets;
     }
 
     constexpr explicit mapping_table(mapping_ts... mappings):
@@ -704,7 +732,7 @@ namespace convertible
         )
     constexpr auto operator()(lhs_t&& lhs) const
     {
-      result_t rets;
+      auto rets = defaulted_rhs();
 
       for_each([&](auto&& rhs) -> bool{
         if constexpr(requires{ { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), FWD(rhs)) }; })
@@ -733,7 +761,7 @@ namespace convertible
         )
     constexpr auto operator()(rhs_t&& rhs) const
     {
-      result_t rets;
+      auto rets = defaulted_lhs();
 
       for_each([&](auto&& lhs) -> bool{
         if constexpr(requires{ { assign<direction::rhs_to_lhs>(FWD(lhs), std::forward<rhs_t>(rhs)) }; })

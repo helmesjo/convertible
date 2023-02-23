@@ -117,7 +117,7 @@ SCENARIO("convertible: Mapping")
         return obj == "";
     });
   }
-  GIVEN("mapping with known mappable types")
+  GIVEN("mapping with known lhs & rhs types")
   {
     int lhsAdapted = 3;
     std::string rhsAdapted = "hello";
