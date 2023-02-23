@@ -108,7 +108,7 @@ namespace
 
 TEST_CASE("mapping_table")
 {
-  static constexpr auto table = 
+  auto table = 
     mapping_table
     {
       mapping( member(&type_a::val1), member(&type_b::val1) ),

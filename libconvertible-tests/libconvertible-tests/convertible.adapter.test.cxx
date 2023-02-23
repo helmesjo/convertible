@@ -19,7 +19,8 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      static constexpr decltype(adapted) tmp = {};
+      struct type_x{};
+      static constexpr auto tmp = type_x{};
       static constexpr auto constexprAdapter = object(reader::identity{}, tmp);
       (void)constexprAdapter;
     }
@@ -73,8 +74,9 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      static constexpr decltype(adapted) tmp = {};
-      static constexpr auto constexprAdapter = member(&type::str, tmp);
+      struct type_x{ int x; };
+      static constexpr auto tmp = type_x{};
+      static constexpr auto constexprAdapter = member(&type_x::x, tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
@@ -124,8 +126,9 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      static constexpr decltype(adapted) tmp = {};
-      static constexpr auto constexprAdapter = member(&type::str, tmp);
+      struct type_x{ int x(){ return 0; }; };
+      static constexpr auto tmp = type_x{};
+      static constexpr auto constexprAdapter = member(&type_x::x, tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
@@ -211,7 +214,8 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      static constexpr decltype(adapted) tmp = {};
+      struct type_x{ int* x; };
+      static constexpr auto tmp = type_x{};
       static constexpr auto constexprAdapter = deref(tmp);
       (void)constexprAdapter;
     }
@@ -277,8 +281,9 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      static constexpr decltype(adapted) tmp = {};
-      static constexpr auto constexprAdapter = compose(deref(), member(&type_b::a, tmp));
+      struct type_x{ int* x; };
+      static constexpr auto tmp = type_x{};
+      static constexpr auto constexprAdapter = compose(deref(), member(&type_x::x, tmp));
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
@@ -335,10 +340,10 @@ SCENARIO("convertible: Adapter composition")
 
     THEN("it's constexpr constructible")
     {
-      constexpr auto constexprAdapter = deref(object(member(&type::val)));
-      constexpr auto constexprAdapter2 = member(&std::string::c_str, member(&type::val, deref()));
+      struct type_x{ int* x; };
+      static constexpr auto tmp = type_x{};
+      static constexpr auto constexprAdapter = compose(deref(), object(), member(&type_x::x, tmp));
       (void)constexprAdapter;
-      (void)constexprAdapter2;
     }
     THEN("it implicitly assigns member value")
     {
