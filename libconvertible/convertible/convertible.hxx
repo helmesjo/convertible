@@ -136,7 +136,6 @@ namespace convertible
       constexpr member_meta<class_t, return_t, args_t...> member_ptr_meta(return_t (class_t::*)(args_t...)){}
 
       template<typename M>
-      requires std::is_member_pointer_v<M>
       using member_ptr_meta_t = decltype(member_ptr_meta(std::declval<M>()));
 
       template<typename... arg_ts>
@@ -272,6 +271,69 @@ namespace convertible
       {
         return FWD(obj);
       }
+
+      template<typename object_t = details::any>
+      constexpr auto defaulted_adapted(auto&&... args) const
+      {
+        return object_t(FWD(args)...);
+      }
+    };
+
+    template<concepts::member_ptr member_ptr_t>
+    struct member
+    {
+      using class_t = traits::member_class_t<member_ptr_t>;
+
+      constexpr member(member_ptr_t ptr):
+        ptr_(std::move(ptr))
+      {}
+
+      template<typename obj_t>
+        requires std::derived_from<class_t, std::decay_t<obj_t>>
+      constexpr decltype(auto) operator()(obj_t&& obj) const
+      {
+        if constexpr(std::is_member_object_pointer_v<member_ptr_t>)
+          return FWD(obj).*ptr_;
+        if constexpr(std::is_member_function_pointer_v<member_ptr_t>)
+          return (FWD(obj).*ptr_)();
+      }
+
+      template<typename object_t = class_t>
+      constexpr auto defaulted_adapted(auto&&... args) const
+      {
+        return object_t(FWD(args)...);
+      }
+
+      member_ptr_t ptr_;
+    };
+
+    template<std::size_t i>
+    struct index
+    {
+      constexpr decltype(auto) operator()(concepts::indexable auto&& obj) const
+      {
+        return FWD(obj)[i];
+      }
+
+      template<typename object_t = details::any>
+      constexpr auto defaulted_adapted(auto&&... args) const
+      {
+        return object_t(FWD(args)...);
+      }
+    };
+
+    struct deref
+    {
+      constexpr decltype(auto) operator()(concepts::dereferencable auto&& obj) const
+      {
+        return *FWD(obj);
+      }
+
+      template<typename object_t = details::any>
+      constexpr auto defaulted_adapted(auto&&... args) const
+      {
+        return object_t(FWD(args)...);
+      }
     };
 
     template<typename... adapter_ts>
@@ -289,46 +351,13 @@ namespace convertible
         }, adapters_);
       }
 
+      template<typename object_t = details::any>
+      constexpr auto defaulted_adapted(auto&&... args) const
+      {
+        return object_t(FWD(args)...);
+      }
+
       std::tuple<adapter_ts...> adapters_;
-    };
-
-    template<concepts::member_ptr member_ptr_t>
-    struct member
-    {
-      using class_t = traits::member_class_t<member_ptr_t>;
-
-      constexpr member(member_ptr_t ptr):
-        ptr_(std::move(ptr))
-      {}
-
-      template<typename obj_t>
-        requires std::derived_from<class_t, std::decay_t<obj_t>>
-      constexpr decltype(auto) operator()(obj_t&& obj) const
-      {
-        if constexpr(std::is_member_object_pointer_v<member_ptr_t>)
-          return obj.*ptr_;
-        if constexpr(std::is_member_function_pointer_v<member_ptr_t>)
-          return (obj.*ptr_)();
-      }
-
-      member_ptr_t ptr_;
-    };
-
-    template<std::size_t i>
-    struct index
-    {
-      constexpr decltype(auto) operator()(concepts::indexable auto&& obj) const
-      {
-        return obj[i];
-      }
-    };
-
-    struct deref
-    {
-      constexpr decltype(auto) operator()(concepts::dereferencable auto&& obj) const
-      {
-        return *obj;
-      }
     };
   }
 
@@ -336,11 +365,17 @@ namespace convertible
   struct object
   {
     using object_t = adapted_t;
+    using object_value_t = std::remove_cvref_t<adapted_t>;
     using object_decay_t = std::remove_pointer_t<std::decay_t<object_t>>;
 
     constexpr object() = default;
     constexpr object(const object&) = default;
     constexpr object(object&&) = default;
+    constexpr explicit object(reader_t reader, adapted_t adapted)
+      : reader_(FWD(reader)),
+        adapted_(adapted)
+    {
+    }
     constexpr explicit object(reader_t reader)
       : reader_(FWD(reader))
     {
@@ -349,23 +384,35 @@ namespace convertible
     constexpr decltype(auto) operator()(auto&& obj) const
       requires std::invocable<reader_t, decltype(obj)>
     {
-      if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
-      {
-        return std::move(reader_(FWD(obj)));
-      }
-      else
+      using obj_t = decltype(obj);
+      if constexpr (!std::is_rvalue_reference_v<obj_t> || std::is_pointer_v<std::remove_reference_t<obj_t>>)
       {
         return reader_(FWD(obj));
       }
+      else
+      {
+        return std::move(reader_(FWD(obj)));
+      }
+    }
+
+    constexpr auto defaulted_adapted() const
+      requires (!std::is_same_v<adapted_t, details::any>)
+    {
+        return reader_.template defaulted_adapted<object_value_t>(adapted_);
     }
 
     reader_t reader_;
+    const object_value_t adapted_{};
   };
 
+  template<typename T>
+  struct detect;
+
   template<concepts::adapter... adapter_ts>
-  consteval auto compose(adapter_ts&&... adapters)
+  constexpr auto compose(adapter_ts&&... adapters)
   {
-    return object(reader::composed(FWD(adapters)...));
+    auto adapted = std::get<sizeof...(adapters)-1>(std::tuple{adapters...}).defaulted_adapted();
+    return object(reader::composed(FWD(adapters)...), adapted);
   }
 
   template<typename adapted_t = details::any>
@@ -375,9 +422,9 @@ namespace convertible
   }
 
   template<concepts::member_ptr member_ptr_t>
-  consteval auto member(member_ptr_t ptr)
+  constexpr auto member(member_ptr_t ptr, auto&&... adapted)
   {
-    return object<reader::member<member_ptr_t>, traits::member_class_t<member_ptr_t>*>(ptr);
+    return object<reader::member<member_ptr_t>, traits::member_class_t<member_ptr_t>>(ptr, FWD(adapted)...);
   }
 
   template<concepts::member_ptr member_ptr_t>
@@ -394,9 +441,9 @@ namespace convertible
   }
 
   template<std::size_t i>
-  consteval auto index()
+  constexpr auto index(auto&&... adapted)
   {
-    return object(reader::index<i>{});
+    return object(reader::index<i>{}, FWD(adapted)...);
   }
 
   constexpr auto deref(concepts::adapter auto&& inner)
@@ -404,9 +451,9 @@ namespace convertible
     return object(reader::composed(reader::deref{}, FWD(inner)));
   }
 
-  consteval auto deref()
+  constexpr auto deref(auto&&... adapted)
   {
-    return object(reader::deref{});
+    return object(reader::deref{}, FWD(adapted)...);
   }
 
 
@@ -578,6 +625,17 @@ namespace convertible
       return lhs;
     }
 
+    constexpr auto defaulted_lhs() const
+      // requires lhs_adapter_t::adapted_type_known
+    {
+      return lhsAdapter_.defaulted_adapted();
+    }
+
+    constexpr auto defaulted_rhs() const
+    {
+      return rhsAdapter_.defaulted_adapted();
+    }
+
     lhs_adapter_t lhsAdapter_;
     rhs_adapter_t rhsAdapter_;
     converter_t converter_;
@@ -596,6 +654,13 @@ namespace convertible
   {
     using lhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::lhs_adapter_t::object_t>>...>;
     using rhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::rhs_adapter_t::object_t>>...>;
+
+    constexpr auto rhs_defaulted() const
+    {
+      return std::apply([](auto&&... mappings){
+        return std::tuple{ mappings.defaulted_adapted()... };
+      }, mappings_);
+    }
 
     constexpr explicit mapping_table(mapping_ts... mappings):
       mappings_(std::move(mappings)...)

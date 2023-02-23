@@ -90,7 +90,7 @@ SCENARIO("convertible: Mapping")
     constexpr auto map = mapping(object(), object());
     (void)map;
   }
-  GIVEN("a mapping between a <-> b")
+  GIVEN("mapping between a <-> b")
   {
     using lhs_t = std::string;
     using rhs_t = std::string;
@@ -101,7 +101,7 @@ SCENARIO("convertible: Mapping")
     auto rhs = rhs_t{"world"};
     MAPS_CORRECTLY(lhs, rhs, map);
   }
-  GIVEN("a mapping between a <- converter -> b")
+  GIVEN("mapping between a <- converter -> b")
   {
     using lhs_t = int;
     using rhs_t = std::string;
@@ -116,6 +116,27 @@ SCENARIO("convertible: Mapping")
       else
         return obj == "";
     });
+  }
+  GIVEN("mapping with known mappable types")
+  {
+    int lhsAdapted = 3;
+    std::string rhsAdapted = "hello";
+
+    auto map = mapping(object(reader::identity{}, lhsAdapted), object(reader::identity{}, rhsAdapted), int_string_converter{});
+    using map_t = decltype(map);
+
+    THEN("defaulted lhs type can be constructed")
+    {
+      auto copy = map.defaulted_lhs();
+      static_assert(std::same_as<decltype(copy), typename map_t::lhs_adapter_t::object_value_t>);
+      REQUIRE(copy == lhsAdapted);
+    }
+    THEN("defaulted rhs type can be constructed")
+    {
+      auto copy = map.defaulted_rhs();
+      static_assert(std::same_as<decltype(copy), typename map_t::rhs_adapter_t::object_value_t>);
+      REQUIRE(copy == rhsAdapted);
+    }
   }
 }
 

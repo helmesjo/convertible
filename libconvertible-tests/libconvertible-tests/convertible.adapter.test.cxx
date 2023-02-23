@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstring>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -13,209 +14,305 @@ SCENARIO("convertible: Adapters")
 
   GIVEN("object adapter")
   {
-    auto adapter = object();
-    std::string str = "hello";
+    std::string adapted = "hello";
+    auto adapter = object(reader::identity{}, adapted);
 
     THEN("it's constexpr constructible")
     {
-      constexpr auto constexprAdapter = object();
+      static constexpr decltype(adapted) tmp = {};
+      static constexpr auto constexprAdapter = object(reader::identity{}, tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns value")
     {
-      adapter(str) = "world";
-      REQUIRE(str == "world");
+      adapter(adapted) = "world";
+      REQUIRE(adapted == "world");
     }
     THEN("it implicitly converts to type")
     {
-      std::string val = adapter(str);
-      REQUIRE(val == str);
+      std::string val = adapter(adapted);
+      REQUIRE(val == adapted);
     }
     THEN("implicit conversion 'moves from' r-value reference")
     {
-      std::string assigned = adapter(std::move(str));
+      std::string assigned = adapter(std::move(adapted));
       REQUIRE(assigned == "hello");
-      REQUIRE(str == "");
+      REQUIRE(adapted == "");
     }
     THEN("assign 'moves from' r-value reference")
     {
       std::string str2 = "hello";
-      adapter(str) = std::move(str2);
+      adapter(adapted) = std::move(str2);
       REQUIRE(str2 == "");
     }
     THEN("equality operator works")
     {
-      str = "world";
-      REQUIRE(adapter(str) == "world");
-      REQUIRE(adapter(str) != "hello");
-      REQUIRE("world" == adapter(str));
-      REQUIRE("hello" != adapter(str));
+      adapted = "world";
+      REQUIRE(adapter(adapted) == "world");
+      REQUIRE(adapter(adapted) != "hello");
+      REQUIRE("world" == adapter(adapted));
+      REQUIRE("hello" != adapter(adapted));
+    }
+    THEN("defaulted-initialized adapted type can be created")
+    {
+      auto copy = adapter.defaulted_adapted();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      REQUIRE(copy == adapted);
     }
   }
   GIVEN("member adapter (field)")
   {
     struct type
     {
+      auto operator<=>(const type&) const = default;
       std::string str;
-    } obj;
+    } adapted;
+    adapted.str = "hello";
 
-    auto adapter = member(&type::str);
+    auto adapter = member(&type::str, adapted);
 
     THEN("it's constexpr constructible")
     {
-      constexpr auto constexprAdapter = member(&type::str);
+      static constexpr decltype(adapted) tmp = {};
+      static constexpr auto constexprAdapter = member(&type::str, tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
     {
-      adapter(obj) = "hello";
-      REQUIRE(obj.str == "hello");
+      adapter(adapted) = "world";
+      REQUIRE(adapted.str == "world");
     }
     THEN("it implicitly converts to type")
     {
-      std::string val = adapter(obj);
-      REQUIRE(val == obj.str);
+      std::string val = adapter(adapted);
+      REQUIRE(val == adapted.str);
     }
     THEN("it 'moves from' r-value reference")
     {
-      obj.str = "world";
-      const std::string movedTo = adapter(std::move(obj));
-      REQUIRE(movedTo == "world");
-      REQUIRE(obj.str == "");
+      const std::string movedTo = adapter(std::move(adapted));
+      REQUIRE(movedTo == "hello");
+      REQUIRE(adapted.str == "");
 
-      std::string fromStr = "hello";
-      adapter(obj) = std::move(fromStr);
+      std::string fromStr = "world";
+      adapter(adapted) = std::move(fromStr);
       REQUIRE(fromStr == "");
     }
     THEN("equality operator works")
     {
-      obj.str = "world";
-      REQUIRE(adapter(obj) == "world");
-      REQUIRE(adapter(obj) != "hello");
+      REQUIRE(adapter(adapted) == "hello");
+      REQUIRE(adapter(adapted) != "world");
+    }
+    THEN("defaulted-initialized adapted type can be created")
+    {
+      auto copy = adapter.defaulted_adapted();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      REQUIRE(copy == adapted);
     }
   }
   GIVEN("member adapter (function)")
   {
     struct type
     {
+      auto operator<=>(const type&) const = default;
       std::string& str(){ return str_; }
     private:
       std::string str_;
-    } obj;
+    } adapted;
+    adapted.str() = "hello";
 
-    auto adapter = member(&type::str);
+    auto adapter = member(&type::str, adapted);
 
     THEN("it's constexpr constructible")
     {
-      constexpr auto constexprAdapter = member(&type::str);
+      static constexpr decltype(adapted) tmp = {};
+      static constexpr auto constexprAdapter = member(&type::str, tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
     {
-      adapter(obj) = "hello";
-      REQUIRE(obj.str() == "hello");
+      adapter(adapted) = "world";
+      REQUIRE(adapted.str() == "world");
     }
     THEN("it implicitly converts to type")
     {
-      std::string val = adapter(obj);
-      REQUIRE(val == obj.str());
+      std::string val = adapter(adapted);
+      REQUIRE(val == adapted.str());
     }
     THEN("it 'moves from' r-value reference")
     {
-      obj.str() = "world";
-      const std::string movedTo = adapter(std::move(obj));
-      REQUIRE(movedTo == "world");
-      REQUIRE(obj.str() == "");
+      const std::string movedTo = adapter(std::move(adapted));
+      REQUIRE(movedTo == "hello");
+      REQUIRE(adapted.str() == "");
 
-      std::string fromStr = "hello";
-      adapter(obj) = std::move(fromStr);
+      std::string fromStr = "world";
+      adapter(adapted) = std::move(fromStr);
       REQUIRE(fromStr == "");
     }
     THEN("equality operator works")
     {
-      obj.str() = "world";
-      REQUIRE(adapter(obj) == "world");
-      REQUIRE(adapter(obj) != "hello");
+      REQUIRE(adapter(adapted) == "hello");
+      REQUIRE(adapter(adapted) != "world");
+    }
+    THEN("defaulted-initialized adapted type can be created")
+    {
+      auto copy = adapter.defaulted_adapted();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      REQUIRE(copy == adapted);
     }
   }
   GIVEN("index adapter")
   {
-    auto adapter = index<0>();
-    std::array values = {std::string("1")};
+    auto adapted = std::array{std::string("hello")};
+    auto adapter = index<0>(adapted);
 
     THEN("it's constexpr constructible")
     {
-      constexpr auto constexprAdapter = index<0>();
+      // GCC: Bug with array<string> & constexpr
+      static constexpr auto tmp = std::array{""};
+      static constexpr auto constexprAdapter = index<0>(tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
     {
-      adapter(values) = "hello";
-      REQUIRE(values[0] == "hello");
+      REQUIRE(adapted[0] == "hello");
     }
     THEN("it implicitly converts to type")
     {
-      std::string val = adapter(values);
-      REQUIRE(val == values[0]);
+      std::string val = adapter(adapted);
+      REQUIRE(val == adapted[0]);
     }
     THEN("it 'moves from' r-value reference")
     {
-      values[0] = "world";
+      const std::string movedTo = adapter(std::move(adapted));
+      REQUIRE(movedTo == "hello");
+      REQUIRE(adapted[0] == "");
 
-      const std::string movedTo = adapter(std::move(values));
-      REQUIRE(movedTo == "world");
-      REQUIRE(values[0] == "");
-
-      std::string fromStr = "hello";
-      adapter(values) = std::move(fromStr);
+      std::string fromStr = "world";
+      adapter(adapted) = std::move(fromStr);
       REQUIRE(fromStr == "");
     }
     THEN("equality operator works")
     {
-      values[0] = "world";
-      REQUIRE(adapter(values) == "world");
-      REQUIRE(adapter(values) != "hello");
+      REQUIRE(adapter(adapted) == "hello");
+      REQUIRE(adapter(adapted) != "world");
+    }
+    THEN("defaulted-initialized adapted type can be created")
+    {
+      auto copy = adapter.defaulted_adapted();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      REQUIRE(copy == adapted);
     }
   }
   GIVEN("dereference adapter")
-  {   
-    auto adapter = deref();
-
-    auto str = std::string();
-    auto ptr = &str;
+  {
+    auto str = std::string("hello");
+    auto adapted = &str;
+    auto adapter = deref(adapted);
 
     THEN("it's constexpr constructible")
     {
-      constexpr auto constexprAdapter = deref();
+      static constexpr decltype(adapted) tmp = {};
+      static constexpr auto constexprAdapter = deref(tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
     {
-      adapter(ptr) = "hello";
-      REQUIRE(str == "hello");
+      adapter(adapted) = "world";
+      REQUIRE(str == "world");
     }
     THEN("it implicitly converts to type")
     {
-      adapter(ptr) = "hello";
-      std::string val = adapter(ptr);
+      std::string val = adapter(adapted);
       REQUIRE(val == "hello");
     }
     THEN("it 'moves from' r-value reference")
     {
-      str = "hello";
-      const std::string movedTo = adapter(std::move(ptr));
+      std::optional<std::string> tmp = "hello";
+      std::string movedTo = adapter(std::move(tmp));
       REQUIRE(movedTo == "hello");
-      REQUIRE(str == "");
+      REQUIRE(*tmp == "");
 
-      std::string fromStr = "hello";
-      adapter(ptr) = std::move(fromStr);
+      // but not if pointer
+      movedTo = adapter(std::move(adapted));
+      REQUIRE(movedTo == "hello");
+      REQUIRE(*adapted != "");
+
+      std::string fromStr = "world";
+      adapter(adapted) = std::move(fromStr);
       REQUIRE(fromStr == "");
     }
     THEN("equality operator works")
     {
-      str = "hello";
-      REQUIRE(adapter(ptr) == "hello");
-      REQUIRE(adapter(ptr) != "world");
+      REQUIRE(adapter(adapted) == "hello");
+      REQUIRE(adapter(adapted) != "world");
+    }
+    THEN("defaulted-initialized adapted type can be created")
+    {
+      auto copy = adapter.defaulted_adapted();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      REQUIRE(copy == adapted);
+    }
+  }
+  GIVEN("composed adapter")
+  {
+    struct type_a
+    {
+      auto operator<=>(const type_a&) const = default;
+      std::string& operator*()
+      {
+        return val;
+      }
+      std::string val{};
+    };
+    struct type_b
+    {
+      auto operator<=>(const type_b&) const = default;
+      type_a a{};
+    };
+
+    type_b adapted = {type_a{"hello"}};
+    auto innerAdapter = member(&type_b::a, adapted);
+    auto outerAdapter = deref();
+    auto adapter = compose(outerAdapter, innerAdapter);
+
+    THEN("it's constexpr constructible")
+    {
+      static constexpr decltype(adapted) tmp = {};
+      static constexpr auto constexprAdapter = compose(deref(), member(&type_b::a, tmp));
+      (void)constexprAdapter;
+    }
+    THEN("it implicitly assigns member value")
+    {
+      adapter(adapted) = "world";
+      REQUIRE(adapted.a.val == "world");
+    }
+    THEN("it implicitly converts to type")
+    {
+      std::string val = adapter(adapted);
+      REQUIRE(val == "hello");
+    }
+    THEN("it 'moves from' r-value reference")
+    {
+      const std::string movedTo = adapter(std::move(adapted));
+      REQUIRE(movedTo == "hello");
+      REQUIRE(adapted.a.val == "");
+
+      std::string fromStr = "world";
+      adapter(adapted) = std::move(fromStr);
+      REQUIRE(fromStr == "");
+    }
+    THEN("equality operator works")
+    {
+      REQUIRE(adapter(adapted) == "hello");
+      REQUIRE(adapter(adapted) != "world");
+    }
+    THEN("defaulted-initialized adapted type can be created")
+    {
+      auto copy = adapter.defaulted_adapted();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      INFO("adapted.a.val: ", adapted.a.val);
+      INFO("copy.a.val: ", copy.a.val);
+      REQUIRE(copy == adapted);
     }
   }
 }
