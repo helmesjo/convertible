@@ -10,21 +10,21 @@ SCENARIO("convertible: Mapping table")
 
   struct type_a
   {
-    auto operator<=>(const type_a&) const = default;
+    bool operator==(const type_a&) const = default;
     int val1;
     std::string val2;
   };
 
   struct type_b
   {
-    auto operator<=>(const type_b&) const = default;
+    bool operator==(const type_b&) const = default;
     int val1;
     std::string val2;
   };
 
   struct type_c
   {
-    auto operator<=>(const type_c&) const = default;
+    bool operator==(const type_c&) const = default;
     int val1;
   };
 
@@ -166,6 +166,7 @@ SCENARIO("convertible: Mapping table")
     THEN("defaulted lhs type can be constructed")
     {
       auto copy = table.defaulted_lhs();
+      static_assert(std::same_as<decltype(copy), typename table_t::lhs_unique_types>);
       auto copy_a = std::get<0>(copy);
 
       static_assert(std::same_as<decltype(copy_a), type_a>);
@@ -176,6 +177,7 @@ SCENARIO("convertible: Mapping table")
     THEN("defaulted rhs type can be constructed")
     {
       auto copy = table.defaulted_rhs();
+      static_assert(std::same_as<decltype(copy), typename table_t::rhs_unique_types>);
       auto copy_b = std::get<0>(copy);
       auto copy_c = std::get<1>(copy);
 

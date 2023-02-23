@@ -64,7 +64,7 @@ SCENARIO("convertible: Adapters")
   {
     struct type
     {
-      auto operator<=>(const type&) const = default;
+      bool operator==(const type&) const = default;
       std::string str;
     } adapted;
     adapted.str = "hello";
@@ -113,7 +113,7 @@ SCENARIO("convertible: Adapters")
   {
     struct type
     {
-      auto operator<=>(const type&) const = default;
+      bool operator==(const type&) const = default;
       std::string& str(){ return str_; }
     private:
       std::string str_;
@@ -257,7 +257,7 @@ SCENARIO("convertible: Adapters")
   {
     struct type_a
     {
-      auto operator<=>(const type_a&) const = default;
+      bool operator==(const type_a&) const = default;
       std::string& operator*()
       {
         return val;
@@ -266,7 +266,7 @@ SCENARIO("convertible: Adapters")
     };
     struct type_b
     {
-      auto operator<=>(const type_b&) const = default;
+      bool operator==(const type_b&) const = default;
       type_a a{};
     };
 
