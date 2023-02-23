@@ -292,10 +292,12 @@ namespace convertible
         requires std::derived_from<class_t, std::decay_t<obj_t>>
       constexpr decltype(auto) operator()(obj_t&& obj) const
       {
+        // Workaround for MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
+        //                          when 'obj' is r-value reference (in combination with above 'requires' etc.)
         if constexpr(std::is_member_object_pointer_v<member_ptr_t>)
-          return FWD(obj).*ptr_;
+          return obj.*ptr_;
         if constexpr(std::is_member_function_pointer_v<member_ptr_t>)
-          return (FWD(obj).*ptr_)();
+          return (obj.*ptr_)();
       }
 
       template<typename object_t = class_t>
