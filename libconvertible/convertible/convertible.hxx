@@ -415,9 +415,6 @@ namespace convertible
     const object_value_t adaptee_{};
   };
 
-  template<typename T>
-  struct detect;
-
   template<concepts::adapter... adapter_ts>
   constexpr auto compose(adapter_ts&&... adapters)
   {
