@@ -67,7 +67,7 @@ void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
   auto op = convertible::operators::assign{};
 
   // Not implemented by MSVC
-  // static_assert(std::movable<std::decay_t<rhs_t>>, "rhs must be a movable type");
+  // static_assert(std::movable<std::remove_reference_t<rhs_t>>, "rhs must be a movable type");
 
   AND_WHEN("passed lhs & rhs (r-value)")
   {

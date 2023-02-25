@@ -111,7 +111,7 @@ SCENARIO("convertible: Mapping")
     auto lhs = lhs_t{11};
     auto rhs = rhs_t{"22"};
     MAPS_CORRECTLY(lhs, rhs, map, [](const auto& obj){
-      if constexpr(std::same_as<lhs_t, std::decay_t<decltype(obj)>>)
+      if constexpr(std::equality_comparable_with<lhs_t, decltype(obj)>)
         return obj == 11;
       else
         return obj == "";
@@ -330,7 +330,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
     auto lhs = lhs_t{"1", "2", "3"};
     auto rhs = rhs_t{1, 2, 3};
     MAPS_CORRECTLY(lhs, rhs, map, [](const auto& obj){
-      if constexpr(std::same_as<lhs_t, std::decay_t<decltype(obj)>>)
+      if constexpr(std::equality_comparable_with<lhs_t, decltype(obj)>)
         return std::all_of(std::begin(obj), std::end(obj), [](const auto& elem){ return elem == ""; });
       else
         return obj[0] == 1;

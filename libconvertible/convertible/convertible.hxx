@@ -188,7 +188,7 @@ namespace convertible
   namespace concepts
   {
     template<typename T>
-    concept member_ptr = std::is_member_pointer_v<std::decay_t<T>>;
+    concept member_ptr = std::is_member_pointer_v<T>;
 
     template<typename T>
     concept indexable = requires(T t)
@@ -297,7 +297,7 @@ namespace convertible
       {}
 
       template<typename obj_t>
-        requires std::derived_from<class_t, std::decay_t<obj_t>>
+        requires std::derived_from<class_t, std::remove_reference_t<obj_t>>
       constexpr decltype(auto) operator()(obj_t&& obj) const
       {
         // Workaround for MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
@@ -375,8 +375,7 @@ namespace convertible
   struct object
   {
     using object_t = adaptee_t;
-    using object_value_t = std::remove_cvref_t<adaptee_t>;
-    using object_decay_t = std::remove_pointer_t<std::decay_t<object_t>>;
+    using object_value_t = std::remove_reference_t<adaptee_t>;
 
     constexpr object() = default;
     constexpr object(const object&) = default;
@@ -425,7 +424,7 @@ namespace convertible
   template<typename adaptee_t = details::any>
   constexpr auto custom(auto&& reader)
   {
-    return object<adaptee_t, std::decay_t<decltype(reader)>>(FWD(reader));
+    return object<adaptee_t, std::remove_reference_t<decltype(reader)>>(FWD(reader));
   }
 
   template<concepts::member_ptr member_ptr_t>
@@ -523,7 +522,7 @@ namespace convertible
           && concepts::assignable_from_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, cast_t>
       constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       {
-        using container_iterator_t = std::decay_t<decltype(std::begin(rhs))>;
+        using container_iterator_t = std::remove_reference_t<decltype(std::begin(rhs))>;
         using iterator_t = std::conditional_t<
             std::is_rvalue_reference_v<decltype(rhs)>,
             std::move_iterator<container_iterator_t>,
@@ -612,7 +611,7 @@ namespace convertible
       return exec<dir, operators::equal>(FWD(lhs), FWD(rhs));
     }
 
-    template<concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::object_decay_t>
+    template<concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::object_value_t>
     constexpr auto operator()(lhs_t&& lhs) const
       requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::lhs_to_rhs>(l, r); }
     {
@@ -621,7 +620,7 @@ namespace convertible
       return rhs;
     }
 
-    template<concepts::adaptable<rhs_adapter_t> rhs_t, concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::object_decay_t>
+    template<concepts::adaptable<rhs_adapter_t> rhs_t, concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::object_value_t>
     constexpr auto operator()(rhs_t&& rhs) const
       requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::rhs_to_lhs>(l, r); }
     {
@@ -656,8 +655,8 @@ namespace convertible
   template<typename... mapping_ts>
   struct mapping_table
   {
-    using lhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::lhs_adapter_t::object_t>>...>;
-    using rhs_unique_types = traits::unique_derived_types_t<std::remove_pointer_t<std::decay_t<typename mapping_ts::rhs_adapter_t::object_t>>...>;
+    using lhs_unique_types = traits::unique_derived_types_t<typename mapping_ts::lhs_adapter_t::object_value_t...>;
+    using rhs_unique_types = traits::unique_derived_types_t<typename mapping_ts::rhs_adapter_t::object_value_t...>;
 
     constexpr lhs_unique_types defaulted_lhs() const
     {
