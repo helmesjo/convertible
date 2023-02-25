@@ -285,12 +285,6 @@ namespace convertible
       {
         return FWD(obj);
       }
-
-      template<typename object_t = details::any>
-      constexpr auto defaulted_adaptee(auto&&... args) const
-      {
-        return object_t(FWD(args)...);
-      }
     };
 
     template<concepts::member_ptr member_ptr_t>
@@ -314,12 +308,6 @@ namespace convertible
           return (obj.*ptr_)();
       }
 
-      template<typename object_t = class_t>
-      constexpr auto defaulted_adaptee(auto&&... args) const
-      {
-        return object_t(FWD(args)...);
-      }
-
       member_ptr_t ptr_;
     };
 
@@ -330,12 +318,6 @@ namespace convertible
       {
         return FWD(obj)[i];
       }
-
-      template<typename object_t = details::any>
-      constexpr auto defaulted_adaptee(auto&&... args) const
-      {
-        return object_t(FWD(args)...);
-      }
     };
 
     struct deref
@@ -343,12 +325,6 @@ namespace convertible
       constexpr decltype(auto) operator()(concepts::dereferencable auto&& obj) const
       {
         return *FWD(obj);
-      }
-
-      template<typename object_t = details::any>
-      constexpr auto defaulted_adaptee(auto&&... args) const
-      {
-        return object_t(FWD(args)...);
       }
     };
 
@@ -407,7 +383,7 @@ namespace convertible
     constexpr auto defaulted_adaptee() const
       requires (!std::is_same_v<adaptee_t, details::any>)
     {
-        return reader_.template defaulted_adaptee<object_value_t>(adaptee_);
+      return adaptee_;
     }
 
     reader_t reader_;
