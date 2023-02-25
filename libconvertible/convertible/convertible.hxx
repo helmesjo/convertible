@@ -265,6 +265,7 @@ namespace convertible
 
   namespace reader
   {
+    template<typename adapted_t = details::any>
     struct identity
     {
       constexpr decltype(auto) operator()(auto&& obj) const
@@ -363,7 +364,7 @@ namespace convertible
     };
   }
 
-  template<typename reader_t = reader::identity, typename adapted_t = details::any>
+  template<typename adapted_t = details::any, typename reader_t = reader::identity<adapted_t>>
   struct object
   {
     using object_t = adapted_t;
@@ -373,7 +374,7 @@ namespace convertible
     constexpr object() = default;
     constexpr object(const object&) = default;
     constexpr object(object&&) = default;
-    constexpr explicit object(reader_t reader, adapted_t adapted)
+    constexpr explicit object(adapted_t adapted, reader_t reader)
       : reader_(FWD(reader)),
         adapted_(adapted)
     {
@@ -414,26 +415,26 @@ namespace convertible
   constexpr auto compose(adapter_ts&&... adapters)
   {
     auto adapted = std::get<sizeof...(adapters)-1>(std::tuple{adapters...}).defaulted_adapted();
-    return object(reader::composed(FWD(adapters)...), adapted);
+    return object(adapted, reader::composed(FWD(adapters)...));
   }
 
   template<typename adapted_t = details::any>
   constexpr auto custom(auto&& reader)
   {
-    return object<std::decay_t<decltype(reader)>, adapted_t>(FWD(reader));
+    return object<adapted_t, std::decay_t<decltype(reader)>>(FWD(reader));
   }
 
   template<concepts::member_ptr member_ptr_t>
   constexpr auto member(member_ptr_t ptr, auto&&... adapted)
   {
-    return object<reader::member<member_ptr_t>, traits::member_class_t<member_ptr_t>>(ptr, FWD(adapted)...);
+    return object<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adapted)..., ptr);
   }
 
   template<concepts::member_ptr member_ptr_t>
   constexpr auto member(member_ptr_t ptr, concepts::adapter auto&& inner)
   {
-    auto read = reader::composed(reader::member<member_ptr_t>{ptr}, inner);
-    return object<decltype(read), traits::member_class_t<member_ptr_t>*>(read);
+    auto reader = reader::composed(reader::member<member_ptr_t>{ptr}, inner);
+    return object<traits::member_class_t<member_ptr_t>*, decltype(reader)>(reader);
   }
 
   template<std::size_t i>
@@ -445,7 +446,7 @@ namespace convertible
   template<std::size_t i>
   constexpr auto index(auto&&... adapted)
   {
-    return object(reader::index<i>{}, FWD(adapted)...);
+    return object(FWD(adapted)..., reader::index<i>{});
   }
 
   constexpr auto deref(concepts::adapter auto&& inner)
@@ -455,7 +456,7 @@ namespace convertible
 
   constexpr auto deref(auto&&... adapted)
   {
-    return object(reader::deref{}, FWD(adapted)...);
+    return object(FWD(adapted)..., reader::deref{});
   }
 
 

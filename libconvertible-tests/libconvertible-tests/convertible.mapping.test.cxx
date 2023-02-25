@@ -122,7 +122,7 @@ SCENARIO("convertible: Mapping")
     int lhsAdapted = 3;
     std::string rhsAdapted = "hello";
 
-    auto map = mapping(object(reader::identity{}, lhsAdapted), object(reader::identity{}, rhsAdapted), int_string_converter{});
+    auto map = mapping(object(lhsAdapted, reader::identity<>{}), object(rhsAdapted, reader::identity<>{}), int_string_converter{});
     using map_t = decltype(map);
 
     THEN("defaulted lhs type can be constructed")
@@ -244,7 +244,7 @@ SCENARIO("convertible: Mapping as a converter")
         type_a a;
       };
 
-      auto map_nb = mapping(member(&type_nested_a::a), object<reader::identity, type_b>(), map_ab);
+      auto map_nb = mapping(member(&type_nested_a::a), object<type_b>(), map_ab);
       static_assert(concepts::adaptable<type_nested_a, decltype(map_nb)>);
       static_assert(concepts::adaptable<type_b, decltype(map_nb)>);
 

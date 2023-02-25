@@ -15,13 +15,13 @@ SCENARIO("convertible: Adapters")
   GIVEN("object adapter")
   {
     std::string adapted = "hello";
-    auto adapter = object(reader::identity{}, adapted);
+    auto adapter = object(adapted, reader::identity<>{});
 
     THEN("it's constexpr constructible")
     {
       struct type_x{};
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = object(reader::identity{}, tmp);
+      static constexpr auto constexprAdapter = object(tmp, reader::identity<>{});
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns value")
