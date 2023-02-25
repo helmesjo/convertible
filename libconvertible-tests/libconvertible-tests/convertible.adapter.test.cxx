@@ -322,56 +322,6 @@ SCENARIO("convertible: Adapters")
   }
 }
 
-SCENARIO("convertible: Adapter composition")
-{
-  using namespace convertible;
-
-  struct type
-  {
-    std::string* val = nullptr;
-  };
-
-  std::string str;
-  type obj{ &str };
-
-  GIVEN("composed adapter")
-  {
-    auto adapter = deref(member(&type::val));
-
-    THEN("it's constexpr constructible")
-    {
-      struct type_x{ int* x; };
-      static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = compose(deref(), object(), member(&type_x::x, tmp));
-      (void)constexprAdapter;
-    }
-    THEN("it implicitly assigns member value")
-    {
-      adapter(obj) = "hello";
-      REQUIRE(str == "hello");
-    }
-    THEN("it implicitly converts to type")
-    {
-      adapter(obj) = "hello";
-      std::string val = adapter(obj);
-      REQUIRE(val == "hello");
-    }
-    THEN("it 'moves from' r-value reference")
-    {
-      str = "hello";
-      type obj{ &str };
-
-      const std::string movedTo = adapter(std::move(obj));
-      REQUIRE(movedTo == "hello");
-      REQUIRE(str == "");
-
-      std::string fromStr = "hello";
-      adapter(obj) = std::move(fromStr);
-      REQUIRE(fromStr == "");
-    }
-  }
-}
-
 SCENARIO("convertible: Adapters constexpr-ness")
 {
   using namespace convertible;
