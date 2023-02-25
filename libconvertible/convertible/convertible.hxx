@@ -441,7 +441,7 @@ namespace convertible
   constexpr auto member(member_ptr_t ptr, concepts::adapter auto&& inner)
   {
     auto reader = reader::composed(reader::member<member_ptr_t>{ptr}, inner);
-    return object<traits::member_class_t<member_ptr_t>*, decltype(reader)>(reader);
+    return object<traits::member_class_t<member_ptr_t>, decltype(reader)>(reader);
   }
 
   template<std::size_t i>
