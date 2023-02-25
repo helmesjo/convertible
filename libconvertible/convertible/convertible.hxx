@@ -183,6 +183,9 @@ namespace convertible
 
     template<typename... arg_ts>
     using unique_derived_types_t = typename details::unique_types<std::is_base_of, std::tuple<>, arg_ts...>::type;
+
+    template<typename converter_t, typename arg_t>
+    using converted_t = std::invoke_result_t<converter_t, arg_t>;
   }
 
   namespace concepts
@@ -230,10 +233,10 @@ namespace convertible
     };
 
     template<typename lhs_t, typename rhs_t, typename converter_t>
-    concept assignable_from_converted = std::is_assignable_v<lhs_t, std::invoke_result_t<converter_t, rhs_t>>;
+    concept assignable_from_converted = std::is_assignable_v<lhs_t, traits::converted_t<converter_t, rhs_t>>;
 
     template<typename lhs_t, typename rhs_t, typename converter_t>
-    concept equality_comparable_with_converted = requires(std::remove_reference_t<lhs_t>& lhs, std::invoke_result_t<converter_t, rhs_t> rhs)
+    concept equality_comparable_with_converted = requires(std::remove_reference_t<lhs_t>& lhs, traits::converted_t<converter_t, rhs_t> rhs)
     {
       { lhs == rhs } -> std::same_as<bool>;
     };
@@ -261,6 +264,9 @@ namespace convertible
   {
     template<typename arg_t, concepts::adapter... adapter_ts>
     constexpr std::size_t adaptable_count_v = (concepts::adaptable<arg_t, adapter_ts> +...);
+
+    template<concepts::adapter adapter_t, typename adaptee_t>
+    using adapted_t = converted_t<adapter_t, adaptee_t>;
   }
 
   namespace reader
@@ -479,8 +485,8 @@ namespace convertible
         converter_(converter)
       {}
 
-      template<typename in_t>
-      using converted_t = std::invoke_result_t<converter_t, in_t>;
+      template<typename arg_t>
+      using converted_t = traits::converted_t<converter_t, arg_t>;
 
       constexpr decltype(auto) operator()(auto&& val) const
         requires std::is_assignable_v<to_t&, converted_t<decltype(val)>>
@@ -587,7 +593,7 @@ namespace convertible
     {}
 
     template<DIR_DECL(direction) dir, typename operator_t, concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t>
-      requires concepts::executable_with<dir, operator_t, std::invoke_result_t<lhs_adapter_t, lhs_t>, std::invoke_result_t<rhs_adapter_t, rhs_t>, converter_t>
+      requires concepts::executable_with<dir, operator_t, traits::adapted_t<lhs_adapter_t, lhs_t>, traits::adapted_t<rhs_adapter_t, rhs_t>, converter_t>
     constexpr decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs) const 
     {
       constexpr operator_t op;
