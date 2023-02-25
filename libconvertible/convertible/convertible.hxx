@@ -215,7 +215,7 @@ namespace convertible
     };
 
     template<typename adapter_t>
-    concept adapted_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, details::any>);
+    concept adaptee_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, details::any>);
 
     template<typename mapping_t, typename operator_t, DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
     concept mappable = requires(mapping_t m, lhs_t l, rhs_t r)
@@ -265,23 +265,23 @@ namespace convertible
 
   namespace reader
   {
-    template<typename adapted_t = details::any>
+    template<typename adaptee_t = details::any>
     struct identity
     {
       constexpr decltype(auto) operator()(auto&& obj) const
-        requires std::is_same_v<adapted_t, details::any>
+        requires std::is_same_v<adaptee_t, details::any>
       {
         return FWD(obj);
       }
 
       constexpr decltype(auto) operator()(auto&& obj) const
-        requires std::same_as<std::remove_reference_t<decltype(obj)>, adapted_t>
+        requires std::same_as<std::remove_reference_t<decltype(obj)>, adaptee_t>
       {
         return FWD(obj);
       }
 
       template<typename object_t = details::any>
-      constexpr auto defaulted_adapted(auto&&... args) const
+      constexpr auto defaulted_adaptee(auto&&... args) const
       {
         return object_t(FWD(args)...);
       }
@@ -309,7 +309,7 @@ namespace convertible
       }
 
       template<typename object_t = class_t>
-      constexpr auto defaulted_adapted(auto&&... args) const
+      constexpr auto defaulted_adaptee(auto&&... args) const
       {
         return object_t(FWD(args)...);
       }
@@ -326,7 +326,7 @@ namespace convertible
       }
 
       template<typename object_t = details::any>
-      constexpr auto defaulted_adapted(auto&&... args) const
+      constexpr auto defaulted_adaptee(auto&&... args) const
       {
         return object_t(FWD(args)...);
       }
@@ -340,7 +340,7 @@ namespace convertible
       }
 
       template<typename object_t = details::any>
-      constexpr auto defaulted_adapted(auto&&... args) const
+      constexpr auto defaulted_adaptee(auto&&... args) const
       {
         return object_t(FWD(args)...);
       }
@@ -362,7 +362,7 @@ namespace convertible
       }
 
       template<typename object_t = details::any>
-      constexpr auto defaulted_adapted(auto&&... args) const
+      constexpr auto defaulted_adaptee(auto&&... args) const
       {
         return object_t(FWD(args)...);
       }
@@ -371,19 +371,19 @@ namespace convertible
     };
   }
 
-  template<typename adapted_t = details::any, typename reader_t = reader::identity<adapted_t>>
+  template<typename adaptee_t = details::any, typename reader_t = reader::identity<adaptee_t>>
   struct object
   {
-    using object_t = adapted_t;
-    using object_value_t = std::remove_cvref_t<adapted_t>;
+    using object_t = adaptee_t;
+    using object_value_t = std::remove_cvref_t<adaptee_t>;
     using object_decay_t = std::remove_pointer_t<std::decay_t<object_t>>;
 
     constexpr object() = default;
     constexpr object(const object&) = default;
     constexpr object(object&&) = default;
-    constexpr explicit object(adapted_t adapted, reader_t reader)
+    constexpr explicit object(adaptee_t adaptee, reader_t reader)
       : reader_(FWD(reader)),
-        adapted_(adapted)
+        adaptee_(adaptee)
     {
     }
     constexpr explicit object(reader_t reader)
@@ -405,14 +405,14 @@ namespace convertible
       }
     }
 
-    constexpr auto defaulted_adapted() const
-      requires (!std::is_same_v<adapted_t, details::any>)
+    constexpr auto defaulted_adaptee() const
+      requires (!std::is_same_v<adaptee_t, details::any>)
     {
-        return reader_.template defaulted_adapted<object_value_t>(adapted_);
+        return reader_.template defaulted_adaptee<object_value_t>(adaptee_);
     }
 
     reader_t reader_;
-    const object_value_t adapted_{};
+    const object_value_t adaptee_{};
   };
 
   template<typename T>
@@ -421,20 +421,20 @@ namespace convertible
   template<concepts::adapter... adapter_ts>
   constexpr auto compose(adapter_ts&&... adapters)
   {
-    auto adapted = std::get<sizeof...(adapters)-1>(std::tuple{adapters...}).defaulted_adapted();
-    return object(adapted, reader::composed(FWD(adapters)...));
+    auto adaptee = std::get<sizeof...(adapters)-1>(std::tuple{adapters...}).defaulted_adaptee();
+    return object(adaptee, reader::composed(FWD(adapters)...));
   }
 
-  template<typename adapted_t = details::any>
+  template<typename adaptee_t = details::any>
   constexpr auto custom(auto&& reader)
   {
-    return object<adapted_t, std::decay_t<decltype(reader)>>(FWD(reader));
+    return object<adaptee_t, std::decay_t<decltype(reader)>>(FWD(reader));
   }
 
   template<concepts::member_ptr member_ptr_t>
-  constexpr auto member(member_ptr_t ptr, auto&&... adapted)
+  constexpr auto member(member_ptr_t ptr, auto&&... adaptee)
   {
-    return object<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adapted)..., ptr);
+    return object<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., ptr);
   }
 
   template<concepts::member_ptr member_ptr_t>
@@ -451,9 +451,9 @@ namespace convertible
   }
 
   template<std::size_t i>
-  constexpr auto index(auto&&... adapted)
+  constexpr auto index(auto&&... adaptee)
   {
-    return object(FWD(adapted)..., reader::index<i>{});
+    return object(FWD(adaptee)..., reader::index<i>{});
   }
 
   constexpr auto deref(concepts::adapter auto&& inner)
@@ -461,9 +461,9 @@ namespace convertible
     return object(reader::composed(reader::deref{}, FWD(inner)));
   }
 
-  constexpr auto deref(auto&&... adapted)
+  constexpr auto deref(auto&&... adaptee)
   {
-    return object(FWD(adapted)..., reader::deref{});
+    return object(FWD(adaptee)..., reader::deref{});
   }
 
 
@@ -636,12 +636,12 @@ namespace convertible
 
     constexpr auto defaulted_lhs() const
     {
-      return lhsAdapter_.defaulted_adapted();
+      return lhsAdapter_.defaulted_adaptee();
     }
 
     constexpr auto defaulted_rhs() const
     {
-      return rhsAdapter_.defaulted_adapted();
+      return rhsAdapter_.defaulted_adaptee();
     }
 
     lhs_adapter_t lhsAdapter_;
@@ -733,7 +733,7 @@ namespace convertible
     }
 
     template<typename lhs_t, typename result_t = rhs_unique_types>
-      requires (concepts::adapted_type_known<typename mapping_ts::rhs_adapter_t> || ...) &&
+      requires (concepts::adaptee_type_known<typename mapping_ts::rhs_adapter_t> || ...) &&
         (
          traits::adaptable_count_v<lhs_t, typename mapping_ts::lhs_adapter_t...>
          >
@@ -762,7 +762,7 @@ namespace convertible
     }
 
     template<typename rhs_t, typename result_t = lhs_unique_types>
-      requires (concepts::adapted_type_known<typename mapping_ts::lhs_adapter_t> || ...) &&
+      requires (concepts::adaptee_type_known<typename mapping_ts::lhs_adapter_t> || ...) &&
         (
          traits::adaptable_count_v<rhs_t, typename mapping_ts::lhs_adapter_t...>
          <

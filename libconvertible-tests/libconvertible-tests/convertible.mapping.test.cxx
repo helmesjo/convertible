@@ -119,23 +119,23 @@ SCENARIO("convertible: Mapping")
   }
   GIVEN("mapping with known lhs & rhs types")
   {
-    int lhsAdapted = 3;
-    std::string rhsAdapted = "hello";
+    int lhsAdaptee = 3;
+    std::string rhsAdaptee = "hello";
 
-    auto map = mapping(object(lhsAdapted, reader::identity<>{}), object(rhsAdapted, reader::identity<>{}), int_string_converter{});
+    auto map = mapping(object(lhsAdaptee, reader::identity<>{}), object(rhsAdaptee, reader::identity<>{}), int_string_converter{});
     using map_t = decltype(map);
 
     THEN("defaulted lhs type can be constructed")
     {
       auto copy = map.defaulted_lhs();
       static_assert(std::same_as<decltype(copy), typename map_t::lhs_adapter_t::object_value_t>);
-      REQUIRE(copy == lhsAdapted);
+      REQUIRE(copy == lhsAdaptee);
     }
     THEN("defaulted rhs type can be constructed")
     {
       auto copy = map.defaulted_rhs();
       static_assert(std::same_as<decltype(copy), typename map_t::rhs_adapter_t::object_value_t>);
-      REQUIRE(copy == rhsAdapted);
+      REQUIRE(copy == rhsAdaptee);
     }
   }
 }
