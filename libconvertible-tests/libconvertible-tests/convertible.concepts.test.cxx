@@ -37,7 +37,7 @@ namespace
 
   struct some_mapping
   {
-    template<typename operator_t, DIR_DECL(convertible::direction) dir>
+    template<DIR_DECL(convertible::direction) dir, typename operator_t>
     void exec(int, int){}
   };
 }
@@ -140,9 +140,9 @@ SCENARIO("convertible: Concepts")
   // mappable:
   {
     struct dummy_op{};
-    static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, int>);
+    static_assert(concepts::mappable<some_mapping, direction::lhs_to_rhs, dummy_op, int, int>);
     struct dummy{};
-    static_assert(concepts::mappable<some_mapping, dummy_op, direction::lhs_to_rhs, int, dummy> == false);
+    static_assert(concepts::mappable<some_mapping, direction::lhs_to_rhs, dummy_op, int, dummy> == false);
   }
 
   // executable
