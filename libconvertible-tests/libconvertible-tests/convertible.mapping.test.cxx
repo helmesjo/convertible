@@ -231,6 +231,62 @@ SCENARIO("convertible: Mapping as a converter")
       }
     }
   }
+  GIVEN("nested mapping 'map_ab' between \n\n\ta <-> b\n")
+  {
+    auto map_ab = mapping(member(&type_a::val), member(&type_b::val));
+    static_assert(concepts::adaptable<type_a, decltype(map_ab)>);
+    static_assert(concepts::adaptable<type_b, decltype(map_ab)>);
+
+    GIVEN("mapping 'map_nb' between \n\n\tn <- map_ab -> b\n")
+    {
+      struct type_nested_a
+      {
+        type_a a;
+      };
+
+      auto map_nb = mapping(member(&type_nested_a::a), object<reader::identity, type_b>(), map_ab);
+      static_assert(concepts::adaptable<type_nested_a, decltype(map_nb)>);
+      static_assert(concepts::adaptable<type_b, decltype(map_nb)>);
+
+      WHEN("invoked with n")
+      {
+        type_nested_a n = type_nested_a{type_a{ "hello" }};
+        type_b b = map_nb(n);
+        THEN("it returns b")
+        {
+          REQUIRE(n.a.val == b.val);
+        }
+      }
+      WHEN("invoked with n (r-value)")
+      {
+        type_nested_a n = type_nested_a{type_a{ "hello" }};
+        (void)map_nb(std::move(n));
+        THEN("n is moved from")
+        {
+          REQUIRE(n.a.val == "");
+        }
+      }
+      WHEN("invoked with b")
+      {
+        type_b b = { "hello" };
+        type_nested_a n = type_nested_a{type_a{ "hello" }};
+        (void)map_nb(b);
+        THEN("it returns n")
+        {
+          REQUIRE(n.a.val == b.val);
+        }
+      }
+      WHEN("invoked with b (r-value)")
+      {
+        type_b b = { "hello" };
+        (void)map_nb(std::move(b));
+        THEN("b is moved from")
+        {
+          REQUIRE(b.val == "");
+        }
+      }
+    }
+  }
 }
 
 SCENARIO("convertible: Mapping (misc use-cases)")

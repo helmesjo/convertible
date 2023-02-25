@@ -618,7 +618,6 @@ namespace convertible
     }
 
     template<concepts::adaptable<rhs_adapter_t> rhs_t, concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::object_decay_t>
-      requires (!concepts::adaptable<lhs_t, rhs_adapter_t>)
     constexpr auto operator()(rhs_t&& rhs) const
       requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::rhs_to_lhs>(l, r); }
     {
