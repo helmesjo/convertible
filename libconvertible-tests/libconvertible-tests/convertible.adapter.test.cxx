@@ -57,7 +57,7 @@ SCENARIO("convertible: Adapters")
     THEN("defaulted-initialized adaptee type can be created")
     {
       auto copy = adapter.defaulted_adaptee();
-      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       REQUIRE(copy == adaptee);
     }
   }
@@ -107,7 +107,7 @@ SCENARIO("convertible: Adapters")
     THEN("defaulted-initialized adaptee type can be created")
     {
       auto copy = adapter.defaulted_adaptee();
-      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       REQUIRE(copy == adaptee);
     }
   }
@@ -159,7 +159,7 @@ SCENARIO("convertible: Adapters")
     THEN("defaulted-initialized adaptee type can be created")
     {
       auto copy = adapter.defaulted_adaptee();
-      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       REQUIRE(copy == adaptee);
     }
   }
@@ -202,7 +202,7 @@ SCENARIO("convertible: Adapters")
     THEN("defaulted-initialized adaptee type can be created")
     {
       auto copy = adapter.defaulted_adaptee();
-      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       REQUIRE(copy == adaptee);
     }
   }
@@ -253,7 +253,7 @@ SCENARIO("convertible: Adapters")
     THEN("defaulted-initialized adaptee type can be created")
     {
       auto copy = adapter.defaulted_adaptee();
-      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       REQUIRE(copy == adaptee);
     }
   }
@@ -314,7 +314,7 @@ SCENARIO("convertible: Adapters")
     THEN("defaulted-initialized adaptee type can be created")
     {
       auto copy = adapter.defaulted_adaptee();
-      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       INFO("adaptee.a.val: ", adaptee.a.val);
       INFO("copy.a.val: ", copy.a.val);
       REQUIRE(copy == adaptee);

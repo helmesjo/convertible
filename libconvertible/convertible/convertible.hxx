@@ -218,7 +218,7 @@ namespace convertible
     };
 
     template<typename adapter_t>
-    concept adaptee_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::object_t, details::any>);
+    concept adaptee_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::adaptee_t, details::any>);
 
     template<typename mapping_t, DIR_DECL(direction) dir, typename operator_t, typename lhs_t, typename rhs_t>
     concept mappable = requires(mapping_t m, lhs_t l, rhs_t r)
@@ -367,21 +367,15 @@ namespace convertible
         }, adapters_);
       }
 
-      template<typename object_t = details::any>
-      constexpr auto defaulted_adaptee(auto&&... args) const
-      {
-        return object_t(FWD(args)...);
-      }
-
       std::tuple<adapter_ts...> adapters_;
     };
   }
 
-  template<typename adaptee_t = details::any, typename reader_t = reader::identity<adaptee_t>>
+  template<typename _adaptee_t = details::any, typename reader_t = reader::identity<_adaptee_t>>
   struct object
   {
-    using object_t = adaptee_t;
-    using object_value_t = std::remove_reference_t<adaptee_t>;
+    using adaptee_t = _adaptee_t;
+    using adaptee_value_t = std::remove_reference_t<adaptee_t>;
 
     constexpr object() = default;
     constexpr object(const object&) = default;
@@ -417,7 +411,7 @@ namespace convertible
     }
 
     reader_t reader_;
-    const object_value_t adaptee_{};
+    const adaptee_value_t adaptee_{};
   };
 
   template<concepts::adapter... adapter_ts>
@@ -617,7 +611,7 @@ namespace convertible
       return exec<dir, operators::equal>(FWD(lhs), FWD(rhs));
     }
 
-    template<concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::object_value_t>
+    template<concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::adaptee_value_t>
     constexpr auto operator()(lhs_t&& lhs) const
       requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::lhs_to_rhs>(l, r); }
     {
@@ -626,7 +620,7 @@ namespace convertible
       return rhs;
     }
 
-    template<concepts::adaptable<rhs_adapter_t> rhs_t, concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::object_value_t>
+    template<concepts::adaptable<rhs_adapter_t> rhs_t, concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::adaptee_value_t>
     constexpr auto operator()(rhs_t&& rhs) const
       requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::rhs_to_lhs>(l, r); }
     {
@@ -661,8 +655,8 @@ namespace convertible
   template<typename... mapping_ts>
   struct mapping_table
   {
-    using lhs_unique_types = traits::unique_derived_types_t<typename mapping_ts::lhs_adapter_t::object_value_t...>;
-    using rhs_unique_types = traits::unique_derived_types_t<typename mapping_ts::rhs_adapter_t::object_value_t...>;
+    using lhs_unique_types = traits::unique_derived_types_t<typename mapping_ts::lhs_adapter_t::adaptee_value_t...>;
+    using rhs_unique_types = traits::unique_derived_types_t<typename mapping_ts::rhs_adapter_t::adaptee_value_t...>;
 
     constexpr lhs_unique_types defaulted_lhs() const
     {

@@ -128,13 +128,13 @@ SCENARIO("convertible: Mapping")
     THEN("defaulted lhs type can be constructed")
     {
       auto copy = map.defaulted_lhs();
-      static_assert(std::same_as<decltype(copy), typename map_t::lhs_adapter_t::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename map_t::lhs_adapter_t::adaptee_value_t>);
       REQUIRE(copy == lhsAdaptee);
     }
     THEN("defaulted rhs type can be constructed")
     {
       auto copy = map.defaulted_rhs();
-      static_assert(std::same_as<decltype(copy), typename map_t::rhs_adapter_t::object_value_t>);
+      static_assert(std::same_as<decltype(copy), typename map_t::rhs_adapter_t::adaptee_value_t>);
       REQUIRE(copy == rhsAdaptee);
     }
   }
