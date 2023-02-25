@@ -269,6 +269,13 @@ namespace convertible
     struct identity
     {
       constexpr decltype(auto) operator()(auto&& obj) const
+        requires std::is_same_v<adapted_t, details::any>
+      {
+        return FWD(obj);
+      }
+
+      constexpr decltype(auto) operator()(auto&& obj) const
+        requires std::same_as<std::remove_reference_t<decltype(obj)>, adapted_t>
       {
         return FWD(obj);
       }
