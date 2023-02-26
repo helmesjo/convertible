@@ -208,6 +208,13 @@ namespace convertible
     template<typename T>
     concept reference = std::is_reference_v<T>;
 
+    template<typename adaptee_t, typename reader_t>
+    concept readable = requires(reader_t reader, adaptee_t&& adaptee)
+    {
+      { reader(FWD(adaptee)) };
+      requires !std::same_as<void, decltype(reader(FWD(adaptee)))>;
+    };
+
     template<typename T>
     concept adapter = traits::is_adapter_v<T>;
 
@@ -398,44 +405,53 @@ namespace convertible
   }
 
   template<typename adaptee_t = details::any>
-  constexpr auto custom(auto&& reader)
+  constexpr auto custom(auto&& reader, concepts::readable<decltype(reader)> auto&&... adaptee)
   {
-    return object<adaptee_t, std::remove_reference_t<decltype(reader)>>(FWD(reader));
+    return object<adaptee_t, decltype(reader)>(FWD(adaptee)..., FWD(reader));
+  }
+
+  template<typename adaptee_t = details::any>
+  constexpr auto custom(auto&& reader, concepts::adapter auto&&... inner)
+    requires (sizeof...(inner) > 0)
+  {
+    return compose(custom(FWD(reader)), FWD(inner)...);
   }
 
   template<concepts::member_ptr member_ptr_t>
-  constexpr auto member(member_ptr_t ptr, auto&&... adaptee)
+  constexpr auto member(member_ptr_t ptr, concepts::readable<reader::member<member_ptr_t>> auto&&... adaptee)
   {
-    return object<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., ptr);
+    return object<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., FWD(ptr));
   }
 
   template<concepts::member_ptr member_ptr_t>
-  constexpr auto member(member_ptr_t ptr, concepts::adapter auto&& inner)
+  constexpr auto member(member_ptr_t&& ptr, concepts::adapter auto&&... inner)
+    requires (sizeof...(inner) > 0)
   {
-    auto reader = reader::composed(reader::member<member_ptr_t>{ptr}, inner);
-    return object<traits::member_class_t<member_ptr_t>, decltype(reader)>(reader);
+    return compose(member(FWD(ptr)), FWD(inner)...);
   }
 
   template<std::size_t i>
-  constexpr auto index(concepts::adapter auto&& inner)
-  {
-    return object(reader::composed(reader::index<i>{}, FWD(inner)));
-  }
-
-  template<std::size_t i>
-  constexpr auto index(auto&&... adaptee)
+  constexpr auto index(concepts::readable<reader::index<i>> auto&&... adaptee)
   {
     return object(FWD(adaptee)..., reader::index<i>{});
   }
 
-  constexpr auto deref(concepts::adapter auto&& inner)
+  template<std::size_t i>
+  constexpr auto index(concepts::adapter auto&&... inner)
+    requires (sizeof...(inner) > 0)
   {
-    return object(reader::composed(reader::deref{}, FWD(inner)));
+    return compose(index<i>(), FWD(inner)...);
   }
 
-  constexpr auto deref(auto&&... adaptee)
+  constexpr auto deref(concepts::readable<reader::deref> auto&&... adaptee)
   {
     return object(FWD(adaptee)..., reader::deref{});
+  }
+
+  constexpr auto deref(concepts::adapter auto&&... inner)
+    requires (sizeof...(inner) > 0)
+  {
+    return compose(deref(), FWD(inner)...);
   }
 
   namespace converter

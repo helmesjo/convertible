@@ -126,7 +126,7 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      struct type_x{ int x(){ return 0; }; };
+      struct type_x{ int x() const { return 0; }; };
       static constexpr auto tmp = type_x{};
       static constexpr auto constexprAdapter = member(&type_x::x, tmp);
       (void)constexprAdapter;
@@ -214,7 +214,14 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      struct type_x{ int* x; };
+      struct type_x
+      {
+        int operator*() const
+        {
+          return *x;
+        }
+        int* x;
+      };
       static constexpr auto tmp = type_x{};
       static constexpr auto constexprAdapter = deref(tmp);
       (void)constexprAdapter;
@@ -409,7 +416,7 @@ SCENARIO("convertible: Adapters (proxies)")
     };
     static_assert(concepts::adaptable<std::string&, custom_reader>);
 
-    constexpr auto adapter = custom(custom_reader{});
+    auto adapter = custom(custom_reader{});
     std::string str;
 
     THEN("it implicitly assigns value")
