@@ -1,6 +1,7 @@
 .vs/
 .vscode/
 .bdep/
+.cache/
 
 # Local default options files.
 #
@@ -8,6 +9,7 @@
 
 # Compiler/linker output.
 #
+compile_commands.json
 *.d
 *.t
 *.i
