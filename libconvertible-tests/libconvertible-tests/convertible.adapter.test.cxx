@@ -8,6 +8,14 @@
 #include <tuple>
 #include <type_traits>
 
+namespace
+{
+  struct invalid_type
+  {
+    invalid_type() = delete;
+  };
+}
+
 SCENARIO("convertible: Adapters")
 {
   using namespace convertible;
@@ -16,6 +24,9 @@ SCENARIO("convertible: Adapters")
   {
     std::string adaptee = "hello";
     auto adapter = object(adaptee, reader::identity<>{});
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    // identity-reader works for all types, even this fake 'invalid' type
+    static_assert(concepts::adaptable<invalid_type, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {
@@ -71,6 +82,8 @@ SCENARIO("convertible: Adapters")
     adaptee.str = "hello";
 
     auto adapter = member(&type::str, adaptee);
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {
@@ -123,6 +136,8 @@ SCENARIO("convertible: Adapters")
     adaptee.str() = "hello";
 
     auto adapter = member(&type::str, adaptee);
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {
@@ -167,6 +182,8 @@ SCENARIO("convertible: Adapters")
   {
     auto adaptee = std::array{std::string("hello")};
     auto adapter = index<0>(adaptee);
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {
@@ -211,6 +228,8 @@ SCENARIO("convertible: Adapters")
     auto str = std::string("hello");
     auto adaptee = &str;
     auto adapter = deref(adaptee);
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {
@@ -285,6 +304,9 @@ SCENARIO("convertible: Adapters")
     auto innerAdapter = member(&type_b::a, adaptee);
     auto outerAdapter = deref();
     auto adapter = compose(outerAdapter, innerAdapter);
+    static_assert(concepts::adaptable<type_b, decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
+    static_assert(!concepts::adaptable<type_a, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {

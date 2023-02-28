@@ -103,18 +103,6 @@ namespace convertible
         return *this;
       }
     };
-
-    template<typename T>
-    constexpr decltype(auto) fn_compose (auto&& arg, T&& t)
-    {
-      return FWD(t)(FWD(arg));
-    }
-
-    template<typename F, typename... Rest>
-    constexpr decltype(auto) fn_compose(auto&& arg, F&& f, Rest&&... rest)
-    {
-      return FWD(f)(fn_compose(FWD(arg), FWD(rest)...));
-    }
   }
 
   template<typename obj_t, typename reader_t>
@@ -203,6 +191,7 @@ namespace convertible
     concept dereferencable = requires(T t)
     {
       *t;
+      requires !std::same_as<void, decltype(*t)>;
     };
 
     template<typename T>
@@ -335,22 +324,37 @@ namespace convertible
       }
     };
 
-    template<typename... adapter_ts>
+    template<concepts::adapter... adapter_ts>
     struct composed
     {
+      using adapters_t = std::tuple<adapter_ts...>;
+  
       constexpr composed(adapter_ts... adapters):
         adapters_(std::move(adapters)...)
       {}
 
-      constexpr decltype(auto) operator()(auto&& obj) const
-        requires requires(adapter_ts... args){ details::fn_compose(FWD(obj), args...); }
+      static constexpr decltype(auto) compose(auto&& arg, concepts::adapter auto&& adapter)
+        requires concepts::adaptable<decltype(arg), decltype(adapter)>
       {
-        return std::apply([&obj](auto&&... args) -> decltype(auto) {
-          return details::fn_compose(FWD(obj), args...);
+        return FWD(adapter)(FWD(arg));
+      }
+
+      static constexpr decltype(auto) compose(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail)
+        requires requires(){ FWD(head)(compose(FWD(arg), FWD(tail)...)); }
+      {
+        return FWD(head)(compose(FWD(arg), FWD(tail)...));
+      }
+
+      template<typename arg_t>
+      constexpr decltype(auto) operator()(arg_t&& arg) const
+        requires requires(){ compose(FWD(arg), std::declval<adapter_ts>()...); }
+      {
+        return std::apply([&arg](auto&&... adapters) -> decltype(auto) {
+          return compose(std::forward<arg_t>(arg), FWD(adapters)...);
         }, adapters_);
       }
 
-      std::tuple<adapter_ts...> adapters_;
+      adapters_t adapters_;
     };
   }
 
