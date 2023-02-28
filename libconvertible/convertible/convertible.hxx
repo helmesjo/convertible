@@ -378,7 +378,7 @@ namespace convertible
     }
 
     constexpr decltype(auto) operator()(auto&& obj) const
-      requires std::invocable<reader_t, decltype(obj)>
+      requires concepts::readable<decltype(obj), reader_t>
     {
       using obj_t = decltype(obj);
       if constexpr (!std::is_rvalue_reference_v<obj_t> || std::is_pointer_v<std::remove_reference_t<obj_t>>)
