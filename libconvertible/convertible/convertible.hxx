@@ -392,7 +392,7 @@ namespace convertible
     }
 
     constexpr auto defaulted_adaptee() const
-      requires (!std::is_same_v<adaptee_t, details::any>)
+      requires (!std::is_same_v<adaptee_value_t, details::any>)
     {
       return adaptee_;
     }
