@@ -123,6 +123,12 @@ SCENARIO("convertible: Adapters")
       static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       REQUIRE(copy == adaptee);
     }
+    THEN("it works with derived types")
+    {
+      struct type_derived: public type {} adapteeDerived;
+      adapteeDerived.str = "world";
+      REQUIRE(adapter(adapteeDerived) == "world");
+    }
   }
   GIVEN("member adapter (function)")
   {
@@ -176,6 +182,12 @@ SCENARIO("convertible: Adapters")
       auto copy = adapter.defaulted_adaptee();
       static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
       REQUIRE(copy == adaptee);
+    }
+    THEN("it works with derived types")
+    {
+      struct type_derived: public type {} adapteeDerived;
+      adapteeDerived.str() = "world";
+      REQUIRE(adapter(adapteeDerived) == "world");
     }
   }
   GIVEN("index adapter")

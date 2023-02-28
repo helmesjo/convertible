@@ -293,7 +293,7 @@ namespace convertible
       {}
 
       template<typename obj_t>
-        requires std::derived_from<class_t, std::remove_reference_t<obj_t>>
+        requires std::derived_from<std::remove_reference_t<obj_t>, class_t>
       constexpr decltype(auto) operator()(obj_t&& obj) const
       {
         // Workaround for MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
