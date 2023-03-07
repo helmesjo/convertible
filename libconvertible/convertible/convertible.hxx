@@ -411,7 +411,7 @@ namespace convertible
   template<typename adaptee_t = details::any>
   constexpr auto custom(auto&& reader, concepts::readable<decltype(reader)> auto&&... adaptee)
   {
-    return object<adaptee_t, decltype(reader)>(FWD(adaptee)..., FWD(reader));
+    return object(FWD(adaptee)..., FWD(reader));
   }
 
   template<typename adaptee_t = details::any>
