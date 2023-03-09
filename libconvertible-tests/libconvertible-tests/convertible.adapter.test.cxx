@@ -7,6 +7,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <unordered_map>
 
 namespace
 {
@@ -190,7 +191,7 @@ SCENARIO("convertible: Adapters")
       REQUIRE(adapter(adapteeDerived) == "world");
     }
   }
-  GIVEN("index adapter")
+  GIVEN("index adapter (integer)")
   {
     auto adaptee = std::array{std::string("hello")};
     auto adapter = index<0>(adaptee);
@@ -199,14 +200,14 @@ SCENARIO("convertible: Adapters")
 
     THEN("it's constexpr constructible")
     {
-      // GCC: Bug with array<string> & constexpr
       static constexpr auto tmp = std::array{""};
       static constexpr auto constexprAdapter = index<0>(tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
     {
-      REQUIRE(adaptee[0] == "hello");
+      adapter(adaptee) = "world";
+      REQUIRE(adaptee[0] == "world");
     }
     THEN("it implicitly converts to type")
     {
@@ -218,6 +219,51 @@ SCENARIO("convertible: Adapters")
       const std::string movedTo = adapter(std::move(adaptee));
       REQUIRE(movedTo == "hello");
       REQUIRE(adaptee[0] == "");
+
+      std::string fromStr = "world";
+      adapter(adaptee) = std::move(fromStr);
+      REQUIRE(fromStr == "");
+    }
+    THEN("equality operator works")
+    {
+      REQUIRE(adapter(adaptee) == "hello");
+      REQUIRE(adapter(adaptee) != "world");
+    }
+    THEN("defaulted-initialized adaptee type can be created")
+    {
+      auto copy = adapter.defaulted_adaptee();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
+      REQUIRE(copy == adaptee);
+    }
+  }
+  GIVEN("index adapter (string)")
+  {
+    auto adaptee = std::unordered_map<std::string, std::string>{{std::string("key"), std::string("hello")}};
+    auto adapter = index<"key">(adaptee);
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
+
+    // THEN("it's constexpr constructible")
+    // {
+    //   static constexpr auto tmp = std::unordered_map<const char*, const char*>{{"", ""}};
+    //   static constexpr auto constexprAdapter = index<"key">(tmp);
+    //   (void)constexprAdapter;
+    // }
+    THEN("it implicitly assigns member value")
+    {
+      adapter(adaptee) = "world";
+      REQUIRE(adaptee["key"] == "world");
+    }
+    THEN("it implicitly converts to type")
+    {
+      std::string val = adapter(adaptee);
+      REQUIRE(val == adaptee["key"]);
+    }
+    THEN("it 'moves from' r-value reference")
+    {
+      const std::string movedTo = adapter(std::move(adaptee));
+      REQUIRE(movedTo == "hello");
+      REQUIRE(adaptee["key"] == "");
 
       std::string fromStr = "world";
       adapter(adaptee) = std::move(fromStr);
