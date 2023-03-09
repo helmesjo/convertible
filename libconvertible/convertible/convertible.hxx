@@ -103,6 +103,34 @@ namespace convertible
         return *this;
       }
     };
+
+    template<typename value_t>
+    struct const_value
+    {
+      constexpr const_value() = default;
+      constexpr const_value(value_t val)
+        requires std::copy_constructible<value_t>
+      : value(val){}
+
+      constexpr const_value(auto&& str)
+        requires (!std::copy_constructible<value_t>) &&
+        requires { std::begin(str); std::size(str); }
+      {
+          std::copy_n(std::begin(str), std::size(str), value);
+      }
+
+      template<typename to_t>
+      operator to_t() const
+        requires std::common_reference_with<to_t, value_t>
+      {
+        return value;
+      }
+
+      value_t value;
+    };
+    template<typename elem_t, std::size_t size>
+    const_value(const elem_t (&str)[size]) -> const_value<elem_t[size]>;
+
   }
 
   template<typename obj_t, typename reader_t>
@@ -181,10 +209,10 @@ namespace convertible
     template<typename T>
     concept member_ptr = std::is_member_pointer_v<T>;
 
-    template<typename T>
-    concept indexable = requires(T t)
+    template<typename value_t, typename index_t = std::size_t>
+    concept indexable = requires(value_t t, index_t index)
     {
-      t[0];
+      t[index];
     };
 
     template<typename T>
@@ -307,10 +335,10 @@ namespace convertible
       member_ptr_t ptr_;
     };
 
-    template<std::size_t i>
+    template<details::const_value i>
     struct index
     {
-      constexpr decltype(auto) operator()(concepts::indexable auto&& obj) const
+      constexpr decltype(auto) operator()(concepts::indexable<decltype(i)> auto&& obj) const
       {
         return FWD(obj)[i];
       }
@@ -434,13 +462,13 @@ namespace convertible
     return compose(member(FWD(ptr)), FWD(inner)...);
   }
 
-  template<std::size_t i>
+  template<details::const_value i>
   constexpr auto index(concepts::readable<reader::index<i>> auto&&... adaptee)
   {
     return object(FWD(adaptee)..., reader::index<i>{});
   }
 
-  template<std::size_t i>
+  template<details::const_value i>
   constexpr auto index(concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {

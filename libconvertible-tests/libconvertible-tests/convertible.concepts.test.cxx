@@ -112,6 +112,14 @@ SCENARIO("convertible: Concepts")
 
   // indexable
   {
+    struct type
+    {
+      int operator[](std::size_t);
+      int operator[](const char*);
+    };
+
+    static_assert(concepts::indexable<std::array<int, 1>, decltype(details::const_value(1))>);
+    static_assert(concepts::indexable<type,               decltype(details::const_value("key"))>);
     static_assert(concepts::indexable<std::array<int, 1>>);
     static_assert(concepts::indexable<int*>);
     static_assert(concepts::indexable<int> == false);
