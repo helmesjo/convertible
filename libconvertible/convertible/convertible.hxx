@@ -352,11 +352,32 @@ namespace convertible
       }
     };
 
+    struct maybe
+    {
+      template<concepts::dereferencable object_t,
+                               typename value_t = std::remove_cvref_t<decltype(*std::declval<object_t>())>>
+      constexpr auto operator()(object_t&& obj) const -> decltype(obj)
+        requires std::constructible_from<bool, object_t> &&
+                 std::is_assignable_v<object_t, value_t>
+      {
+        if(obj)
+        {
+          return FWD(obj);
+        }
+        else
+        {
+          thread_local std::remove_cvref_t<object_t> defaulted{};
+          defaulted = value_t{};
+          return std::forward<decltype(obj)>(defaulted);
+        }
+      }
+    };
+
     template<concepts::adapter... adapter_ts>
     struct composed
     {
       using adapters_t = std::tuple<adapter_ts...>;
-  
+
       constexpr composed(adapter_ts... adapters):
         adapters_(std::move(adapters)...)
       {}
@@ -484,6 +505,17 @@ namespace convertible
     requires (sizeof...(inner) > 0)
   {
     return compose(deref(), FWD(inner)...);
+  }
+
+  constexpr auto maybe(concepts::readable<reader::maybe> auto&&... adaptee)
+  {
+    return object(FWD(adaptee)..., reader::maybe{});
+  }
+
+  constexpr auto maybe(concepts::adapter auto&&... inner)
+    requires (sizeof...(inner) > 0)
+  {
+    return compose(maybe(), FWD(inner)...);
   }
 
   namespace converter

@@ -341,6 +341,67 @@ SCENARIO("convertible: Adapters")
       REQUIRE(copy == adaptee);
     }
   }
+  GIVEN("maybe adapter")
+  {
+    auto adaptee = std::optional<std::string>("hello");
+    auto adapter = maybe(adaptee);
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
+
+    THEN("it returns defaulted/non-empty if adaptee is empty")
+    {
+      adaptee = std::nullopt;
+      REQUIRE_FALSE(adaptee);
+      REQUIRE(adapter(adaptee));
+      REQUIRE(*adapter(adaptee) == "");
+    }
+
+    THEN("it's constexpr constructible")
+    {
+      struct type_x
+      {
+        int operator*() const
+        {
+          return *x;
+        }
+        int* x;
+      };
+      static constexpr auto tmp = type_x{};
+      static constexpr auto constexprAdapter = deref(tmp);
+      (void)constexprAdapter;
+    }
+    THEN("it implicitly assigns member value")
+    {
+      adapter(adaptee) = "world";
+      REQUIRE(*adaptee == "world");
+    }
+    THEN("it implicitly converts to type")
+    {
+      decltype(adaptee) val = adapter(adaptee);
+      REQUIRE(val == "hello");
+    }
+    THEN("it 'moves from' r-value reference")
+    {
+      auto movedTo = adapter(std::move(adaptee));
+      REQUIRE(movedTo == "hello");
+      REQUIRE(*adaptee == "");
+
+      std::string fromStr = "world";
+      adapter(adaptee) = std::move(fromStr);
+      REQUIRE(fromStr == "");
+    }
+    THEN("equality operator works")
+    {
+      REQUIRE(adapter(adaptee) == "hello");
+      REQUIRE(adapter(adaptee) != "world");
+    }
+    THEN("defaulted-initialized adaptee type can be created")
+    {
+      auto copy = adapter.defaulted_adaptee();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
+      REQUIRE(copy == adaptee);
+    }
+  }
   GIVEN("composed adapter")
   {
     struct type_a
