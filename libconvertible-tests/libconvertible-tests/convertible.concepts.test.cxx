@@ -3,8 +3,11 @@
 
 #include <array>
 #include <concepts>
+#include <list>
+#include <set>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
@@ -74,6 +77,11 @@ SCENARIO("convertible: Traits")
     static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
     static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
   }
+  // mapped_value
+  {
+    static_assert(std::is_same_v<const std::string, traits::mapped_value_t<std::set<std::string>>>);
+    static_assert(std::is_same_v<std::string, traits::mapped_value_t<std::unordered_map<int, std::string>>>);
+  }
   // unique_types
   {
     static_assert(std::is_same_v<std::tuple<int, float>, traits::unique_types_t<int, float, int, float>>);
@@ -96,40 +104,6 @@ SCENARIO("convertible: Traits")
 SCENARIO("convertible: Concepts")
 {
   using namespace convertible;
-
-  // member_ptr:
-  {
-    struct type
-    {
-      int member;
-      double& fun(int, char*);
-    };
-
-    static_assert(concepts::member_ptr<decltype(&type::member)>);
-    static_assert(concepts::member_ptr<decltype(&type::fun)>);
-    static_assert(concepts::member_ptr<type> == false);
-  }
-
-  // indexable
-  {
-    struct type
-    {
-      int operator[](std::size_t);
-      int operator[](const char*);
-    };
-
-    static_assert(concepts::indexable<std::array<int, 1>, decltype(details::const_value(1))>);
-    static_assert(concepts::indexable<type,               decltype(details::const_value("key"))>);
-    static_assert(concepts::indexable<std::array<int, 1>>);
-    static_assert(concepts::indexable<int*>);
-    static_assert(concepts::indexable<int> == false);
-  }
-
-  // dereferencable
-  {
-    static_assert(concepts::dereferencable<int*>);
-    static_assert(concepts::dereferencable<int> == false);
-  }
 
   // adaptable:
   {
@@ -176,5 +150,69 @@ SCENARIO("convertible: Concepts")
 
     static_assert(!concepts::castable_to<std::string, int>);
     static_assert(!concepts::castable_to<int, std::string>);
+  }
+
+  // indexable
+  {
+    struct type
+    {
+      int operator[](std::size_t);
+      int operator[](const char*);
+    };
+
+    static_assert(concepts::indexable<std::array<int, 1>, decltype(details::const_value(1))>);
+    static_assert(concepts::indexable<type,               decltype(details::const_value("key"))>);
+    static_assert(concepts::indexable<std::array<int, 1>>);
+    static_assert(concepts::indexable<int*>);
+    static_assert(concepts::indexable<int> == false);
+  }
+
+  // dereferencable
+  {
+    static_assert(concepts::dereferencable<int*>);
+    static_assert(concepts::dereferencable<int> == false);
+  }
+
+  // member_ptr:
+  {
+    struct type
+    {
+      int member;
+      double& fun(int, char*);
+    };
+
+    static_assert(concepts::member_ptr<decltype(&type::member)>);
+    static_assert(concepts::member_ptr<decltype(&type::fun)>);
+    static_assert(concepts::member_ptr<type> == false);
+  }
+
+  // range
+  {
+    static_assert(concepts::range<std::array<int, 0>>);
+    static_assert(concepts::range<std::vector<int>>);
+    static_assert(concepts::range<std::list<int>>);
+    static_assert(concepts::range<std::set<int>>);
+    static_assert(concepts::range<std::unordered_map<int, int>>);
+  }
+  // sequence container
+  {
+    static_assert(concepts::sequence_container<std::array<int, 0>>);
+    static_assert(concepts::sequence_container<std::vector<int>>);
+    static_assert(concepts::sequence_container<std::list<int>>);
+    static_assert(!concepts::associative_container<std::array<int, 0>>);
+    static_assert(!concepts::associative_container<std::vector<int>>);
+    static_assert(!concepts::associative_container<std::list<int>>);
+  }
+  // associative container
+  {
+    static_assert(concepts::associative_container<std::set<int>>);
+    static_assert(concepts::associative_container<std::unordered_map<int, int>>);
+    static_assert(!concepts::sequence_container<std::set<int>>);
+    static_assert(!concepts::sequence_container<std::unordered_map<int, int>>);
+  }
+  // mapping container
+  {
+    static_assert(concepts::mapping_container<std::unordered_map<int, int>>);
+    static_assert(!concepts::mapping_container<std::set<int>>);
   }
 }

@@ -183,9 +183,6 @@ namespace convertible
     using member_value_t = typename details::member_ptr_meta_t<member_ptr_t>::value_t;
 
     template<typename T>
-    using range_value_t = std::remove_reference_t<decltype(*std::begin(std::declval<T&>()))>;
-
-    template<typename T>
     constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
 
     template<DIR_DECL(direction) dir, typename arg1_t, typename arg2_t>
@@ -265,32 +262,71 @@ namespace convertible
       { lhs == rhs } -> std::same_as<bool>;
     };
 
-    template<class T>
-    concept resizable = requires(T container)
+    // Credit: https://en.cppreference.com/w/cpp/ranges/range
+    template<typename range_t>
+    concept range = requires(range_t& r)
+    {
+      std::begin(r); // equality-preserving for forward iterators
+      std::end  (r);
+    };
+
+    // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
+    template<typename cont_t>
+    concept sequence_container = range<cont_t>
+      && requires(cont_t c){ { c.size() }; }
+      && (requires(cont_t c){ { c.data() }; } || requires(cont_t c){ { c.resize(0) }; });
+
+    // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
+    template<typename cont_t>
+    concept associative_container = range<cont_t> && (!sequence_container<cont_t>) && requires(cont_t container)
+    {
+      container.size();
+      container.clear();
+      container.insert(std::declval<typename std::remove_cvref_t<cont_t>::value_type>());
+    };
+
+    template<typename cont_t>
+    concept mapping_container = associative_container<cont_t> && requires
+    {
+      typename std::remove_cvref_t<cont_t>::mapped_type;
+    };
+
+    template<typename cont_t>
+    concept resizable = requires(cont_t container)
     {
       container.resize(std::size_t{0});
     };
 
     template<typename from_t, typename to_t>
-    concept castable_to = requires {
+    concept castable_to = requires
+    {
       static_cast<to_t>(std::declval<from_t>());
-    };
-
-    // Credit: https://en.cppreference.com/w/cpp/ranges/range
-    template<class T>
-    concept range = requires( T& t ) {
-      std::begin(t); // equality-preserving for forward iterators
-      std::end  (t);
     };
   }
 
   namespace traits
   {
+    namespace details
+    {
+      decltype(auto) get_mapped(concepts::associative_container auto&& cont)
+      {
+        if constexpr(concepts::mapping_container<decltype(cont)>)
+          return std::begin(cont)->second;
+        else
+          return *std::begin(cont);
+      };
+    }
     template<typename arg_t, concepts::adapter... adapter_ts>
     constexpr std::size_t adaptable_count_v = (concepts::adaptable<arg_t, adapter_ts> +...);
 
     template<concepts::adapter adapter_t, typename adaptee_t>
     using adapted_t = converted_t<adapter_t, adaptee_t>;
+
+    template<concepts::range range_t>
+    using range_value_t = std::remove_reference_t<decltype(*std::begin(std::declval<range_t&>()))>;
+
+    template<concepts::associative_container cont_t>
+    using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped(std::declval<cont_t>()))>;
   }
 
   namespace reader
