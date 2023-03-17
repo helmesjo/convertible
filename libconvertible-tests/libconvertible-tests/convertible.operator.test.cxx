@@ -2,6 +2,8 @@
 #include <doctest/doctest.h>
 
 #include <array>
+#include <list>
+#include <set>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -155,9 +157,39 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
+        enum_a&,
+        enum_b&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
         int&,
         std::string&,
         int_string_converter
+      >
+    );
+    // sequence containers
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::array<int, 0>&,
+        std::array<int, 0>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::array<int, 0>&,
+        std::array<std::string, 0>&,
+        int_string_converter
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::vector<int>&,
+        std::vector<int>&
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
@@ -171,8 +203,47 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        enum_a&,
-        enum_b&
+        std::list<int>&,
+        std::list<int>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::list<int>&,
+        std::list<std::string>&,
+        int_string_converter
+      >
+    );
+    // associative containers
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::set<int>&,
+        std::set<int>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::set<int>&,
+        std::set<std::string>&,
+        int_string_converter
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::unordered_map<int, int>&,
+        std::unordered_map<int, int>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::unordered_map<int, int>&,
+        std::unordered_map<int, std::string>&,
+        int_string_converter
       >
     );
 
@@ -256,6 +327,33 @@ SCENARIO("convertible: Operators")
       });
       MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
         return rhs[0] == "";
+      });
+    }
+
+    WHEN("lhs set<int>, rhs set<string>")
+    {
+      auto lhs = std::set<int>{};
+      auto rhs = std::set<std::string>{ {"2"} };
+
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+        return *lhs.find(2) == converter(*rhs.find("2"));
+      });
+      // can't move-from a set value (AKA key) since that would break the tree
+      // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+      //   return *rhs.find("2") == "";
+      // });
+    }
+
+    WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
+    {
+      auto lhs = std::unordered_map<int, int>{};
+      auto rhs = std::unordered_map<int, std::string>{ {0, "2"} };
+
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+        return lhs.find(0)->second == converter(rhs.find(0)->second);
+      });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+        return rhs.find(0)->second == "";
       });
     }
 
@@ -347,7 +445,7 @@ SCENARIO("convertible: Operators")
     }
     WHEN("lhs is std::string, rhs is string proxy type")
     {
-          struct proxy
+      struct proxy
       {
         explicit proxy(std::string& str) :
           str_(str)
@@ -436,6 +534,36 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
+        enum_a&,
+        enum_b&
+      >
+    );
+    // sequence containers
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::array<int, 0>&,
+        std::array<int, 0>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::array<int, 0>&,
+        std::array<std::string, 0>&,
+        int_string_converter
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::vector<int>&,
+        std::vector<int>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
         std::vector<int>&,
         std::vector<std::string>&,
         int_string_converter
@@ -444,8 +572,47 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        enum_a&,
-        enum_b&
+        std::list<int>&,
+        std::list<int>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::list<int>&,
+        std::list<std::string>&,
+        int_string_converter
+      >
+    );
+    // associative containers
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::set<int>&,
+        std::set<int>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::set<int>&,
+        std::set<std::string>&,
+        int_string_converter
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::unordered_map<int, int>&,
+        std::unordered_map<int, int>&
+      >
+    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::unordered_map<int, int>&,
+        std::unordered_map<int, std::string>&,
+        int_string_converter
       >
     );
 
@@ -527,6 +694,33 @@ SCENARIO("convertible: Operators")
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
       rhs = { "2" };
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
+    }
+
+    WHEN("lhs set<int>, rhs set<string>")
+    {
+      auto lhs = std::set<int>{ 1 };
+      auto rhs = std::set<std::string>{ "1" };
+
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+      rhs = { "2" };
+      EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+    }
+
+    WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
+    {
+      auto lhs = std::unordered_map<int, int>{ {1, 1} };
+      auto rhs = std::unordered_map<int, std::string>{ { 1, "1"} };
+
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+      lhs = { {2, 1} };
+      rhs = { {2, "1"} };
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+      lhs = { {1, 1} };
+      rhs = { {1, "2"} };
+      EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+      lhs = { {1, 1} };
+      rhs = { {2, "1"} };
+      EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
     WHEN("lhs is dynamic container, rhs is dynamic container")

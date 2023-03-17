@@ -597,10 +597,52 @@ namespace convertible
     template<typename to_t, typename converter_t>
     using explicit_cast = converter::explicit_cast<std::remove_reference_t<to_t>, converter_t>;
 
+    template<concepts::associative_container cont_t>
+    struct associative_inserter
+    {
+      using key_t = typename cont_t::key_type;
+      using value_t = typename cont_t::value_type;
+      using mapped_value_t = traits::mapped_value_t<cont_t>;
+
+      template<std::common_reference_with<key_t> _key_t, typename _mapped_t>
+      associative_inserter(cont_t& cont, std::pair<_key_t, _mapped_t>& pair)
+        requires concepts::mapping_container<cont_t>
+      : inserter_(cont, std::begin(cont)),
+        key_(pair.first)
+      {}
+
+      associative_inserter(cont_t& cont, auto&)
+        requires (!concepts::mapping_container<cont_t>)
+      : inserter_(cont, std::begin(cont))
+      {}
+
+      auto& operator=(std::common_reference_with<mapped_value_t> auto&& value)
+      {
+        // key-value pair (map etc.)
+        if constexpr(concepts::mapping_container<cont_t>)
+        {
+          if constexpr(std::is_rvalue_reference_v<decltype(value)>)
+            inserter_ = { key_, std::move(value) };
+          else
+            inserter_ = { key_, value };
+        }
+        // value (set etc.)
+        else
+          inserter_ = FWD(value);
+
+        return *this;
+      }
+
+      std::insert_iterator<cont_t> inserter_;
+      std::conditional_t<concepts::mapping_container<cont_t>, const key_t&, std::tuple<>> key_;
+    };
+
     struct assign
     {
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<lhs_t, converter_t>>
+      template<typename lhs_t, typename rhs_t,
+        typename converter_t = converter::identity,
+        typename cast_t = explicit_cast<lhs_t, converter_t>>
         requires concepts::assignable_from_converted<lhs_t, rhs_t, cast_t>
       constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       {
@@ -608,8 +650,10 @@ namespace convertible
       }
 
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
-        requires 
+      template<concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
+        typename converter_t = converter::identity,
+        typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
+        requires
           (!concepts::assignable_from_converted<lhs_t&, rhs_t, explicit_cast<lhs_t, converter_t>>)
           && concepts::assignable_from_converted<traits::range_value_t<lhs_t>&, traits::range_value_t<rhs_t>, cast_t>
       constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
@@ -627,10 +671,56 @@ namespace convertible
         }
 
         const auto size = std::min(lhs.size(), rhs.size());
-        std::for_each(iterator_t{std::begin(rhs)}, iterator_t{std::begin(rhs) + size},
+        auto end = std::begin(rhs);
+        std::advance(end, size);
+        std::for_each(iterator_t{std::begin(rhs)}, iterator_t{end},
           [this, lhsItr = std::begin(lhs), &converter](auto&& rhs) mutable {
             this->operator()(*lhsItr++, FWD(rhs), converter);
-          });
+          }
+        );
+
+        return FWD(lhs);
+      }
+
+      // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+      template<concepts::associative_container lhs_t, concepts::associative_container rhs_t,
+        typename converter_t = converter::identity,
+        typename cast_t = explicit_cast<traits::mapped_value_t<lhs_t>, converter_t>>
+        requires
+          (!concepts::assignable_from_converted<lhs_t&, rhs_t, explicit_cast<lhs_t, converter_t>>)
+          && concepts::assignable_from_converted<associative_inserter<std::remove_cvref_t<lhs_t>>&, traits::mapped_value_t<rhs_t>, cast_t>
+      constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      {
+        using container_iterator_t = std::remove_reference_t<decltype(std::begin(rhs))>;
+        using iterator_t = std::conditional_t<
+            std::is_rvalue_reference_v<decltype(rhs)>,
+            std::move_iterator<container_iterator_t>,
+            container_iterator_t
+          >;
+
+        using rhs_mapped_t = std::conditional_t<
+            std::is_rvalue_reference_v<decltype(rhs)>,
+            traits::mapped_value_t<rhs_t>&&,
+            traits::mapped_value_t<rhs_t>&
+          >;
+
+        lhs.clear();
+
+        std::for_each(iterator_t{std::begin(rhs)}, iterator_t{std::end(rhs)},
+          [this, &lhs, &converter](auto&& rhsValue) mutable {
+            auto inserter = associative_inserter(lhs, rhsValue);
+            // key-value pair (map etc.)
+            if constexpr(concepts::mapping_container<rhs_t>)
+            {
+              this->operator()(inserter, std::forward<rhs_mapped_t>(rhsValue.second), converter);
+            }
+            // value (set etc.)
+            else
+            {
+              this->operator()(inserter, FWD(rhsValue), converter);
+            }
+          }
+        );
 
         return FWD(lhs);
       }
@@ -639,7 +729,9 @@ namespace convertible
     struct equal
     {
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<typename lhs_t, typename rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<lhs_t, converter_t>>
+      template<typename lhs_t, typename rhs_t,
+        typename converter_t = converter::identity,
+        typename cast_t = explicit_cast<lhs_t, converter_t>>
         requires concepts::equality_comparable_with_converted<lhs_t, rhs_t, cast_t>
       constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
       {
@@ -647,21 +739,44 @@ namespace convertible
       }
 
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<concepts::range lhs_t, concepts::range rhs_t, typename converter_t = converter::identity, typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
+      template<concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
+        typename converter_t = converter::identity,
+        typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
         requires 
           (!concepts::equality_comparable_with_converted<lhs_t, rhs_t, explicit_cast<lhs_t, converter_t>>)
           && concepts::equality_comparable_with_converted<traits::range_value_t<lhs_t>, traits::range_value_t<rhs_t>, cast_t>
       constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
       {
-        const auto size = std::min(lhs.size(), rhs.size());
-        const auto& [rhsItr, lhsItr] = std::mismatch(std::begin(rhs), std::begin(rhs) + size, std::begin(lhs), 
-          [this, &converter](const auto& rhs, const auto& lhs){
+        if constexpr(concepts::resizable<lhs_t>)
+        {
+          if(lhs.size() != rhs.size())
+            return false;
+        }
+
+        return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
+          [this, &converter](const auto& lhs, const auto& rhs){
             return this->operator()(lhs, rhs, converter);
           });
+      }
 
-        (void)rhsItr;
-        constexpr auto sizeShouldMatch = concepts::resizable<lhs_t>;
-        return lhsItr == std::end(lhs) && (sizeShouldMatch ? lhs.size() == rhs.size() : true);
+      // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
+      template<concepts::associative_container lhs_t, concepts::associative_container rhs_t,
+        typename converter_t = converter::identity,
+        typename cast_t = explicit_cast<traits::mapped_value_t<lhs_t>, converter_t>>
+        requires
+          (!concepts::equality_comparable_with_converted<lhs_t, rhs_t, explicit_cast<lhs_t, converter_t>>)
+          && concepts::equality_comparable_with_converted<traits::mapped_value_t<lhs_t>&, traits::mapped_value_t<rhs_t>, cast_t>
+      constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
+      {
+        return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
+          [this, &converter](const auto& lhs, const auto& rhs){
+            // key-value pair (map etc.)
+            if constexpr(concepts::mapping_container<rhs_t>)
+              return lhs.first == rhs.first && this->operator()(lhs.second, rhs.second, converter);
+            // value (set etc.)
+            else
+              return this->operator()(lhs, rhs, converter);
+          });
       }
     };
   }
