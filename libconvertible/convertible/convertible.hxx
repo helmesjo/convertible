@@ -281,9 +281,7 @@ namespace convertible
     template<typename cont_t>
     concept associative_container = range<cont_t> && (!sequence_container<cont_t>) && requires(cont_t container)
     {
-      container.size();
-      container.clear();
-      container.insert(std::declval<typename std::remove_cvref_t<cont_t>::value_type>());
+      typename std::remove_cvref_t<cont_t>::key_type;
     };
 
     template<typename cont_t>
