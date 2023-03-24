@@ -279,7 +279,7 @@ namespace convertible
 
     // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
-    concept associative_container = range<cont_t> && (!sequence_container<cont_t>) && requires(cont_t container)
+    concept associative_container = range<cont_t> && requires(cont_t container)
     {
       typename std::remove_cvref_t<cont_t>::key_type;
     };
