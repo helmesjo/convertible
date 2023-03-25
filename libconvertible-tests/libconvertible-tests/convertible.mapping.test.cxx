@@ -87,7 +87,7 @@ SCENARIO("convertible: Mapping")
 
   THEN("it's constexpr constructible")
   {
-    constexpr auto map = mapping(object(), object());
+    constexpr auto map = mapping(adapter(), adapter());
     (void)map;
   }
   GIVEN("mapping between a <-> b")
@@ -95,7 +95,7 @@ SCENARIO("convertible: Mapping")
     using lhs_t = std::string;
     using rhs_t = std::string;
 
-    auto map = mapping(object(), object());
+    auto map = mapping(adapter(), adapter());
 
     auto lhs = lhs_t{"hello"};
     auto rhs = rhs_t{"world"};
@@ -106,7 +106,7 @@ SCENARIO("convertible: Mapping")
     using lhs_t = int;
     using rhs_t = std::string;
 
-    auto map = mapping(object(), object(), int_string_converter{});
+    auto map = mapping(adapter(), adapter(), int_string_converter{});
 
     auto lhs = lhs_t{11};
     auto rhs = rhs_t{"22"};
@@ -146,7 +146,7 @@ SCENARIO("convertible: Mapping")
       auto lhs = lhs_t{ "hello" };
       auto rhs = rhs_t{ "world" };
 
-      auto map_nb = mapping(member(&type_nested_a::a), object<type_b>(), map_ab);
+      auto map_nb = mapping(member(&type_nested_a::a), adapter<type_b>(), map_ab);
 
       MAPS_CORRECTLY(lhs, rhs, map_nb, [](const auto& obj){
         if constexpr(std::common_reference_with<lhs_t, decltype(obj)>)
@@ -161,7 +161,7 @@ SCENARIO("convertible: Mapping")
     int lhsAdaptee = 3;
     std::string rhsAdaptee = "hello";
 
-    auto map = mapping(object(lhsAdaptee, reader::identity<>{}), object(rhsAdaptee, reader::identity<>{}), int_string_converter{});
+    auto map = mapping(adapter(lhsAdaptee, reader::identity<>{}), adapter(rhsAdaptee, reader::identity<>{}), int_string_converter{});
     using map_t = decltype(map);
 
     THEN("defaulted lhs type can be constructed")
@@ -289,7 +289,7 @@ SCENARIO("convertible: Mapping as a converter")
       auto lhs = lhs_t{ "hello" };
       auto rhs = rhs_t{ "world" };
 
-      auto map_nb = mapping(member(&type_nested_a::a), object<type_b>(), map_ab);
+      auto map_nb = mapping(member(&type_nested_a::a), adapter<type_b>(), map_ab);
 
       WHEN("invoked with n")
       {
@@ -339,7 +339,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
     using lhs_t = enum_a;
     using rhs_t = enum_b;
 
-    auto map = mapping(object(), object());
+    auto map = mapping(adapter(), adapter());
 
     auto lhs = lhs_t::val;
     auto rhs = rhs_t::val;
@@ -352,7 +352,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
     using lhs_t = std::vector<std::string>;
     using rhs_t = std::vector<std::string>;
 
-    auto map = mapping(object(), object());
+    auto map = mapping(adapter(), adapter());
 
     auto lhs = lhs_t{"1", "2", "3"};
     auto rhs = rhs_t{"3", "2", "1"};
@@ -363,7 +363,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
     using lhs_t = std::vector<std::string>;
     using rhs_t = std::vector<int>;
 
-    auto map = mapping(object(), object(), int_string_converter{});
+    auto map = mapping(adapter(), adapter(), int_string_converter{});
 
     auto lhs = lhs_t{"1", "2", "3"};
     auto rhs = rhs_t{1, 2, 3};
@@ -431,7 +431,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
     using lhs_t = std::string;
     using rhs_t = std::string;
 
-    auto map = mapping(custom<std::string>(custom_reader{}), object());
+    auto map = mapping(custom<std::string>(custom_reader{}), adapter());
 
     auto lhs = lhs_t{"hello"};
     auto rhs = rhs_t{"world"};

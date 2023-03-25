@@ -31,7 +31,7 @@ SCENARIO("convertible: Mapping table")
   THEN("it's constexpr constructible")
   {
     constexpr mapping_table table{
-      mapping( object(), object() )
+      mapping( adapter(), adapter() )
     };
     (void)table;
   }

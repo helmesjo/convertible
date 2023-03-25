@@ -135,7 +135,7 @@ namespace convertible
   }
 
   template<typename obj_t, typename reader_t>
-  struct object;
+  struct adapter;
 
   namespace traits
   {
@@ -159,7 +159,7 @@ namespace convertible
       struct is_adapter: std::false_type {};
 
       template<typename... arg_ts>
-      struct is_adapter<object<arg_ts...>>: std::true_type {};
+      struct is_adapter<adapter<arg_ts...>>: std::true_type {};
 
       template<template<typename, typename> typename op_t, typename... unique_ts>
       struct unique_types
@@ -465,20 +465,20 @@ namespace convertible
   }
 
   template<typename _adaptee_t = details::any, typename reader_t = reader::identity<_adaptee_t>>
-  struct object
+  struct adapter
   {
     using adaptee_t = _adaptee_t;
     using adaptee_value_t = std::remove_reference_t<adaptee_t>;
 
-    constexpr object() = default;
-    constexpr object(const object&) = default;
-    constexpr object(object&&) = default;
-    constexpr explicit object(adaptee_t adaptee, reader_t reader)
+    constexpr adapter() = default;
+    constexpr adapter(const adapter&) = default;
+    constexpr adapter(adapter&&) = default;
+    constexpr explicit adapter(adaptee_t adaptee, reader_t reader)
       : reader_(FWD(reader)),
         adaptee_(adaptee)
     {
     }
-    constexpr explicit object(reader_t reader)
+    constexpr explicit adapter(reader_t reader)
       : reader_(FWD(reader))
     {
     }
@@ -511,13 +511,13 @@ namespace convertible
   constexpr auto compose(adapter_ts&&... adapters)
   {
     auto adaptee = std::get<sizeof...(adapters)-1>(std::tuple{adapters...}).defaulted_adaptee();
-    return object(adaptee, reader::composed(FWD(adapters)...));
+    return adapter(adaptee, reader::composed(FWD(adapters)...));
   }
 
   template<typename adaptee_t = details::any>
   constexpr auto custom(auto&& reader, concepts::readable<decltype(reader)> auto&&... adaptee)
   {
-    return object(FWD(adaptee)..., FWD(reader));
+    return adapter(FWD(adaptee)..., FWD(reader));
   }
 
   template<typename adaptee_t = details::any>
@@ -530,7 +530,7 @@ namespace convertible
   template<concepts::member_ptr member_ptr_t>
   constexpr auto member(member_ptr_t ptr, concepts::readable<reader::member<member_ptr_t>> auto&&... adaptee)
   {
-    return object<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., FWD(ptr));
+    return adapter<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., FWD(ptr));
   }
 
   template<concepts::member_ptr member_ptr_t>
@@ -543,7 +543,7 @@ namespace convertible
   template<details::const_value i>
   constexpr auto index(concepts::readable<reader::index<i>> auto&&... adaptee)
   {
-    return object(FWD(adaptee)..., reader::index<i>{});
+    return adapter(FWD(adaptee)..., reader::index<i>{});
   }
 
   template<details::const_value i>
@@ -555,7 +555,7 @@ namespace convertible
 
   constexpr auto deref(concepts::readable<reader::deref> auto&&... adaptee)
   {
-    return object(FWD(adaptee)..., reader::deref{});
+    return adapter(FWD(adaptee)..., reader::deref{});
   }
 
   constexpr auto deref(concepts::adapter auto&&... inner)
@@ -566,7 +566,7 @@ namespace convertible
 
   constexpr auto maybe(concepts::readable<reader::maybe> auto&&... adaptee)
   {
-    return object(FWD(adaptee)..., reader::maybe{});
+    return adapter(FWD(adaptee)..., reader::maybe{});
   }
 
   constexpr auto maybe(concepts::adapter auto&&... inner)

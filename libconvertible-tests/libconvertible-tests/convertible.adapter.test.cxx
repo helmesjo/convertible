@@ -21,10 +21,10 @@ SCENARIO("convertible: Adapters")
 {
   using namespace convertible;
 
-  GIVEN("object adapter")
+  GIVEN("identity adapter")
   {
     std::string adaptee = "hello";
-    auto adapter = object(adaptee, reader::identity<>{});
+    auto adapter = convertible::adapter(adaptee, reader::identity<>{});
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
     // identity-reader works for all types, even this fake 'invalid' type
     static_assert(concepts::adaptable<invalid_type, decltype(adapter)>);
@@ -33,7 +33,7 @@ SCENARIO("convertible: Adapters")
     {
       struct type_x{};
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = object(tmp, reader::identity<>{});
+      static constexpr auto constexprAdapter = convertible::adapter(tmp, reader::identity<>{});
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns value")
@@ -474,12 +474,12 @@ SCENARIO("convertible: Adapters constexpr-ness")
 {
   using namespace convertible;
 
-  WHEN("object & adapter is constexpr")
+  WHEN("adapter & adaptee are constexpr")
   {
     static constexpr int intVal = 1;
     static constexpr float floatVal = 1.0f;
 
-    constexpr auto adapter = object();
+    constexpr auto adapter = convertible::adapter();
 
     THEN("constexpr construction")
     {
