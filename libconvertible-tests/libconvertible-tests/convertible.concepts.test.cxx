@@ -40,8 +40,8 @@ namespace
 
   struct some_mapping
   {
-    template<DIR_DECL(convertible::direction) dir, typename operator_t>
-    void exec(int, int){}
+    int operator()(std::string);
+    std::string operator()(int);
   };
 }
 
@@ -94,7 +94,6 @@ SCENARIO("convertible: Traits")
     struct derived_b: derived_a {};
     struct derived_c: base {};
 
-    //detect<traits::unique_derived_types_t<base, derived>> ads;
     static_assert(std::is_same_v<std::tuple<derived_a>, traits::unique_derived_types_t<base, derived_a>>);
     static_assert(std::is_same_v<std::tuple<derived_b>, traits::unique_derived_types_t<base, derived_a, derived_b>>);
     static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, traits::unique_derived_types_t<base, derived_a, derived_b, derived_c>>);
@@ -121,10 +120,9 @@ SCENARIO("convertible: Concepts")
 
   // mappable:
   {
-    struct dummy_op{};
-    static_assert(concepts::mappable<some_mapping, direction::lhs_to_rhs, dummy_op, int, int>);
-    struct dummy{};
-    static_assert(concepts::mappable<some_mapping, direction::lhs_to_rhs, dummy_op, int, dummy> == false);
+    static_assert(concepts::mappable<some_mapping, int, std::string, direction::rhs_to_lhs>);
+    static_assert(concepts::mappable<some_mapping, int, std::string, direction::lhs_to_rhs>);
+    static_assert(!concepts::mappable<some_mapping, std::string, std::string, direction::lhs_to_rhs>);
   }
 
   // executable

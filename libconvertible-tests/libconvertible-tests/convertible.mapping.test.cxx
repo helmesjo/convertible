@@ -117,6 +117,45 @@ SCENARIO("convertible: Mapping")
         return obj == "";
     });
   }
+  GIVEN("nested mapping 'map_ab' between \n\n\ta <-> b\n")
+  {
+    struct type_a
+    {
+      std::string val;
+    };
+
+    struct type_b
+    {
+      std::string val;
+    };
+
+    struct type_nested_a
+    {
+      type_a a;
+    };
+
+    auto map_ab = mapping(member(&type_a::val), member(&type_b::val));
+    static_assert(concepts::adaptable<type_a, decltype(map_ab)>);
+    static_assert(concepts::adaptable<type_b, decltype(map_ab)>);
+
+    WHEN("mapping 'map_nb' between \n\n\tn <- map_ab -> b\n")
+    {
+      using lhs_t = type_nested_a;
+      using rhs_t = type_b;
+
+      auto lhs = lhs_t{ "hello" };
+      auto rhs = rhs_t{ "world" };
+
+      auto map_nb = mapping(member(&type_nested_a::a), object<type_b>(), map_ab);
+
+      MAPS_CORRECTLY(lhs, rhs, map_nb, [](const auto& obj){
+        if constexpr(std::common_reference_with<lhs_t, decltype(obj)>)
+          return obj.a.val == "";
+        else
+          return obj.val == "";
+      });
+    }
+  }
   GIVEN("mapping with known lhs & rhs types")
   {
     int lhsAdaptee = 3;
@@ -244,45 +283,44 @@ SCENARIO("convertible: Mapping as a converter")
         type_a a;
       };
 
+      using lhs_t = type_nested_a;
+      using rhs_t = type_b;
+
+      auto lhs = lhs_t{ "hello" };
+      auto rhs = rhs_t{ "world" };
+
       auto map_nb = mapping(member(&type_nested_a::a), object<type_b>(), map_ab);
-      static_assert(concepts::adaptable<type_nested_a, decltype(map_nb)>);
-      static_assert(concepts::adaptable<type_b, decltype(map_nb)>);
 
       WHEN("invoked with n")
       {
-        type_nested_a n = type_nested_a{type_a{ "hello" }};
-        type_b b = map_nb(n);
+        rhs = map_nb(lhs);
         THEN("it returns b")
         {
-          REQUIRE(n.a.val == b.val);
+          REQUIRE(lhs.a.val == rhs.val);
         }
       }
       WHEN("invoked with n (r-value)")
       {
-        type_nested_a n = type_nested_a{type_a{ "hello" }};
-        (void)map_nb(std::move(n));
+        (void)map_nb(std::move(lhs));
         THEN("n is moved from")
         {
-          REQUIRE(n.a.val == "");
+          REQUIRE(lhs.a.val == "");
         }
       }
       WHEN("invoked with b")
       {
-        type_b b = { "hello" };
-        type_nested_a n = type_nested_a{type_a{ "hello" }};
-        (void)map_nb(b);
+        auto lhs = map_nb(rhs);
         THEN("it returns n")
         {
-          REQUIRE(n.a.val == b.val);
+          REQUIRE(lhs.a.val == rhs.val);
         }
       }
       WHEN("invoked with b (r-value)")
       {
-        type_b b = { "hello" };
-        (void)map_nb(std::move(b));
+        (void)map_nb(std::move(rhs));
         THEN("b is moved from")
         {
-          REQUIRE(b.val == "");
+          REQUIRE(rhs.val == "");
         }
       }
     }

@@ -242,10 +242,13 @@ namespace convertible
     template<typename adapter_t>
     concept adaptee_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::adaptee_t, details::any>);
 
-    template<typename mapping_t, DIR_DECL(direction) dir, typename operator_t, typename lhs_t, typename rhs_t>
-    concept mappable = requires(mapping_t m, lhs_t l, rhs_t r)
+    template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
+    concept mappable = requires(mapping_t map)
     {
-      { m.template exec<dir, operator_t>(l, r) };
+      requires (dir == direction::rhs_to_lhs
+        && requires { { map(std::declval<rhs_t>()) } -> std::common_reference_with<lhs_t>; }
+        || requires { { map(std::declval<lhs_t>()) } -> std::common_reference_with<rhs_t>; }
+      );
     };
 
     template<DIR_DECL(direction) dir, typename callable_t, typename arg1_t, typename arg2_t, typename converter_t>
@@ -303,10 +306,19 @@ namespace convertible
     };
   }
 
+  template<concepts::adapter _lhs_adapter_t, concepts::adapter _rhs_adapter_t, typename _converter_t>
+  struct mapping;
+
   namespace traits
   {
     namespace details
     {
+      template<typename... arg_ts>
+      struct is_mapping: std::false_type {};
+
+      template<typename... arg_ts>
+      struct is_mapping<mapping<arg_ts...>>: std::true_type {};
+
       decltype(auto) get_mapped(concepts::associative_container auto&& cont)
       {
         if constexpr(concepts::mapping_container<decltype(cont)>)
@@ -315,6 +327,10 @@ namespace convertible
           return *std::begin(cont);
       };
     }
+
+    template<typename T>
+    constexpr bool is_mapping_v = details::is_mapping<std::remove_cvref_t<T>>::value;
+
     template<typename arg_t, concepts::adapter... adapter_ts>
     constexpr std::size_t adaptable_count_v = (concepts::adaptable<arg_t, adapter_ts> +...);
 
@@ -326,6 +342,12 @@ namespace convertible
 
     template<concepts::associative_container cont_t>
     using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped(std::declval<cont_t>()))>;
+  }
+
+  namespace concepts
+  {
+    template<typename T>
+    concept mapping = traits::is_mapping_v<T>;
   }
 
   namespace reader
@@ -780,11 +802,12 @@ namespace convertible
     };
   }
 
-  template<concepts::adapter lhs_adapt_t, concepts::adapter rhs_adapt_t, typename converter_t = converter::identity>
+  template<concepts::adapter _lhs_adapter_t, concepts::adapter _rhs_adapter_t, typename _converter_t = converter::identity>
   struct mapping
   {
-    using lhs_adapter_t = lhs_adapt_t;
-    using rhs_adapter_t = rhs_adapt_t;
+    using lhs_adapter_t = _lhs_adapter_t;
+    using rhs_adapter_t = _rhs_adapter_t;
+    using converter_t = _converter_t;
 
     constexpr explicit mapping(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter = {}):
       lhsAdapter_(std::move(lhsAdapter)),
@@ -792,43 +815,71 @@ namespace convertible
       converter_(std::move(converter))
     {}
 
-    template<DIR_DECL(direction) dir, typename operator_t, concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t>
-      requires concepts::executable_with<dir, operator_t, traits::adapted_t<lhs_adapter_t, lhs_t>, traits::adapted_t<rhs_adapter_t, rhs_t>, converter_t>
-    constexpr decltype(auto) exec(lhs_t&& lhs, rhs_t&& rhs) const 
-    {
-      constexpr operator_t op;
-      if constexpr(dir == direction::rhs_to_lhs)
-        return op(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)), converter_);
-      else
-        return op(rhsAdapter_(FWD(rhs)), lhsAdapter_(FWD(lhs)), converter_);
-    }
-
     template<DIR_DECL(direction) dir>
-    constexpr void assign(auto&& lhs, auto&& rhs) const
-      requires requires(mapping m){ m.exec<DIR_READ(dir), operators::assign>(FWD(lhs), FWD(rhs)); }
+    constexpr decltype(auto) execute(auto&& callback, concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
     {
-      (void)exec<dir, operators::assign>(FWD(lhs), FWD(rhs));
+      if constexpr(dir == direction::rhs_to_lhs)
+        return FWD(callback)(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)));
+      else
+        return FWD(callback)(rhsAdapter_(FWD(rhs)), lhsAdapter_(FWD(lhs)));
     }
 
     template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
-    constexpr bool equal(auto&& lhs, auto&& rhs) const
-      requires requires(mapping m){ m.exec<dir, operators::equal>(lhs, rhs); }
+    constexpr void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+      requires concepts::mapping<converter_t>
     {
-      return exec<dir, operators::equal>(FWD(lhs), FWD(rhs));
+        converter_.template assign<dir>(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)));
     }
 
-    template<concepts::adaptable<lhs_adapter_t> lhs_t, concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::adaptee_value_t>
-    constexpr auto operator()(lhs_t&& lhs) const
-      requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::lhs_to_rhs>(l, r); }
+    template<DIR_DECL(direction) dir>
+    constexpr void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+      requires (!concepts::mapping<converter_t>) &&
+                 concepts::executable_with<
+                   dir,
+                   operators::assign,
+                   traits::adapted_t<lhs_adapter_t, decltype(lhs)>,
+                   traits::adapted_t<rhs_adapter_t, decltype(rhs)>,
+                   converter_t>
+    {
+      (void)execute<dir>([this](auto&& lhs, auto&& rhs) mutable {
+        return operators::assign{}(FWD(lhs), FWD(rhs), converter_);
+      }, FWD(lhs), FWD(rhs));
+    }
+
+    template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
+    constexpr bool equal(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+      requires concepts::mapping<converter_t>
+    {
+      return converter_.template equal<dir>(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)));
+    }
+
+    template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
+    constexpr bool equal(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+      requires (!concepts::mapping<converter_t>) &&
+                 concepts::executable_with<
+                   dir,
+                   operators::equal,
+                   traits::adapted_t<lhs_adapter_t, decltype(lhs)>,
+                   traits::adapted_t<rhs_adapter_t, decltype(rhs)>,
+                   converter_t>
+    {
+      return execute<dir>([this](auto&& lhs, auto&& rhs) {
+        return operators::equal{}(FWD(lhs), FWD(rhs), converter_);
+      }, FWD(lhs), FWD(rhs));
+    }
+
+    template<concepts::adaptable<rhs_adapter_t> rhs_t = typename rhs_adapter_t::adaptee_value_t>
+    constexpr auto operator()(concepts::adaptable<lhs_adapter_t> auto&& lhs) const
+      requires requires(rhs_t& rhs){ this->assign<direction::lhs_to_rhs>(FWD(lhs), rhs); }
     {
       rhs_t rhs = defaulted_rhs();
       assign<direction::lhs_to_rhs>(FWD(lhs), rhs);
       return rhs;
     }
 
-    template<concepts::adaptable<rhs_adapter_t> rhs_t, concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::adaptee_value_t>
-    constexpr auto operator()(rhs_t&& rhs) const
-      requires requires(mapping m, lhs_t l, rhs_t r){ m.assign<direction::rhs_to_lhs>(l, r); }
+    template<concepts::adaptable<lhs_adapter_t> lhs_t = typename lhs_adapter_t::adaptee_value_t>
+    constexpr auto operator()(concepts::adaptable<rhs_adapter_t> auto&& rhs) const
+      requires requires(lhs_t& lhs){ this->assign<direction::rhs_to_lhs>(lhs, FWD(rhs)); }
     {
       lhs_t lhs = defaulted_lhs();
       assign<direction::rhs_to_lhs>(lhs, FWD(rhs));
@@ -858,7 +909,7 @@ namespace convertible
     }, FWD(pack));
   }
 
-  template<typename... mapping_ts>
+  template<concepts::mapping... mapping_ts>
   struct mapping_table
   {
     using lhs_unique_types = traits::unique_derived_types_t<typename mapping_ts::lhs_adapter_t::adaptee_value_t...>;
@@ -906,12 +957,11 @@ namespace convertible
     }
 
     template<DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
-      requires (concepts::mappable<mapping_ts, dir, operators::assign, lhs_t, rhs_t> || ...)
     constexpr void assign(lhs_t&& lhs, rhs_t&& rhs) const
+      requires (concepts::mappable<mapping_ts, lhs_t, rhs_t, dir> || ...)
     {
-      for_each([&lhs, &rhs](auto&& map){
-        using mapping_t = decltype(map);
-        if constexpr(concepts::mappable<mapping_t, dir, operators::assign, lhs_t, rhs_t>)
+      for_each([&lhs, &rhs](concepts::mapping auto&& map){
+        if constexpr(requires{ map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs)); })
         {
           map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
         }
@@ -920,12 +970,11 @@ namespace convertible
     }
 
     template<typename lhs_t, typename rhs_t>
-      requires (concepts::mappable<mapping_ts, direction::rhs_to_lhs, operators::equal, lhs_t, rhs_t> || ...)
     constexpr bool equal(const lhs_t& lhs, const rhs_t& rhs) const
+      requires (concepts::mappable<mapping_ts, lhs_t, rhs_t, direction::rhs_to_lhs> || ...)
     {
-      return for_each([&lhs, &rhs](auto&& map) -> bool{
-        using mapping_t = decltype(map);
-        if constexpr(concepts::mappable<mapping_t, direction::rhs_to_lhs, operators::equal, lhs_t, rhs_t>)
+      return for_each([&lhs, &rhs](concepts::mapping auto&& map) -> bool{
+        if constexpr(requires{ map.equal(lhs, rhs); })
         {
           return map.equal(lhs, rhs);
         }
@@ -945,7 +994,7 @@ namespace convertible
       auto rets = defaulted_rhs();
 
       for_each([&](auto&& rhs) -> bool{
-        if constexpr(requires{ { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), FWD(rhs)) }; })
+        if constexpr(requires{ { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs) }; })
         {
           assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs);
         }
@@ -974,7 +1023,7 @@ namespace convertible
       auto rets = defaulted_lhs();
 
       for_each([&](auto&& lhs) -> bool{
-        if constexpr(requires{ { assign<direction::rhs_to_lhs>(FWD(lhs), std::forward<rhs_t>(rhs)) }; })
+        if constexpr(requires{ { assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs)) }; })
         {
           assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs));
         }
