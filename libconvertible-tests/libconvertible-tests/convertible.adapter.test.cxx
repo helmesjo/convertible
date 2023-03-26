@@ -24,16 +24,17 @@ SCENARIO("convertible: Adapters")
   GIVEN("identity adapter")
   {
     std::string adaptee = "hello";
-    auto adapter = convertible::adapter(adaptee, reader::identity<>{});
+    auto adapter = convertible::identity(adaptee);
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
-    // identity-reader works for all types, even this fake 'invalid' type
-    static_assert(concepts::adaptable<invalid_type, decltype(adapter)>);
+    // identity-reader works for similar types that share a common reference type
+    static_assert(concepts::adaptable<decltype(""), decltype(adapter)>);
+    static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {
       struct type_x{};
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = convertible::adapter(tmp, reader::identity<>{});
+      static constexpr auto constexprAdapter = convertible::identity(tmp);
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns value")

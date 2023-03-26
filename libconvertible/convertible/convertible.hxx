@@ -217,7 +217,7 @@ namespace convertible
     concept dereferencable = requires(T t)
     {
       *t;
-      requires !std::same_as<void, decltype(*t)>;
+      requires (!std::same_as<void, decltype(*t)>);
     };
 
     template<typename T>
@@ -227,7 +227,7 @@ namespace convertible
     concept readable = requires(reader_t reader, adaptee_t&& adaptee)
     {
       { reader(FWD(adaptee)) };
-      requires !std::same_as<void, decltype(reader(FWD(adaptee)))>;
+      requires (!std::same_as<void, decltype(reader(FWD(adaptee)))>);
     };
 
     template<typename T>
@@ -362,7 +362,7 @@ namespace convertible
       }
 
       constexpr decltype(auto) operator()(auto&& obj) const
-        requires std::same_as<std::remove_reference_t<decltype(obj)>, adaptee_t>
+        requires std::common_reference_with<adaptee_t, decltype(obj)>
       {
         return FWD(obj);
       }
@@ -525,6 +525,17 @@ namespace convertible
     requires (sizeof...(inner) > 0)
   {
     return compose(custom(FWD(reader)), FWD(inner)...);
+  }
+
+  constexpr auto identity(concepts::readable<reader::identity<>> auto&&... adaptee)
+  {
+    return adapter(FWD(adaptee)..., reader::identity<std::remove_reference_t<decltype(adaptee)>...>{});
+  }
+
+  constexpr auto identity(concepts::adapter auto&&... inner)
+    requires (sizeof...(inner) > 0)
+  {
+    return compose(identity(), FWD(inner)...);
   }
 
   template<concepts::member_ptr member_ptr_t>
