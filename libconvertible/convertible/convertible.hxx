@@ -467,14 +467,43 @@ namespace convertible
           requires (sizeof(to_t) == count)
         operator const to_t&() const
         {
-          return reinterpret_cast<to_t&>(*bytes_.data());
+          return reinterpret_cast<const to_t&>(*bytes_.data());
         };
 
-        auto& operator=(concepts::trivially_copyable auto&& obj)
-          requires (sizeof(std::remove_reference_t<decltype(obj)>) == count)
+        template<typename obj_t, typename obj_value_t = std::remove_reference_t<obj_t>>
+        constexpr binary_proxy& operator=(obj_t&& obj)
+          requires (!std::is_pointer_v<obj_value_t>) &&
+                   (!std::is_array_v<obj_value_t>) &&
+                   (!concepts::range<obj_value_t>) &&
+                   concepts::trivially_copyable<obj_value_t>
         {
-          auto* src = reinterpret_cast<std::byte*>(&obj);
-          std::memcpy(bytes_.data(), src, count);
+          *this = {reinterpret_cast<const std::byte*>(&obj), sizeof(obj)};
+          return *this;
+        }
+
+        template<typename elem_t, std::size_t size>
+        constexpr binary_proxy& operator=(const elem_t (&array)[size])
+          requires (size <= count) &&
+                   concepts::trivially_copyable<elem_t>
+        {
+          *this = {reinterpret_cast<const std::byte*>(array), count};
+          return *this;
+        }
+
+        // constexpr binary_proxy& operator=(concepts::sequence_container auto&& range)
+        // {
+        //   *this = &*std::begin(range);
+        //   return *this;
+        // }
+
+      private:
+        constexpr binary_proxy& operator=(std::span<const std::byte> src)
+        {
+          if(src.size() > count)
+          {
+            throw std::runtime_error("Expected 'x' bytes, got 'y' bytes");
+          }
+          std::memcpy(bytes_.data(), src.data(), count);
           return *this;
         }
 
@@ -501,8 +530,8 @@ namespace convertible
         return binary_proxy(std::span{reinterpret_cast<dst_t*>(ptr) + byte, count});
       }
 
-      constexpr decltype(auto) operator()(concepts::range auto&& range) const
-        requires requires{ range.data(); range.size(); }
+      constexpr decltype(auto) operator()(concepts::sequence_container auto&& range) const
+        requires concepts::trivially_copyable<std::remove_reference_t<decltype(*std::begin(range))>>
       {
         using value_t = std::remove_cvref_t<decltype(range)>;
         if(range.size() < count)
@@ -516,7 +545,7 @@ namespace convertible
             throw std::runtime_error("Type size too small");
           }
         }
-        return binary_proxy(std::span{reinterpret_cast<std::byte*>(range.data()) + byte, count});
+        return binary_proxy(std::span{reinterpret_cast<std::byte*>(&*std::begin(range)) + byte, count});
       }
     };
 

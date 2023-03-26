@@ -420,13 +420,7 @@ SCENARIO("convertible: Adapters")
   }
   GIVEN("binary adapter")
   {
-    struct type_a
-    {
-      std::int32_t int_;
-      float float_;
-      double double_;
-    };
-    auto adaptee = type_a{.int_=1, .float_=1.2, .double_=2.3};
+    auto adaptee = std::array<std::byte, 12>{};
 
     int test = 1;
     auto reader = reader::binary<0, 4>{};
@@ -445,10 +439,10 @@ SCENARIO("convertible: Adapters")
     res4 = 3;
     REQUIRE(test3[0] == 3);
 
-    // auto adapter = convertible::binary(adaptee);
-    // static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
-    // // identity-reader works for all types, even this fake 'invalid' type
-    // static_assert(concepts::adaptable<invalid_type, decltype(adapter)>);
+    auto adapter = convertible::binary<0, 6>(adaptee);
+    static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    // identity-reader works for all types, even this fake 'invalid' type
+    static_assert(concepts::adaptable<invalid_type, decltype(adapter)>);
 
     // THEN("it's constexpr constructible")
     // {
@@ -457,16 +451,16 @@ SCENARIO("convertible: Adapters")
     //   static constexpr auto constexprAdapter = convertible::adapter(tmp, reader::identity<>{});
     //   (void)constexprAdapter;
     // }
-    // THEN("it implicitly assigns value")
-    // {
-    //   adapter(adaptee) = "world";
-    //   REQUIRE(adaptee == "world");
-    // }
-    // THEN("it implicitly converts to type")
-    // {
-    //   std::string val = adapter(adaptee);
-    //   REQUIRE(val == adaptee);
-    // }
+    THEN("it implicitly assigns value")
+    {
+      adapter(adaptee) = "world";
+      REQUIRE(std::memcmp(adaptee.data(), "world", std::strlen("world")) == 0);
+    }
+    THEN("it implicitly converts to type")
+    {
+      // auto val = adapter(adaptee);
+      // REQUIRE(val == adaptee);
+    }
     // THEN("implicit conversion 'moves from' r-value reference")
     // {
     //   std::string assigned = adapter(std::move(adaptee));
