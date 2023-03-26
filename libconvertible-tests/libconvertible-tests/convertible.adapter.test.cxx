@@ -418,6 +418,82 @@ SCENARIO("convertible: Adapters")
       REQUIRE(copy == adaptee);
     }
   }
+  GIVEN("binary adapter")
+  {
+    struct type_a
+    {
+      std::int32_t int_;
+      float float_;
+      double double_;
+    };
+    auto adaptee = type_a{.int_=1, .float_=1.2, .double_=2.3};
+
+    int test = 1;
+    auto reader = reader::binary<0, 4>{};
+    auto res = reader(test);
+    res = 2;
+    REQUIRE(test == 2);
+    auto res2 = reader(&test);
+    res2 = 3;
+    REQUIRE(test == 3);
+    auto test2 = std::vector<int>{1, 2};
+    auto res3 = reader(test2);
+    res3 = 3;
+    REQUIRE(test2[0] == 3);
+    auto test3 = std::array<int, 4>{1, 2};
+    auto res4 = reader(test3);
+    res4 = 3;
+    REQUIRE(test3[0] == 3);
+
+    // auto adapter = convertible::binary(adaptee);
+    // static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
+    // // identity-reader works for all types, even this fake 'invalid' type
+    // static_assert(concepts::adaptable<invalid_type, decltype(adapter)>);
+
+    // THEN("it's constexpr constructible")
+    // {
+    //   struct type_x{};
+    //   static constexpr auto tmp = type_x{};
+    //   static constexpr auto constexprAdapter = convertible::adapter(tmp, reader::identity<>{});
+    //   (void)constexprAdapter;
+    // }
+    // THEN("it implicitly assigns value")
+    // {
+    //   adapter(adaptee) = "world";
+    //   REQUIRE(adaptee == "world");
+    // }
+    // THEN("it implicitly converts to type")
+    // {
+    //   std::string val = adapter(adaptee);
+    //   REQUIRE(val == adaptee);
+    // }
+    // THEN("implicit conversion 'moves from' r-value reference")
+    // {
+    //   std::string assigned = adapter(std::move(adaptee));
+    //   REQUIRE(assigned == "hello");
+    //   REQUIRE(adaptee == "");
+    // }
+    // THEN("assign 'moves from' r-value reference")
+    // {
+    //   std::string str2 = "hello";
+    //   adapter(adaptee) = std::move(str2);
+    //   REQUIRE(str2 == "");
+    // }
+    // THEN("equality operator works")
+    // {
+    //   adaptee = "world";
+    //   REQUIRE(adapter(adaptee) == "world");
+    //   REQUIRE(adapter(adaptee) != "hello");
+    //   REQUIRE("world" == adapter(adaptee));
+    //   REQUIRE("hello" != adapter(adaptee));
+    // }
+    // THEN("defaulted-initialized adaptee type can be created")
+    // {
+    //   auto copy = adapter.defaulted_adaptee();
+    //   static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
+    //   REQUIRE(copy == adaptee);
+    // }
+  }
   GIVEN("composed adapter")
   {
     struct type_a

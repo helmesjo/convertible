@@ -2,8 +2,13 @@
 
 #include <algorithm>
 #include <concepts>
+#include <cstddef>
+#include <cstring>
 #include <functional>
 #include <iterator>
+#include <memory>
+#include <span>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -287,6 +292,9 @@ namespace convertible
       typename std::remove_cvref_t<cont_t>::key_type;
     };
 
+    template<typename obj_t>
+    concept trivially_copyable = std::is_trivially_copyable_v<obj_t>;
+
     template<typename cont_t>
     concept mapping_container = associative_container<cont_t> && requires
     {
@@ -439,6 +447,79 @@ namespace convertible
       }
     };
 
+    template<std::size_t byte, std::size_t count>
+    struct binary
+    {
+      struct binary_proxy
+      {
+        explicit binary_proxy(std::span<std::byte> bytes)
+        : bytes_(bytes)
+        {}
+
+        template<concepts::trivially_copyable to_t>
+          requires (sizeof(to_t) == count)
+        operator to_t&()
+        {
+          return reinterpret_cast<to_t&>(*bytes_.data());
+        };
+
+        template<concepts::trivially_copyable to_t>
+          requires (sizeof(to_t) == count)
+        operator const to_t&() const
+        {
+          return reinterpret_cast<to_t&>(*bytes_.data());
+        };
+
+        auto& operator=(concepts::trivially_copyable auto&& obj)
+          requires (sizeof(std::remove_reference_t<decltype(obj)>) == count)
+        {
+          auto* src = reinterpret_cast<std::byte*>(&obj);
+          std::memcpy(bytes_.data(), src, count);
+          return *this;
+        }
+
+        std::span<std::byte> bytes_;
+      };
+
+      template<typename obj_t, typename obj_value_t = std::remove_reference_t<obj_t>>
+      constexpr decltype(auto) operator()(obj_t&& obj) const
+        requires (!std::is_pointer_v<obj_value_t>) && (!concepts::range<obj_value_t>) &&
+                 concepts::trivially_copyable<obj_value_t>
+      {
+        static_assert(sizeof(obj) <= count, "Type size too small");
+        using dst_t = std::conditional_t<std::is_const_v<obj_value_t>, const std::byte, std::byte>;
+        return binary_proxy(std::span{reinterpret_cast<dst_t*>(std::addressof(obj)) + byte, count});
+      }
+
+      template<typename ptr_t, typename ptr_value_t = std::remove_reference_t<ptr_t>>
+      constexpr decltype(auto) operator()(ptr_t&& ptr) const
+        requires std::is_pointer_v<ptr_value_t> &&
+                 concepts::trivially_copyable<std::remove_reference_t<decltype(*ptr)>>
+      {
+        static_assert(sizeof(decltype(*ptr)) <= count, "Type size too small");
+        using dst_t = std::conditional_t<std::is_const_v<ptr_value_t>, const std::byte, std::byte>;
+        return binary_proxy(std::span{reinterpret_cast<dst_t*>(ptr) + byte, count});
+      }
+
+      constexpr decltype(auto) operator()(concepts::range auto&& range) const
+        requires requires{ range.data(); range.size(); }
+      {
+        using value_t = std::remove_cvref_t<decltype(range)>;
+        if(range.size() < count)
+        {
+          if constexpr(concepts::resizable<decltype(range)>)
+          {
+            range.resize(byte + count);
+          }
+          else if(range.size() < count)
+          {
+            throw std::runtime_error("Type size too small");
+          }
+        }
+        return binary_proxy(std::span{reinterpret_cast<std::byte*>(range.data()) + byte, count});
+      }
+    };
+
     template<concepts::adapter... adapter_ts>
     struct composed
     {
@@ -585,6 +666,19 @@ namespace convertible
     requires (sizeof...(inner) > 0)
   {
     return compose(maybe(), FWD(inner)...);
+  }
+
+  template<std::size_t byte, std::size_t count>
+  constexpr auto binary(concepts::readable<reader::binary<byte, count>> auto&&... adaptee)
+  {
+    return adapter(FWD(adaptee)..., reader::binary<byte, count>{});
+  }
+
+  template<std::size_t byte, std::size_t count>
+  constexpr auto binary(concepts::adapter auto&&... inner)
+    requires (sizeof...(inner) > 0)
+  {
+    return compose(binary<byte, count>(), FWD(inner)...);
   }
 
   namespace converter
