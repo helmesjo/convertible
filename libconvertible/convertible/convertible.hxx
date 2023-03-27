@@ -229,10 +229,6 @@ namespace convertible
 
     template<typename converter_t, typename arg_t>
     using converted_t = std::invoke_result_t<converter_t, arg_t>;
-
-    template<typename lambda_t, int=(lambda_t{}(), 1)>
-    constexpr bool is_constexpr(lambda_t){ return true; }
-    constexpr bool is_constexpr(...){ return false; }
   }
 
   namespace concepts
@@ -308,8 +304,10 @@ namespace convertible
     };
 
     template<typename cont_t>
-    concept fixed_size_container = range<cont_t>
-      && traits::is_constexpr([]{ return std::size(std::remove_reference_t<cont_t>{}); });
+    concept fixed_size_container = std::is_array_v<cont_t> || range<cont_t> && requires (cont_t c)
+    {
+      requires (decltype(std::span{ c })::extent != std::dynamic_extent);
+    };
 
     // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
@@ -495,7 +493,8 @@ namespace convertible
     struct binary
     {
       template<concepts::fixed_size_container cont_t>
-      static constexpr auto range_size_bytes = std::size(std::remove_reference_t<cont_t>{}) * sizeof(traits::range_value_t<cont_t>);
+      static constexpr std::size_t range_size_bytes =
+        std::size(std::remove_reference_t<cont_t>{}) * sizeof(traits::range_value_t<cont_t>);
 
       template<std::common_reference_with<std::byte> byte_t>
       struct binary_proxy

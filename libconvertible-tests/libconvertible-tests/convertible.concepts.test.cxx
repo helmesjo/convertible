@@ -98,12 +98,6 @@ SCENARIO("convertible: Traits")
     static_assert(std::is_same_v<std::tuple<derived_b>, traits::unique_derived_types_t<base, derived_a, derived_b>>);
     static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, traits::unique_derived_types_t<base, derived_a, derived_b, derived_c>>);
   }
-
-  // is_constexpr
-  {
-    static_assert(traits::is_constexpr([]{}));
-    static_assert(!traits::is_constexpr([var = 0]{}));
-  }
 }
 
 SCENARIO("convertible: Concepts")
@@ -201,8 +195,10 @@ SCENARIO("convertible: Concepts")
   }
   // fixed-size container
   {
-    static_assert(concepts::fixed_size_container<std::array<int, 0>>);
+    static_assert(concepts::fixed_size_container<std::array<int, 1>>);
     static_assert(concepts::fixed_size_container<int[1]>);
+    static_assert(!concepts::fixed_size_container<std::vector<int>>);
+    static_assert(!concepts::fixed_size_container<std::string>);
     static_assert(!concepts::fixed_size_container<std::set<int>>);
   }
   // sequence container
