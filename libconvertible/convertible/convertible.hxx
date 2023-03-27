@@ -393,6 +393,15 @@ namespace convertible
     concept mapping = traits::is_mapping_v<T>;
   }
 
+  template<concepts::mapping... mapping_ts>
+  struct mapping_table;
+
+  namespace traits::details
+  {
+      template<typename... arg_ts>
+      struct is_mapping<mapping_table<arg_ts...>>: std::true_type {};
+  }
+
   namespace reader
   {
     template<typename adaptee_t = details::any>
@@ -1186,9 +1195,9 @@ namespace convertible
       }, mappings_);
     }
 
-    template<typename lhs_t, typename rhs_t>
-    constexpr bool equal(const lhs_t& lhs, const rhs_t& rhs) const
-      requires (concepts::mappable<mapping_ts, lhs_t, rhs_t, direction::rhs_to_lhs> || ...)
+    template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
+    constexpr bool equal(const auto& lhs, const auto& rhs) const
+      requires (concepts::mappable<mapping_ts, decltype(lhs), decltype(rhs), direction::rhs_to_lhs> || ...)
     {
       return for_each([&lhs, &rhs](concepts::mapping auto&& map) -> bool{
         if constexpr(requires{ map.equal(lhs, rhs); })
