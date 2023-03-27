@@ -1,4 +1,5 @@
 #include <convertible/convertible.hxx>
+#include <cstdint>
 #include <doctest/doctest.h>
 
 #include <array>
@@ -420,73 +421,81 @@ SCENARIO("convertible: Adapters")
   }
   GIVEN("binary adapter")
   {
-    auto adaptee = std::array<std::byte, 12>{};
+    struct non_trivially_copyable
+    {
+      virtual ~non_trivially_copyable() = default;
+    };
+    // binary reader is constructible from:
+    // * trivially copyable types
+    static_assert(concepts::adaptable<int&, reader::binary<0, 1>>);
+    static_assert(!concepts::adaptable<non_trivially_copyable, reader::binary<0, 1>>);
+    // * fixed size containers of trivially copyable types
+    static_assert(concepts::adaptable<int[1], reader::binary<0, 1>>);
+    static_assert(concepts::adaptable<std::array<int, 1>, reader::binary<0, 1>>);
+    static_assert(!concepts::adaptable<std::array<non_trivially_copyable, 1>, reader::binary<0, 1>>);
+    // * dynamic sequence containers of trivially copyable types
+    static_assert(concepts::adaptable<std::span<int>, reader::binary<0, 1>>);
+    static_assert(concepts::adaptable<std::vector<int>, reader::binary<0, 1>>);
+    static_assert(!concepts::adaptable<std::vector<non_trivially_copyable>, reader::binary<0, 1>>);
 
-    int test = 1;
-    auto reader = reader::binary<0, 4>{};
-    auto res = reader(test);
-    res = 2;
-    REQUIRE(test == 2);
-    auto res2 = reader(&test);
-    res2 = 3;
-    REQUIRE(test == 3);
-    auto test2 = std::vector<int>{1, 2};
-    auto res3 = reader(test2);
-    res3 = 3;
-    REQUIRE(test2[0] == 3);
-    auto test3 = std::array<int, 4>{1, 2};
-    auto res4 = reader(test3);
-    res4 = 3;
-    REQUIRE(test3[0] == 3);
+    // binary reader is not constructible from too small type
+    static_assert(!concepts::adaptable<std::int32_t, reader::binary<0, sizeof(std::int64_t)>>);
 
-    auto adapter = convertible::binary<0, 6>(adaptee);
+    auto adaptee = std::uint32_t{12};
+    auto adapter = convertible::binary<0, 4>(adaptee);
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
-    // identity-reader works for all types, even this fake 'invalid' type
-    static_assert(concepts::adaptable<invalid_type, decltype(adapter)>);
 
-    // THEN("it's constexpr constructible")
-    // {
-    //   struct type_x{};
-    //   static constexpr auto tmp = type_x{};
-    //   static constexpr auto constexprAdapter = convertible::adapter(tmp, reader::identity<>{});
-    //   (void)constexprAdapter;
-    // }
+    THEN("it's constexpr constructible")
+    {
+      struct type_x{};
+      static constexpr auto tmp = int{};
+      static constexpr auto constexprAdapter = convertible::binary<0,1>(tmp);
+      (void)constexprAdapter;
+    }
     THEN("it implicitly assigns value")
     {
-      adapter(adaptee) = "world";
-      REQUIRE(std::memcmp(adaptee.data(), "world", std::strlen("world")) == 0);
+      // * trivially copyable types
+      adapter(adaptee) = 8;
+      REQUIRE(adaptee == 8);
+      // * fixed size containers of trivially copyable types
+      adapter(adaptee) = std::array{9};
+      REQUIRE(adaptee == 9);
+      // * NOT dynamic sequence containers of trivially copyable types (assignment require known size)
+      // adapter(adaptee) = std::vector{10};
+      // REQUIRE(adaptee == 10);
     }
     THEN("it implicitly converts to type")
     {
-      // auto val = adapter(adaptee);
-      // REQUIRE(val == adaptee);
+      // * IMPLICIT: span of bytes
+      std::span<std::byte> span = adapter(adaptee);
+      REQUIRE(span[0] == std::byte{12});
+
+      // * EXPLICIT: trivially copyable types
+      int trivial = static_cast<int>(adapter(adaptee));
+      REQUIRE(trivial == 12);
+      int& trivialRef = static_cast<int&>(adapter(adaptee));
+      REQUIRE(trivialRef == 12);
+      // * EXPLICIT: fixed size containers of trivially copyable types
+      auto fixed = static_cast<std::array<int, 10>>(adapter(adaptee));
+      REQUIRE(fixed[0] == 12);
+      // * EXPLICIT: dynamic sequence containers of trivially copyable types
+      auto dynamic = static_cast<std::vector<int>>(adapter(adaptee));
+      REQUIRE(dynamic[0] == 12);
     }
-    // THEN("implicit conversion 'moves from' r-value reference")
-    // {
-    //   std::string assigned = adapter(std::move(adaptee));
-    //   REQUIRE(assigned == "hello");
-    //   REQUIRE(adaptee == "");
-    // }
-    // THEN("assign 'moves from' r-value reference")
-    // {
-    //   std::string str2 = "hello";
-    //   adapter(adaptee) = std::move(str2);
-    //   REQUIRE(str2 == "");
-    // }
-    // THEN("equality operator works")
-    // {
-    //   adaptee = "world";
-    //   REQUIRE(adapter(adaptee) == "world");
-    //   REQUIRE(adapter(adaptee) != "hello");
-    //   REQUIRE("world" == adapter(adaptee));
-    //   REQUIRE("hello" != adapter(adaptee));
-    // }
-    // THEN("defaulted-initialized adaptee type can be created")
-    // {
-    //   auto copy = adapter.defaulted_adaptee();
-    //   static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
-    //   REQUIRE(copy == adaptee);
-    // }
+    THEN("equality operator works")
+    {
+      adaptee = 16;
+      REQUIRE(adapter(adaptee) == 16);
+      REQUIRE(adapter(adaptee) != "hel");
+      REQUIRE(16 == adapter(adaptee));
+      REQUIRE("hel" != adapter(adaptee));
+    }
+    THEN("defaulted-initialized adaptee type can be created")
+    {
+      auto copy = adapter.defaulted_adaptee();
+      static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
+      REQUIRE(copy == adaptee);
+    }
   }
   GIVEN("composed adapter")
   {

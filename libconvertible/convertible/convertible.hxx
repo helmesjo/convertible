@@ -95,6 +95,30 @@ namespace convertible
   };
 #endif
 
+  namespace std_ext
+  {
+    // Credit: https://en.cppreference.com/w/cpp/utility/forward_like
+    template<class T, class U>
+    [[nodiscard]] constexpr auto&& forward_like(U&& x) noexcept
+    {
+      constexpr bool is_adding_const = std::is_const_v<std::remove_reference_t<T>>;
+      if constexpr (std::is_lvalue_reference_v<T&&>)
+      {
+        if constexpr (is_adding_const)
+          return std::as_const(x);
+        else
+          return static_cast<U&>(x);
+      }
+      else
+      {
+        if constexpr (is_adding_const)
+          return std::move(std::as_const(x));
+        else
+          return std::move(x);
+      }
+    }
+  }
+
   namespace details
   {
     struct any
@@ -205,6 +229,10 @@ namespace convertible
 
     template<typename converter_t, typename arg_t>
     using converted_t = std::invoke_result_t<converter_t, arg_t>;
+
+    template<typename lambda_t, int=(lambda_t{}(), 1)>
+    constexpr bool is_constexpr(lambda_t){ return true; }
+    constexpr bool is_constexpr(...){ return false; }
   }
 
   namespace concepts
@@ -273,11 +301,15 @@ namespace convertible
 
     // Credit: https://en.cppreference.com/w/cpp/ranges/range
     template<typename range_t>
-    concept range = requires(range_t& r)
+    concept range = requires(std::remove_reference_t<range_t>& r)
     {
       std::begin(r); // equality-preserving for forward iterators
       std::end  (r);
     };
+
+    template<typename cont_t>
+    concept fixed_size_container = range<cont_t>
+      && traits::is_constexpr([]{ return std::size(std::remove_reference_t<cont_t>{}); });
 
     // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
@@ -293,7 +325,7 @@ namespace convertible
     };
 
     template<typename obj_t>
-    concept trivially_copyable = std::is_trivially_copyable_v<obj_t>;
+    concept trivially_copyable = std::is_trivially_copyable_v<std::remove_reference_t<obj_t>>;
 
     template<typename cont_t>
     concept mapping_container = associative_container<cont_t> && requires
@@ -302,7 +334,7 @@ namespace convertible
     };
 
     template<typename cont_t>
-    concept resizable = requires(cont_t container)
+    concept resizable = requires(std::remove_reference_t<cont_t> container)
     {
       container.resize(std::size_t{0});
     };
@@ -347,6 +379,9 @@ namespace convertible
 
     template<concepts::range range_t>
     using range_value_t = std::remove_reference_t<decltype(*std::begin(std::declval<range_t&>()))>;
+
+    template<concepts::fixed_size_container cont_t>
+    constexpr auto range_size_v = std::size(std::remove_reference_t<cont_t>{});
 
     template<concepts::associative_container cont_t>
     using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped(std::declval<cont_t>()))>;
@@ -450,51 +485,95 @@ namespace convertible
     template<std::size_t byte, std::size_t count>
     struct binary
     {
+      template<concepts::fixed_size_container cont_t>
+      static constexpr auto range_size_bytes = std::size(std::remove_reference_t<cont_t>{}) * sizeof(traits::range_value_t<cont_t>);
+
+      template<std::common_reference_with<std::byte> byte_t>
       struct binary_proxy
       {
-        explicit binary_proxy(std::span<std::byte> bytes)
+        constexpr explicit binary_proxy(std::span<byte_t> bytes)
         : bytes_(bytes)
-        {}
-
-        template<concepts::trivially_copyable to_t>
-          requires (sizeof(to_t) == count)
-        operator to_t&()
         {
-          return reinterpret_cast<to_t&>(*bytes_.data());
+          if(bytes.size() < count)
+          {
+            throw std::runtime_error("Not enough bytes");
+          }
+        }
+
+        operator const std::span<byte_t>() const
+        {
+          return bytes_;
         };
 
+        // trivial type
         template<concepts::trivially_copyable to_t>
-          requires (sizeof(to_t) == count)
-        operator const to_t&() const
+          requires (sizeof(to_t) >= count)
+        explicit operator to_t&()
         {
-          return reinterpret_cast<const to_t&>(*bytes_.data());
+          return reinterpret_cast<to_t&>(*std::data(bytes_));
         };
 
-        template<typename obj_t, typename obj_value_t = std::remove_reference_t<obj_t>>
-        constexpr binary_proxy& operator=(obj_t&& obj)
-          requires (!std::is_pointer_v<obj_value_t>) &&
-                   (!std::is_array_v<obj_value_t>) &&
-                   (!concepts::range<obj_value_t>) &&
-                   concepts::trivially_copyable<obj_value_t>
+        // fixed size container
+        template<concepts::fixed_size_container to_t>
+        explicit operator to_t() const
+          requires concepts::trivially_copyable<traits::range_value_t<to_t>> &&
+                   (range_size_bytes<to_t> >= count)
         {
-          *this = {reinterpret_cast<const std::byte*>(&obj), sizeof(obj)};
+          auto* begin = reinterpret_cast<traits::range_value_t<to_t>*>(std::data(bytes_));
+          auto* end = reinterpret_cast<traits::range_value_t<to_t>*>(std::data(bytes_) + count);
+          auto dst = to_t{};
+          std::copy(begin, end, std::begin(dst));
+          return dst;
+        };
+
+        // dynamic container
+        template<concepts::range to_t>
+        explicit operator to_t() const
+          requires concepts::resizable<to_t> &&
+                   concepts::trivially_copyable<traits::range_value_t<to_t>>
+        {
+          auto* begin = reinterpret_cast<traits::range_value_t<to_t>*>(std::data(bytes_));
+          auto* end = reinterpret_cast<traits::range_value_t<to_t>*>(std::data(bytes_) + count);
+          return {begin, end};
+        };
+
+        // trivial type
+        template<concepts::trivially_copyable obj_t>
+        constexpr binary_proxy& operator=(const obj_t& obj)
+          requires (!concepts::fixed_size_container<obj_t>) &&
+                   (sizeof(obj) <= count)
+        {
+          *this = {reinterpret_cast<const std::byte*>(std::addressof(obj)), sizeof(obj)};
           return *this;
         }
 
-        template<typename elem_t, std::size_t size>
-        constexpr binary_proxy& operator=(const elem_t (&array)[size])
-          requires (size <= count) &&
-                   concepts::trivially_copyable<elem_t>
+        // fixed size container
+        template<concepts::fixed_size_container cont_t>
+        constexpr binary_proxy& operator=(const cont_t& range)
+          requires concepts::trivially_copyable<traits::range_value_t<cont_t>> &&
+                   (range_size_bytes<cont_t> <= count)
         {
-          *this = {reinterpret_cast<const std::byte*>(array), count};
+          *this = {reinterpret_cast<const std::byte*>(std::data(range)), std::size(range)};
           return *this;
         }
 
-        // constexpr binary_proxy& operator=(concepts::sequence_container auto&& range)
-        // {
-        //   *this = &*std::begin(range);
-        //   return *this;
-        // }
+        // trivial type
+        template<concepts::trivially_copyable obj_t>
+        constexpr bool operator==(const obj_t& obj) const
+          requires (!concepts::fixed_size_container<obj_t>) &&
+                   (sizeof(obj) <= count)
+        {
+          return *this == std::span{reinterpret_cast<const std::byte*>(std::addressof(obj)), sizeof(obj)};
+        }
+
+        // fixed size container
+        template<concepts::fixed_size_container cont_t>
+        constexpr bool operator==(const cont_t& range) const
+          requires concepts::trivially_copyable<traits::range_value_t<cont_t>> &&
+                   (range_size_bytes<cont_t> <= count)
+        {
+          return *this == std::span{reinterpret_cast<const std::byte*>(std::data(range)), std::size(range)};
+        }
 
       private:
         constexpr binary_proxy& operator=(std::span<const std::byte> src)
@@ -503,49 +582,52 @@ namespace convertible
           {
             throw std::runtime_error("Expected 'x' bytes, got 'y' bytes");
           }
-          std::memcpy(bytes_.data(), src.data(), count);
+          std::memcpy(std::data(bytes_), std::data(src), std::size(src));
           return *this;
         }
 
-        std::span<std::byte> bytes_;
-      };
-
-      template<typename obj_t, typename obj_value_t = std::remove_reference_t<obj_t>>
-      constexpr decltype(auto) operator()(obj_t&& obj) const
-        requires (!std::is_pointer_v<obj_value_t>) && (!concepts::range<obj_value_t>) &&
-                 concepts::trivially_copyable<obj_value_t>
-      {
-        static_assert(sizeof(obj) <= count, "Type size too small");
-        using dst_t = std::conditional_t<std::is_const_v<obj_value_t>, const std::byte, std::byte>;
-        return binary_proxy(std::span{reinterpret_cast<dst_t*>(std::addressof(obj)) + byte, count});
-      }
-
-      template<typename ptr_t, typename ptr_value_t = std::remove_reference_t<ptr_t>>
-      constexpr decltype(auto) operator()(ptr_t&& ptr) const
-        requires std::is_pointer_v<ptr_value_t> &&
-                 concepts::trivially_copyable<std::remove_reference_t<decltype(*ptr)>>
-      {
-        static_assert(sizeof(decltype(*ptr)) <= count, "Type size too small");
-        using dst_t = std::conditional_t<std::is_const_v<ptr_value_t>, const std::byte, std::byte>;
-        return binary_proxy(std::span{reinterpret_cast<dst_t*>(ptr) + byte, count});
-      }
-
-      constexpr decltype(auto) operator()(concepts::sequence_container auto&& range) const
-        requires concepts::trivially_copyable<std::remove_reference_t<decltype(*std::begin(range))>>
-      {
-        using value_t = std::remove_cvref_t<decltype(range)>;
-        if(range.size() < count)
+        constexpr bool operator==(std::span<const std::byte> src) const
         {
-          if constexpr(concepts::resizable<decltype(range)>)
+          if(src.size() > count)
           {
-            range.resize(byte + count);
+            throw std::runtime_error("Expected 'x' bytes, got 'y' bytes");
           }
-          else if(range.size() < count)
-          {
-            throw std::runtime_error("Type size too small");
-          }
+          return std::memcmp(std::data(bytes_), std::data(src), std::size(src)) == 0;
         }
-        return binary_proxy(std::span{reinterpret_cast<std::byte*>(&*std::begin(range)) + byte, count});
+
+        std::span<byte_t> bytes_;
+      };
+      template<std::common_reference_with<std::byte> byte_t>
+      binary_proxy(std::span<byte_t> bytes) -> binary_proxy<byte_t>;
+
+      // trivial type
+      template<concepts::trivially_copyable obj_t>
+      constexpr decltype(auto) operator()(obj_t&& obj) const
+        requires (!concepts::fixed_size_container<obj_t>) &&
+                 (sizeof(obj) >= count)
+      {
+        using obj_value_t = std::remove_reference_t<obj_t>;
+        using byte_t = std::remove_reference_t<decltype(std_ext::forward_like<obj_value_t>(std::byte{}))>;
+        return binary_proxy(std::span{reinterpret_cast<byte_t*>(std::addressof(obj)) + byte, count});
+      }
+
+      // sequence container
+      template<concepts::sequence_container cont_t>
+      constexpr decltype(auto) operator()(cont_t& range) const
+        requires concepts::trivially_copyable<traits::range_value_t<cont_t>>
+      {
+        
+        if constexpr(concepts::resizable<cont_t>)
+        {
+          range.resize(byte + count);
+        }
+        // else if constexpr(concepts::fixed_size_container<decltype(range)>)
+        // {
+        //   static_assert(std::size(cont_t{}) >= count, "array too small");
+        // }
+        using range_value_t = traits::range_value_t<cont_t>;
+        using byte_t = std::remove_reference_t<decltype(std_ext::forward_like<range_value_t>(std::byte{}))>;
+        return binary_proxy(std::span{reinterpret_cast<byte_t*>(std::data(range)) + byte, count});
       }
     };
 
