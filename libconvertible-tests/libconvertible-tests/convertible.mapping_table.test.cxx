@@ -1,3 +1,4 @@
+#include <bitset>
 #include <convertible/convertible.hxx>
 #include <doctest/doctest.h>
 
@@ -420,5 +421,60 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
         REQUIRE_FALSE(table.equal(lhs, rhs));
       }
     }
+  }
+  GIVEN("binary serialization/deserialization")
+  {
+    struct type_a
+    {
+      std::int8_t int8_ = -1;
+      std::int16_t int16_ = -1;
+      std::int32_t int32_ = -1;
+      std::int64_t int64_ = -1;
+    };
+    struct type_b
+    {
+      std::int8_t int8_ = -1;
+      type_a a = {};
+    };
+    // static_assert(concepts::adaptable<type, decltype(map_ab)>);
+
+    GIVEN("mapping 'map_nb' between \n\n\ttrivial <-> binary\n")
+    {
+
+      auto lhs = type_b{};
+      auto rhs = std::vector<std::byte>{};
+
+      mapping_table table_inner{
+        mapping(member(&type_a::int8_), binary<0,1>(rhs)),
+        mapping(member(&type_a::int16_), binary<2,4>(rhs)),
+        mapping(member(&type_a::int32_), binary<5,9>(rhs)),
+        mapping(member(&type_a::int64_), binary<10,18>(rhs))
+      };
+      mapping_table table_outer{
+        mapping(member(&type_b::int8_), binary<0,1>(rhs)),
+        mapping(member(&type_b::a), binary<2,17>(rhs), table_inner)
+      };
+      // table_outer.assign<direction::lhs_to_rhs>(lhs, rhs);
+
+      auto map = mapping(member(&type_b::a), binary<2,17>(rhs), table_inner);
+      map.assign<direction::lhs_to_rhs>(lhs, rhs);
+
+      MESSAGE("\nserialized: ", rhs);
+      REQUIRE(rhs.size() == 4);
+      REQUIRE(rhs[0] == std::byte{1});
+    }
+  }
+}
+
+namespace std
+{
+  std::ostream& operator<<(std::ostream& os, const std::vector<std::byte>& value)
+  {
+    os << '|';
+    for(std::byte byte : value)
+    {
+      os << std::bitset<8>(std::to_integer<int>(byte)) << '|';
+    }
+    return os;
   }
 }
