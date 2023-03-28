@@ -274,8 +274,21 @@ namespace convertible
     template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
     concept mappable = requires(mapping_t map)
     {
-      requires (dir == direction::rhs_to_lhs && requires { { map(std::declval<rhs_t>()) }; })
+      requires (dir == direction::rhs_to_lhs
+                && requires { { map(std::declval<rhs_t>()) }; })
                 || requires { { map(std::declval<lhs_t>()) }; };
+    };
+
+    template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
+    concept mappable_assign = requires(mapping_t map, lhs_t lhs, rhs_t rhs)
+    {
+      map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
+    };
+
+    template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
+    concept mappable_equal = requires(mapping_t map, lhs_t lhs, rhs_t rhs)
+    {
+      map.template equal<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
     };
 
     template<DIR_DECL(direction) dir, typename callable_t, typename arg1_t, typename arg2_t, typename converter_t>
@@ -1195,10 +1208,10 @@ namespace convertible
 
     template<DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
     constexpr void assign(lhs_t&& lhs, rhs_t&& rhs) const
-      requires (concepts::mappable<mapping_ts, lhs_t, rhs_t, dir> || ...)
+      requires (concepts::mappable_assign<mapping_ts, lhs_t, rhs_t, dir> || ...)
     {
       for_each([&lhs, &rhs](concepts::mapping auto&& map){
-        if constexpr(requires{ map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs)); })
+        if constexpr(concepts::mappable_assign<decltype(map), lhs_t, rhs_t, dir>)
         {
           map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
         }
@@ -1208,10 +1221,10 @@ namespace convertible
 
     template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
     constexpr bool equal(const auto& lhs, const auto& rhs) const
-      requires (concepts::mappable<mapping_ts, decltype(lhs), decltype(rhs), direction::rhs_to_lhs> || ...)
+      requires (concepts::mappable_equal<mapping_ts, decltype(lhs), decltype(rhs), direction::rhs_to_lhs> || ...)
     {
       return for_each([&lhs, &rhs](concepts::mapping auto&& map) -> bool{
-        if constexpr(requires{ map.equal(lhs, rhs); })
+        if constexpr(concepts::mappable_equal<decltype(map), decltype(lhs), decltype(rhs), direction::rhs_to_lhs>)
         {
           return map.equal(lhs, rhs);
         }
