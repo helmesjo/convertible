@@ -166,10 +166,25 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it 'moves from' r-value reference")
     {
-      const std::string movedTo = adapter(std::move(adaptee));
-      REQUIRE(movedTo == "hello");
-      REQUIRE(adaptee.str() == "");
-
+      WHEN("member function has an r-value overload")
+      {
+        struct type_rvalue_overload
+        {
+          std::string&& str() && { return std::move(str_); }
+          std::string str_;
+        } adaptee;
+        adaptee.str_ = "hello";
+        auto adapterRvalueFunc = member(&type_rvalue_overload::str);
+        const std::string movedTo = adapterRvalueFunc(std::move(adaptee));
+        REQUIRE(movedTo == "hello");
+        REQUIRE(adaptee.str_ == "");
+      }
+      WHEN("member function has l-value overload it does NOT move")
+      {
+        const std::string movedTo = adapter(std::move(adaptee));
+        REQUIRE(movedTo == "hello");
+        REQUIRE(adaptee.str() == "hello");
+      }
       std::string fromStr = "world";
       adapter(adaptee) = std::move(fromStr);
       REQUIRE(fromStr == "");
@@ -408,9 +423,14 @@ SCENARIO("convertible: Adapters")
     struct type_a
     {
       bool operator==(const type_a&) const = default;
-      std::string& operator*()
+      std::string& operator*() &
       {
         return val;
+      }
+      // support 'move from' deref
+      std::string&& operator*() &&
+      {
+        return std::move(val);
       }
       std::string val{};
     };

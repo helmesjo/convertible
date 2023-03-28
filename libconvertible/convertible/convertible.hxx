@@ -381,12 +381,12 @@ namespace convertible
         requires std::derived_from<std::remove_reference_t<obj_t>, class_t>
       constexpr decltype(auto) operator()(obj_t&& obj) const
       {
-        // Workaround for MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
-        //                          when 'obj' is r-value reference (in combination with above 'requires' etc.)
+        // MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
+        //            when 'obj' is r-value reference (in combination with above 'requires' etc.)
         if constexpr(std::is_member_object_pointer_v<member_ptr_t>)
-          return obj.*ptr_;
+          return FWD(obj).*ptr_;
         if constexpr(std::is_member_function_pointer_v<member_ptr_t>)
-          return (obj.*ptr_)();
+          return (FWD(obj).*ptr_)();
       }
 
       member_ptr_t ptr_;
@@ -397,7 +397,16 @@ namespace convertible
     {
       constexpr decltype(auto) operator()(concepts::indexable<decltype(i)> auto&& obj) const
       {
-        return FWD(obj)[i];
+        // standard containers do not have a 'move from' index operator (for legacy reasons)
+        // but here we want to support it for performance reasons.
+        if constexpr (std::is_rvalue_reference_v<decltype(obj)>)
+        {
+          return std::move(FWD(obj)[i]);
+        }
+        else
+        {
+          return FWD(obj)[i];
+        }
       }
     };
 
@@ -486,15 +495,7 @@ namespace convertible
     constexpr decltype(auto) operator()(auto&& obj) const
       requires concepts::readable<decltype(obj), reader_t>
     {
-      using obj_t = decltype(obj);
-      if constexpr (!std::is_rvalue_reference_v<obj_t> || std::is_pointer_v<std::remove_reference_t<obj_t>>)
-      {
-        return reader_(FWD(obj));
-      }
-      else
-      {
-        return std::move(reader_(FWD(obj)));
-      }
+      return reader_(FWD(obj));
     }
 
     constexpr auto defaulted_adaptee() const
