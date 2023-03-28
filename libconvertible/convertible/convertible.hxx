@@ -681,6 +681,7 @@ namespace convertible
   {
     using adaptee_t = _adaptee_t;
     using adaptee_value_t = std::remove_reference_t<adaptee_t>;
+    static constexpr bool accepts_any_adaptee = std::is_same_v<adaptee_value_t, details::any>;
 
     constexpr adapter() = default;
     constexpr adapter(const adapter&) = default;
@@ -695,8 +696,16 @@ namespace convertible
     {
     }
 
-    constexpr decltype(auto) operator()(auto&& obj) const
-      requires concepts::readable<decltype(obj), reader_t>
+    // overload enabled if adaptee_t isn't of the 'any' type
+    constexpr decltype(auto) operator()(concepts::readable<reader_t> auto&& obj) const
+      requires (!accepts_any_adaptee) && std::common_reference_with<decltype(obj), adaptee_value_t>
+    {
+      return reader_(FWD(obj));
+    }
+
+    // overload enabled if adaptee_t is of the 'any' type
+    constexpr decltype(auto) operator()(concepts::readable<reader_t> auto&& obj) const
+      requires accepts_any_adaptee
     {
       return reader_(FWD(obj));
     }
