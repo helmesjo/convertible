@@ -274,10 +274,8 @@ namespace convertible
     template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
     concept mappable = requires(mapping_t map)
     {
-      requires (dir == direction::rhs_to_lhs
-        && requires { { map(std::declval<rhs_t>()) }; }
-        || requires { { map(std::declval<lhs_t>()) }; }
-      );
+      requires (dir == direction::rhs_to_lhs && requires { { map(std::declval<rhs_t>()) }; })
+                || requires { { map(std::declval<lhs_t>()) }; };
     };
 
     template<DIR_DECL(direction) dir, typename callable_t, typename arg1_t, typename arg2_t, typename converter_t>
@@ -304,10 +302,10 @@ namespace convertible
     };
 
     template<typename cont_t>
-    concept fixed_size_container = std::is_array_v<cont_t> || range<cont_t> && requires (cont_t c)
+    concept fixed_size_container = std::is_array_v<std::remove_reference_t<cont_t>> || (range<cont_t> && requires (cont_t c)
     {
       requires (decltype(std::span{ c })::extent != std::dynamic_extent);
-    };
+    });
 
     // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
