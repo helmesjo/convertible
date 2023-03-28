@@ -433,10 +433,9 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
     };
     struct type_b
     {
-      std::int8_t int8_ = -1;
+      std::int8_t int8_ = 1;
       type_a a = {};
     };
-    // static_assert(concepts::adaptable<type, decltype(map_ab)>);
 
     GIVEN("mapping 'map_nb' between \n\n\ttrivial <-> binary\n")
     {
@@ -444,24 +443,45 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       auto lhs = type_b{};
       auto rhs = std::vector<std::byte>{};
 
-      // mapping_table table_inner{
-      //   mapping(member(&type_a::int8_), binary<0,1>(rhs)),
-      //   mapping(member(&type_a::int16_), binary<2,4>(rhs)),
-      //   mapping(member(&type_a::int32_), binary<5,9>(rhs)),
-      //   mapping(member(&type_a::int64_), binary<10,18>(rhs))
-      // };
-      // mapping_table table_outer{
-      //   mapping(member(&type_b::int8_), binary<0,1>(rhs)),
-      //   mapping(member(&type_b::a), binary<2,17>(rhs), table_inner)
-      // };
+      mapping_table table_inner{
+        // mapping(member(&type_a::int8_), binary<0,1>(rhs)),
+        mapping(member(&type_a::int16_), binary<2,4>(rhs)),
+        // mapping(member(&type_a::int32_), binary<5,9>(rhs)),
+        // mapping(member(&type_a::int64_), binary<10,18>(rhs))
+      };
+      auto a = type_a{};
+      // table_inner.assign<direction::lhs_to_rhs>(a, rhs);
+      // table_inner.assign<direction::rhs_to_lhs>(a, rhs);
+      // static_assert(concepts::adaptable<type_a, decltype(table_inner)>);
+
+      auto map1 = mapping(member(&type_a::int8_),  binary<0,0>(rhs));
+      auto map2 = mapping(member(&type_a::int16_), binary<2,3>(rhs));
+      auto map3 = mapping(member(&type_a::int32_), binary<5,8>(rhs));
+      auto map4 = mapping(member(&type_a::int64_), binary<10,17>(rhs));
+      // map1.assign<direction::lhs_to_rhs>(a, rhs);
+      // map2.assign<direction::lhs_to_rhs>(a, rhs);
+      // map3.assign<direction::lhs_to_rhs>(a, rhs);
+      // map4.assign<direction::lhs_to_rhs>(a, rhs);
+      mapping_table table_outer{
+        // mapping(member(&type_b::int8_), binary<0,1>(rhs)),
+        mapping(member(&type_b::a), binary<0,1>(rhs), table_inner)
+      };
+      // static_assert(concepts::adaptable<type_b, decltype(table_outer)>);
       // table_outer.assign<direction::lhs_to_rhs>(lhs, rhs);
+      // auto map1 = mapping(member(&type_b::int8_), binary<0,1>(rhs));
+      // map1.assign<direction::lhs_to_rhs>(lhs, rhs);
+      // auto lhsadapter = member(&type_b::int8_);
+      // auto rhsadapter = binary<0,1>(rhs);
+      // rhsadapter(rhs) = lhsadapter(lhs);
+      // lhsadapter(lhs);
+      // rhsadapter(lhs);
 
-      // auto map = mapping(member(&type_b::a), binary<2,17>(rhs), table_inner);
-      // map.assign<direction::lhs_to_rhs>(lhs, rhs);
+      // auto map2 = mapping(member(&type_b::a), binary<2,17>(rhs), table_inner);
+      // map2.assign<direction::lhs_to_rhs>(lhs, rhs);
 
-      // MESSAGE("\nserialized: ", rhs);
-      // REQUIRE(rhs.size() == 4);
-      // REQUIRE(rhs[0] == std::byte{1});
+      MESSAGE("\nserialized: ", rhs);
+      // REQUIRE(rhs.size() == 19);
+      // REQUIRE(rhs[0] == std::byte{255});
     }
   }
 }
