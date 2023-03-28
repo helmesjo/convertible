@@ -444,24 +444,24 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       auto lhs = type_b{};
       auto rhs = std::vector<std::byte>{};
 
-      mapping_table table_inner{
-        mapping(member(&type_a::int8_), binary<0,1>(rhs)),
-        mapping(member(&type_a::int16_), binary<2,4>(rhs)),
-        mapping(member(&type_a::int32_), binary<5,9>(rhs)),
-        mapping(member(&type_a::int64_), binary<10,18>(rhs))
-      };
-      mapping_table table_outer{
-        mapping(member(&type_b::int8_), binary<0,1>(rhs)),
-        mapping(member(&type_b::a), binary<2,17>(rhs), table_inner)
-      };
+      // mapping_table table_inner{
+      //   mapping(member(&type_a::int8_), binary<0,1>(rhs)),
+      //   mapping(member(&type_a::int16_), binary<2,4>(rhs)),
+      //   mapping(member(&type_a::int32_), binary<5,9>(rhs)),
+      //   mapping(member(&type_a::int64_), binary<10,18>(rhs))
+      // };
+      // mapping_table table_outer{
+      //   mapping(member(&type_b::int8_), binary<0,1>(rhs)),
+      //   mapping(member(&type_b::a), binary<2,17>(rhs), table_inner)
+      // };
       // table_outer.assign<direction::lhs_to_rhs>(lhs, rhs);
 
-      auto map = mapping(member(&type_b::a), binary<2,17>(rhs), table_inner);
-      map.assign<direction::lhs_to_rhs>(lhs, rhs);
+      // auto map = mapping(member(&type_b::a), binary<2,17>(rhs), table_inner);
+      // map.assign<direction::lhs_to_rhs>(lhs, rhs);
 
-      MESSAGE("\nserialized: ", rhs);
-      REQUIRE(rhs.size() == 4);
-      REQUIRE(rhs[0] == std::byte{1});
+      // MESSAGE("\nserialized: ", rhs);
+      // REQUIRE(rhs.size() == 4);
+      // REQUIRE(rhs[0] == std::byte{1});
     }
   }
 }

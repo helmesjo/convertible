@@ -275,8 +275,8 @@ namespace convertible
     concept mappable = requires(mapping_t map)
     {
       requires (dir == direction::rhs_to_lhs
-        && requires { { map(std::declval<rhs_t>()) } -> std::common_reference_with<lhs_t>; }
-        || requires { { map(std::declval<lhs_t>()) } -> std::common_reference_with<rhs_t>; }
+        && requires { { map(std::declval<rhs_t>()) }; }
+        || requires { { map(std::declval<lhs_t>()) }; }
       );
     };
 
@@ -496,10 +496,13 @@ namespace convertible
       static constexpr std::size_t range_size_bytes =
         std::size(std::remove_reference_t<cont_t>{}) * sizeof(traits::range_value_t<cont_t>);
 
-      template<std::common_reference_with<std::byte> byte_t>
+      template<typename bytes_t>
+        requires std::common_reference_with<std::byte, typename bytes_t::value_type>
       struct binary_proxy
       {
-        constexpr explicit binary_proxy(std::span<byte_t> bytes)
+        using byte_t = typename bytes_t::value_type;
+
+        constexpr binary_proxy(bytes_t bytes)
         : bytes_(bytes)
         {
           if(bytes.size() < count)
@@ -603,10 +606,10 @@ namespace convertible
           return std::memcmp(std::data(bytes_), std::data(src), std::size(src)) == 0;
         }
 
-        std::span<byte_t> bytes_;
+        bytes_t bytes_;
       };
-      template<std::common_reference_with<std::byte> byte_t>
-      binary_proxy(std::span<byte_t> bytes) -> binary_proxy<byte_t>;
+      template<typename bytes_t>
+      binary_proxy(bytes_t) -> binary_proxy<bytes_t>;
 
       // trivial type
       template<concepts::trivially_copyable obj_t>
@@ -617,6 +620,7 @@ namespace convertible
         using obj_value_t = std::remove_reference_t<obj_t>;
         using byte_t = std::remove_reference_t<decltype(std_ext::forward_like<obj_value_t>(std::byte{}))>;
         return binary_proxy(std::span{reinterpret_cast<byte_t*>(std::addressof(obj)) + byte, count});
+        // return binary_proxy(std::addressof(obj));
       }
 
       // sequence container
@@ -633,9 +637,10 @@ namespace convertible
         // {
         //   static_assert(std::size(cont_t{}) >= count, "array too small");
         // }
-        using range_value_t = traits::range_value_t<cont_t>;
-        using byte_t = std::remove_reference_t<decltype(std_ext::forward_like<range_value_t>(std::byte{}))>;
-        return binary_proxy(std::span{reinterpret_cast<byte_t*>(std::data(range)) + byte, count});
+        // using range_value_t = traits::range_value_t<cont_t>;
+        // using byte_t = std::remove_reference_t<decltype(std_ext::forward_like<range_value_t>(std::byte{}))>;
+        // return binary_proxy(std::span{reinterpret_cast<byte_t*>(std::data(range)) + byte, count});
+        return binary_proxy(range);
       }
     };
 
