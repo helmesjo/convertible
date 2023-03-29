@@ -739,16 +739,7 @@ namespace convertible
     {
     }
 
-    // overload enabled if adaptee_t isn't of the 'any' type
     constexpr decltype(auto) operator()(concepts::readable<reader_t> auto&& obj) const
-      requires (!accepts_any_adaptee) && std::common_reference_with<decltype(obj), adaptee_value_t>
-    {
-      return reader_(FWD(obj));
-    }
-
-    // overload enabled if adaptee_t is of the 'any' type
-    constexpr decltype(auto) operator()(concepts::readable<reader_t> auto&& obj) const
-      requires accepts_any_adaptee
     {
       return reader_(FWD(obj));
     }
