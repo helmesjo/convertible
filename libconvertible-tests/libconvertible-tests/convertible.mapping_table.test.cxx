@@ -426,62 +426,102 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
   {
     struct type_a
     {
-      std::int8_t int8_ = -1;
-      std::int16_t int16_ = -1;
-      std::int32_t int32_ = -1;
-      std::int64_t int64_ = -1;
+      std::int8_t int8_ = 0;
+      std::int16_t int16_ = 0;
+      std::int32_t int32_ = 0;
+      std::int64_t int64_ = 0;
+
+      bool operator==(const type_a&) const = default;
     };
     struct type_b
     {
-      std::int8_t int8_ = 1;
+      std::int8_t int8_ = 0;
       type_a a = {};
+
+      bool operator==(const type_b&) const = default;
     };
 
-    GIVEN("mapping 'map_nb' between \n\n\ttrivial <-> binary\n")
+    GIVEN("mapping between \n\n\ttype_b <- nested (type_a) -> binary\n")
     {
+      mapping_table table_inner{
+        mapping(member(&type_a::int8_),  binary<0,0>()),
+        mapping(member(&type_a::int16_), binary<1,2>()),
+        mapping(member(&type_a::int32_), binary<3,6>()),
+        mapping(member(&type_a::int64_), binary<7,14>())
+      };
+      mapping_table table_outer{
+        mapping(member(&type_b::int8_), binary<0,0>()),
+        mapping(member(&type_b::a),     binary<0,0>(), table_inner)
+      };
 
       auto lhs = type_b{};
       auto rhs = std::vector<std::byte>{};
 
-      mapping_table table_inner{
-        // mapping(member(&type_a::int8_), binary<0,1>(rhs)),
-        mapping(member(&type_a::int16_), binary<2,4>(rhs)),
-        // mapping(member(&type_a::int32_), binary<5,9>(rhs)),
-        // mapping(member(&type_a::int64_), binary<10,18>(rhs))
-      };
-      auto a = type_a{};
-      // table_inner.assign<direction::lhs_to_rhs>(a, rhs);
-      // table_inner.assign<direction::rhs_to_lhs>(a, rhs);
-      // static_assert(concepts::adaptable<type_a, decltype(table_inner)>);
+      THEN("type_b can be serialized")
+      {
+        lhs.int8_ = 1;
+        lhs.a.int8_ = 2;
+        lhs.a.int16_ = 3;
+        lhs.a.int32_ = 4;
+        lhs.a.int64_ = 5;
 
-      auto map1 = mapping(member(&type_a::int8_),  binary<0,0>(rhs));
-      auto map2 = mapping(member(&type_a::int16_), binary<2,3>(rhs));
-      auto map3 = mapping(member(&type_a::int32_), binary<5,8>(rhs));
-      auto map4 = mapping(member(&type_a::int64_), binary<10,17>(rhs));
-      // map1.assign<direction::lhs_to_rhs>(a, rhs);
-      // map2.assign<direction::lhs_to_rhs>(a, rhs);
-      // map3.assign<direction::lhs_to_rhs>(a, rhs);
-      // map4.assign<direction::lhs_to_rhs>(a, rhs);
-      mapping_table table_outer{
-        // mapping(member(&type_b::int8_), binary<0,1>(rhs)),
-        mapping(member(&type_b::a), binary<0,1>(rhs), table_inner)
-      };
-      // static_assert(concepts::adaptable<type_b, decltype(table_outer)>);
-      // table_outer.assign<direction::lhs_to_rhs>(lhs, rhs);
-      // auto map1 = mapping(member(&type_b::int8_), binary<0,1>(rhs));
-      // map1.assign<direction::lhs_to_rhs>(lhs, rhs);
-      // auto lhsadapter = member(&type_b::int8_);
-      // auto rhsadapter = binary<0,1>(rhs);
-      // rhsadapter(rhs) = lhsadapter(lhs);
-      // lhsadapter(lhs);
-      // rhsadapter(lhs);
+        table_outer.assign<direction::lhs_to_rhs>(lhs, rhs);
 
-      // auto map2 = mapping(member(&type_b::a), binary<2,17>(rhs), table_inner);
-      // map2.assign<direction::lhs_to_rhs>(lhs, rhs);
+        INFO("\ntype_b (serialized): ", rhs);
+        REQUIRE(rhs.size() == 16);
+        // type_b::int8_
+        REQUIRE(rhs[0]  == std::byte{1});
+        // type_a::int8_
+        REQUIRE(rhs[1]  == std::byte{2});
+        // type_a::int16_
+        REQUIRE(rhs[2]  == std::byte{0}); // byte 2
+        REQUIRE(rhs[3]  == std::byte{3}); // byte 1
+        // type_a::int32_
+        REQUIRE(rhs[4]  == std::byte{0}); // byte 4
+        REQUIRE(rhs[5]  == std::byte{0}); // byte 3
+        REQUIRE(rhs[6]  == std::byte{0}); // byte 2
+        REQUIRE(rhs[7]  == std::byte{4}); // byte 1
+        // type_a::int64_
+        REQUIRE(rhs[8]  == std::byte{0}); // byte 8
+        REQUIRE(rhs[9]  == std::byte{0}); // byte 7
+        REQUIRE(rhs[10] == std::byte{0}); // byte 6
+        REQUIRE(rhs[11] == std::byte{0}); // byte 5
+        REQUIRE(rhs[12] == std::byte{0}); // byte 4
+        REQUIRE(rhs[13] == std::byte{0}); // byte 3
+        REQUIRE(rhs[14] == std::byte{0}); // byte 2
+        REQUIRE(rhs[15] == std::byte{5}); // byte 1
 
-      MESSAGE("\nserialized: ", rhs);
-      // REQUIRE(rhs.size() == 19);
-      // REQUIRE(rhs[0] == std::byte{255});
+        REQUIRE(table_outer.equal(lhs, rhs));
+      }
+      THEN("type_b can be de-serialized")
+      {
+        rhs.resize(16);
+        // type_b::int8_
+        rhs[0]  = std::byte{1};
+        // type_a::int8_
+        rhs[1]  = std::byte{2};
+        // type_a::int16_
+        rhs[2]  = std::byte{0}; // byte 2
+        rhs[3]  = std::byte{3}; // byte 1
+        // type_a::int32_
+        rhs[4]  = std::byte{0}; // byte 4
+        rhs[5]  = std::byte{0}; // byte 3
+        rhs[6]  = std::byte{0}; // byte 2
+        rhs[7]  = std::byte{4}; // byte 1
+        // type_a::int64_
+        rhs[8]  = std::byte{0}; // byte 8
+        rhs[9]  = std::byte{0}; // byte 7
+        rhs[10] = std::byte{0}; // byte 6
+        rhs[11] = std::byte{0}; // byte 5
+        rhs[12] = std::byte{0}; // byte 4
+        rhs[13] = std::byte{0}; // byte 3
+        rhs[14] = std::byte{0}; // byte 2
+        rhs[15] = std::byte{5}; // byte 1
+
+        table_outer.assign<direction::rhs_to_lhs>(lhs, rhs);
+        REQUIRE(lhs == type_b{.int8_=1, .a={.int8_=2, .int16_=3, .int32_=4, .int64_=5}});
+        REQUIRE(table_outer.equal(lhs, rhs));
+      }
     }
   }
 }

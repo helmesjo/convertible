@@ -450,11 +450,21 @@ SCENARIO("convertible: Adapters")
     auto adapter = convertible::binary<0, 3>(adaptee);
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
 
-    WHEN("constructed from another binary reader")
+    WHEN("invoked with a binary_proxy<storage_t, first1, last1>")
     {
-      THEN("it's first byte is one-past the last of the source")
+      std::vector<std::uint32_t> storage;
+      auto reader = reader::binary<0,3>::binary_proxy(storage);
+      auto extendedAdapter = adapter(reader);
+      THEN("it returns binary_proxy<storage_t, last1+1+first2, last1+1+first2+last2> (start one-past-last reusing the same storage)")
       {
-        // auto adapter2 = convertible::binary<0, 2>(adapter);
+        using reader_extended_t = decltype(extendedAdapter);
+        static_assert(reader_extended_t::first_byte == 4);
+        static_assert(reader_extended_t::last_byte == 7);
+
+        extendedAdapter = static_cast<std::uint32_t>(-1);
+        REQUIRE(storage.size() == 2);
+        REQUIRE(storage[0] == 0);
+        REQUIRE(storage[1] == static_cast<std::uint32_t>(-1));
       }
     }
     THEN("it's constexpr constructible")
@@ -478,21 +488,22 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it implicitly converts to type")
     {
-      // * IMPLICIT: span of bytes
-      std::span<std::byte> span = adapter(adaptee);
+      // * IMPLICIT: span of (const) bytes
+      std::span<const std::byte> span = adapter(adaptee);
       REQUIRE(span[0] == std::byte{12});
 
-      // // * EXPLICIT: trivially copyable types
-      // int trivial = static_cast<int>(adapter(adaptee));
-      // REQUIRE(trivial == 12);
-      // int& trivialRef = static_cast<int&>(adapter(adaptee));
-      // REQUIRE(trivialRef == 12);
-      // // * EXPLICIT: fixed size containers of trivially copyable types
-      // auto fixed = static_cast<std::array<int, 10>>(adapter(adaptee));
+      // * EXPLICIT: trivially copyable types
+      int trivial = static_cast<int>(adapter(adaptee));
+      REQUIRE(trivial == 12);
+      int& trivialRef = static_cast<int&>(adapter(adaptee));
+      REQUIRE(trivialRef == 12);
+      // * EXPLICIT: fixed size containers of trivially copyable types (@DISABLED as UNSAFE)
+      // auto fixed = static_cast<std::array<std::int32_t, 1>>(adapter(adaptee));
       // REQUIRE(fixed[0] == 12);
-      // // * EXPLICIT: dynamic sequence containers of trivially copyable types
+      // * EXPLICIT: dynamic sequence containers of trivially copyable types (@DISABLED as UNSAFE)
       // auto dynamic = static_cast<std::vector<int>>(adapter(adaptee));
       // REQUIRE(dynamic[0] == 12);
+      // static_assert(concepts::range<std::vector<int>>);
     }
     THEN("equality operator works")
     {
