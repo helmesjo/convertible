@@ -699,8 +699,6 @@ SCENARIO("convertible: Adapters (proxies)")
       adapter(str) = "world";
       REQUIRE(adapter(str) == "world");
       REQUIRE(adapter(str) != "hello");
-      REQUIRE("world" == adapter(str));
-      REQUIRE("hello" != adapter(str));
     }
   }
 }

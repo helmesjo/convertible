@@ -493,7 +493,9 @@ SCENARIO("convertible: Operators")
       std::string str = "world";
       auto rhs = proxy(str);
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{});
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const std::string& lhs, const proxy& rhs, const auto& converter){
+        return converter(rhs) == lhs;
+      });
       // Proxy does not support "move from"
       // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
       //   return rhs == "";
