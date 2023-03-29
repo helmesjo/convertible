@@ -405,7 +405,8 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it 'moves from' r-value reference")
     {
-      auto movedTo = adapter(std::move(adaptee));
+      auto rvalueMaybe = adapter(std::move(adaptee));
+      auto movedTo = *rvalueMaybe;
       REQUIRE(movedTo == "hello");
       REQUIRE(*adaptee == "");
 
