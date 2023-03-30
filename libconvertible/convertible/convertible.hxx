@@ -230,6 +230,9 @@ namespace convertible
 
     template<typename converter_t, typename arg_t>
     using converted_t = std::invoke_result_t<converter_t, arg_t>;
+
+    template<typename as_t, typename with_t>
+    using like_t = decltype(std_ext::forward_like<as_t>(std::declval<with_t>()));
   }
 
   namespace concepts
