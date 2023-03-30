@@ -583,7 +583,10 @@ namespace convertible
           }
           if(range_size_bytes(bytes_) < _first + size() - 1)
           {
-            throw std::runtime_error("Not enough bytes: " + std::to_string(range_size_bytes(bytes_)) + " < " + std::to_string(_first+size()));
+            throw std::runtime_error(
+              "[binary_proxy::ctor] bytes(storage) " + std::to_string(range_size_bytes(bytes_))
+              + " < bytes(proxy) " + std::to_string(size())
+            );
           }
         }
 
@@ -686,7 +689,10 @@ namespace convertible
         {
           if(src.size() > _first + size())
           {
-            throw std::runtime_error("Expected 'x' bytes, got 'y' bytes");
+            throw std::runtime_error(
+              "[binary_proxy::operator=] bytes(src) "
+              + std::to_string(range_size_bytes(bytes_)) + " > bytes(storage) " + std::to_string(size())
+            );
           }
           std::memcpy(data(), std::data(src), std::size(src));
           return *this;
@@ -696,7 +702,10 @@ namespace convertible
         {
           if(src.size() > _first + size())
           {
-            throw std::runtime_error("Expected 'x' bytes, got 'y' bytes");
+            throw std::runtime_error(
+              "[binary_proxy::operator==] bytes(src) "
+              + std::to_string(range_size_bytes(bytes_)) + " > bytes(storage) " + std::to_string(size())
+            );
           }
           return std::memcmp(data(), std::data(src), std::size(src)) == 0;
         }
