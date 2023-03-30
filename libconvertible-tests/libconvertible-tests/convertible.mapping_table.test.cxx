@@ -424,7 +424,7 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       }
     }
   }
-  GIVEN("binary serialization/deserialization")
+  GIVEN("nested binary serialization/deserialization")
   {
     struct type_a
     {
@@ -476,22 +476,22 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
         // type_a::int8_
         REQUIRE(rhs[1]  == std::byte{2});
         // type_a::int16_
-        REQUIRE(rhs[2]  == std::byte{0}); // byte 2
-        REQUIRE(rhs[3]  == std::byte{3}); // byte 1
+        REQUIRE(rhs[2]  == std::byte{3}); // byte 1
+        REQUIRE(rhs[3]  == std::byte{0}); // byte 2
         // type_a::int32_
-        REQUIRE(rhs[4]  == std::byte{0}); // byte 4
-        REQUIRE(rhs[5]  == std::byte{0}); // byte 3
-        REQUIRE(rhs[6]  == std::byte{0}); // byte 2
-        REQUIRE(rhs[7]  == std::byte{4}); // byte 1
+        REQUIRE(rhs[4]  == std::byte{4}); // byte 1
+        REQUIRE(rhs[5]  == std::byte{0}); // byte 2
+        REQUIRE(rhs[6]  == std::byte{0}); // byte 3
+        REQUIRE(rhs[7]  == std::byte{0}); // byte 4
         // type_a::int64_
-        REQUIRE(rhs[8]  == std::byte{0}); // byte 8
-        REQUIRE(rhs[9]  == std::byte{0}); // byte 7
-        REQUIRE(rhs[10] == std::byte{0}); // byte 6
-        REQUIRE(rhs[11] == std::byte{0}); // byte 5
-        REQUIRE(rhs[12] == std::byte{0}); // byte 4
-        REQUIRE(rhs[13] == std::byte{0}); // byte 3
-        REQUIRE(rhs[14] == std::byte{0}); // byte 2
-        REQUIRE(rhs[15] == std::byte{5}); // byte 1
+        REQUIRE(rhs[8]  == std::byte{5}); // byte 1
+        REQUIRE(rhs[9]  == std::byte{0}); // byte 2
+        REQUIRE(rhs[10] == std::byte{0}); // byte 3
+        REQUIRE(rhs[11] == std::byte{0}); // byte 4
+        REQUIRE(rhs[12] == std::byte{0}); // byte 5
+        REQUIRE(rhs[13] == std::byte{0}); // byte 6
+        REQUIRE(rhs[14] == std::byte{0}); // byte 7
+        REQUIRE(rhs[15] == std::byte{0}); // byte 8
 
         REQUIRE(table_outer.equal(lhs, rhs));
       }
@@ -503,25 +503,31 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
         // type_a::int8_
         rhs[1]  = std::byte{2};
         // type_a::int16_
-        rhs[2]  = std::byte{0}; // byte 2
-        rhs[3]  = std::byte{3}; // byte 1
+        rhs[2]  = std::byte{3}; // byte 1
+        rhs[3]  = std::byte{0}; // byte 2
         // type_a::int32_
-        rhs[4]  = std::byte{0}; // byte 4
-        rhs[5]  = std::byte{0}; // byte 3
-        rhs[6]  = std::byte{0}; // byte 2
-        rhs[7]  = std::byte{4}; // byte 1
+        rhs[4]  = std::byte{4}; // byte 1
+        rhs[5]  = std::byte{0}; // byte 2
+        rhs[6]  = std::byte{0}; // byte 3
+        rhs[7]  = std::byte{0}; // byte 4
         // type_a::int64_
-        rhs[8]  = std::byte{0}; // byte 8
-        rhs[9]  = std::byte{0}; // byte 7
-        rhs[10] = std::byte{0}; // byte 6
-        rhs[11] = std::byte{0}; // byte 5
-        rhs[12] = std::byte{0}; // byte 4
-        rhs[13] = std::byte{0}; // byte 3
-        rhs[14] = std::byte{0}; // byte 2
-        rhs[15] = std::byte{5}; // byte 1
+        rhs[8]  = std::byte{5}; // byte 1
+        rhs[9]  = std::byte{0}; // byte 2
+        rhs[10] = std::byte{0}; // byte 3
+        rhs[11] = std::byte{0}; // byte 4
+        rhs[12] = std::byte{0}; // byte 5
+        rhs[13] = std::byte{0}; // byte 6
+        rhs[14] = std::byte{0}; // byte 7
+        rhs[15] = std::byte{0}; // byte 8
 
+        INFO("\ntype_b (serialized): ", rhs);
         table_outer.assign<direction::rhs_to_lhs>(lhs, rhs);
-        REQUIRE(lhs == type_b{.int8_=1, .a={.int8_=2, .int16_=3, .int32_=4, .int64_=5}});
+
+        REQUIRE(lhs.int8_    == 1);
+        REQUIRE(lhs.a.int8_  == 2);
+        REQUIRE(lhs.a.int16_ == 3);
+        REQUIRE(lhs.a.int32_ == 4);
+        REQUIRE(lhs.a.int64_ == 5);
         REQUIRE(table_outer.equal(lhs, rhs));
       }
     }

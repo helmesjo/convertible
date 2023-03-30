@@ -549,8 +549,6 @@ namespace convertible
       requires (first <= last)
     struct binary
     {
-      static constexpr std::size_t byte_count = last - first + 1;
-
       template<concepts::fixed_size_container cont_t>
       static constexpr std::size_t range_fixed_size_bytes =
         std::size(std::remove_reference_t<cont_t>{}) * sizeof(traits::range_value_t<cont_t>);
@@ -561,55 +559,75 @@ namespace convertible
         return std::size(FWD(cont)) * sizeof(traits::range_value_t<cont_t>);
       }
 
-      template<concepts::sequence_container storage_t, std::size_t _first=first, std::size_t _last=last>
-        requires concepts::trivially_copyable<typename std::remove_cvref_t<storage_t>::value_type>
+      template<concepts::sequence_container storage_t, std::size_t _first, std::size_t _last>
+        requires (_first <= _last)
+              && concepts::trivially_copyable<traits::range_value_t<std::remove_reference_t<storage_t>>>
       struct binary_proxy
       {
-        using storage_value_t = typename std::remove_cvref_t<storage_t>::value_type;
-        using byte_t = std::remove_reference_t<decltype(std_ext::forward_like<storage_value_t>(std::byte{}))>;
+        using storage_value_t = traits::range_value_t<std::remove_reference_t<storage_t>>;
+        using byte_t = std::remove_reference_t<traits::like_t<storage_value_t, std::byte>>;
         using const_byte_t = std::add_const_t<byte_t>;
 
         static constexpr bool dynamic = (!concepts::fixed_size_container<storage_t>);
-        static constexpr auto first_byte = _first;
-        static constexpr auto last_byte = _last;
+        static constexpr std::size_t first_byte = _first;
+        static constexpr std::size_t last_byte = _last;
+        static constexpr std::size_t byte_count = last_byte - first_byte + 1;
+        static constexpr std::size_t bytes_required = first_byte + byte_count;
 
-        constexpr binary_proxy(storage_t bytes)
+        // trivial type
+        constexpr binary_proxy(concepts::trivially_copyable auto& obj)
+          requires (!concepts::range<decltype(obj)>) && std::is_same_v<std::remove_cvref_t<storage_t>, std::span<byte_t>>
+                && (sizeof(obj) >= byte_count)
+        : bytes_(std::span{reinterpret_cast<byte_t*>(std::addressof(obj)), byte_count})
+        {
+        }
+
+        // fixed size container
+        constexpr binary_proxy(concepts::fixed_size_container auto&& bytes)
+          requires (range_fixed_size_bytes<decltype(bytes)> >= byte_count)
+        : bytes_(bytes)
+        {
+        }
+
+        // dynamic container
+        constexpr binary_proxy(concepts::sequence_container auto&& bytes)
+          requires (!concepts::fixed_size_container<decltype(bytes)>)
         : bytes_(bytes)
         {
           if constexpr(concepts::resizable<storage_t>)
           {
-            if(range_size_bytes(bytes_) < _first + size())
+            if(range_size_bytes(bytes_) < bytes_required)
             {
-              const std::size_t newSize = std::max(std::size_t{1}, (_first + size()) / sizeof(storage_value_t));
+              const std::size_t newSize = std::max(std::size_t{1}, bytes_required / sizeof(storage_value_t));
               bytes_.resize(newSize);
             }
           }
-          if(range_size_bytes(bytes_) < _first + size() - 1)
+          if(range_size_bytes(bytes_) < bytes_required)
           {
-            throw std::runtime_error(
+            throw std::overflow_error(
               "[binary_proxy::ctor] bytes(storage) " + std::to_string(range_size_bytes(bytes_))
               + " < bytes(proxy) " + std::to_string(size())
             );
           }
         }
 
-        // make `is_trivially_copyable_v<binary_proxy> == false`
+        // make `trivially_copyable<binary_proxy> == false`
         ~binary_proxy(){}
 
         constexpr byte_t* data() noexcept
           requires (!std::is_const_v<std::remove_reference_t<storage_t>>)
         {
-          return reinterpret_cast<byte_t*>(std::data(bytes_)) + _first;
+          return reinterpret_cast<byte_t*>(std::data(bytes_)) + first_byte;
         }
 
         constexpr const_byte_t* data() const noexcept
         {
-          return reinterpret_cast<const_byte_t*>(std::data(bytes_)) + _first;
+          return reinterpret_cast<const_byte_t*>(std::data(bytes_)) + first_byte;
         }
 
         constexpr std::size_t size() const noexcept
         {
-          return (_last - _first) + 1;
+          return byte_count;
         }
 
         constexpr decltype(auto) storage()
@@ -690,12 +708,16 @@ namespace convertible
       private:
         constexpr binary_proxy& operator=(std::span<const std::byte> src)
         {
-          if(src.size() > _first + size())
+          if constexpr(concepts::resizable<storage_t>)
           {
-            throw std::runtime_error(
-              "[binary_proxy::operator=] bytes(src) "
-              + std::to_string(range_size_bytes(bytes_)) + " > bytes(storage) " + std::to_string(size())
-            );
+            if(src.size() > range_size_bytes(bytes_))
+            {
+              throw std::overflow_error(
+                "[binary_proxy::operator=] bytes(src) " + std::to_string(range_size_bytes(bytes_))
+                + " > bytes(storage) " + std::to_string(range_size_bytes(bytes_))
+                + " - storage resized after binary_proxy construction"
+              );
+            }
           }
           std::memcpy(data(), std::data(src), std::size(src));
           return *this;
@@ -703,53 +725,47 @@ namespace convertible
 
         constexpr bool operator==(std::span<const std::byte> src) const
         {
-          if(src.size() > _first + size())
+          if constexpr(concepts::resizable<storage_t>)
           {
-            throw std::runtime_error(
-              "[binary_proxy::operator==] bytes(src) "
-              + std::to_string(range_size_bytes(bytes_)) + " > bytes(storage) " + std::to_string(size())
-            );
+            if(src.size() > range_size_bytes(bytes_))
+            {
+              throw std::overflow_error(
+                "[binary_proxy::operator=] bytes(src) " + std::to_string(range_size_bytes(bytes_))
+                + " > bytes(storage) " + std::to_string(range_size_bytes(bytes_))
+                + " - storage resized after binary_proxy construction"
+              );
+            }
           }
           return std::memcmp(data(), std::data(src), std::size(src)) == 0;
         }
 
         storage_t bytes_;
       };
-      template<std::common_reference_with<std::byte> byte_t, std::size_t _first = first, std::size_t _last = last>
-      binary_proxy(std::span<byte_t>) -> binary_proxy<std::span<byte_t>, _first, _last>;
 
+      // trivial type (stored as std::span)
+      template<concepts::trivially_copyable obj_t, std::size_t _first = first, std::size_t _last = last>
+        requires (!concepts::range<obj_t>)
+      binary_proxy(obj_t&) ->
+        binary_proxy<std::span<std::remove_reference_t<traits::like_t<obj_t, std::byte>>>, _first, _last>;
+
+      // sequence container (dynamic or fixed size)
       template<concepts::sequence_container bytes_t, std::size_t _first = first, std::size_t _last = last>
       binary_proxy(bytes_t&) -> binary_proxy<std::remove_reference_t<bytes_t>&, _first, _last>;
 
-      // static_assert(!std::is_trivially_copyable_v<binary_proxy<std::vector<int>&, 0, 1>>);
+      constexpr decltype(auto) operator()(auto&& obj) const
+        requires requires{ binary_proxy(FWD(obj)); }
+      {
+        return binary_proxy(FWD(obj));
+      }
 
       // binary_proxy (by value to avoid all the different kinds of overloads)
+      // creates a new proxy starting at one-past-last using the same storage
       template<typename _bytes_t, std::size_t _first, std::size_t _last, template<typename, std::size_t, std::size_t> typename _binary_proxy>
       constexpr decltype(auto) operator()(_binary_proxy<_bytes_t, _first, _last> byteProxy) const
         requires std::same_as<typename binary<_first, _last>::template binary_proxy<_bytes_t, _first, _last>,
                                                                       _binary_proxy<_bytes_t, _first, _last>>
       {
-        // create a new proxy starting at one-past-last
-        return binary_proxy<_bytes_t, last+1 + _first, last+1 + _first + _last>(byteProxy.storage());
-      }
-
-      // trivial type
-      template<concepts::trivially_copyable obj_t>
-      constexpr decltype(auto) operator()(obj_t&& obj) const
-        requires (!concepts::range<obj_t>) &&
-                 (sizeof(obj) >= byte_count)
-      {
-        using obj_value_t = std::remove_reference_t<obj_t>;
-        using byte_t = std::remove_reference_t<decltype(std_ext::forward_like<obj_value_t>(std::byte{}))>;
-        return binary_proxy(std::span{reinterpret_cast<byte_t*>(std::addressof(obj)), byte_count});
-      }
-
-      // sequence container
-      template<concepts::sequence_container cont_t>
-      constexpr decltype(auto) operator()(cont_t& range) const
-        requires concepts::trivially_copyable<traits::range_value_t<cont_t>>
-      {
-        return binary_proxy(range);
+        return binary_proxy<_bytes_t, _last+1 + first, _last+1 + last>(byteProxy.storage());
       }
     };
 
