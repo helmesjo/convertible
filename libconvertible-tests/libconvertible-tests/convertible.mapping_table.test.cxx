@@ -2,8 +2,10 @@
 #include <convertible/convertible.hxx>
 #include <doctest/doctest.h>
 
+#include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
 
 SCENARIO("convertible: Mapping table")
 {
