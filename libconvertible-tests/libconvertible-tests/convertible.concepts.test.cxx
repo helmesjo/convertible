@@ -77,10 +77,25 @@ SCENARIO("convertible: Traits")
     static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
     static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
   }
+  // range_value_forwarded
+  {
+    static_assert(std::is_same_v<std::string&&, traits::range_value_forwarded_t<std::vector<std::string>>>);
+    static_assert(std::is_same_v<std::string&, traits::range_value_forwarded_t<std::vector<std::string>&>>);
+    static_assert(std::is_same_v<const std::string&&, traits::range_value_forwarded_t<const std::vector<std::string>&&>>);
+  }
   // mapped_value
   {
-    static_assert(std::is_same_v<const std::string, traits::mapped_value_t<std::set<std::string>>>);
+    static_assert(std::is_same_v<std::string, traits::mapped_value_t<std::set<std::string>>>);
     static_assert(std::is_same_v<std::string, traits::mapped_value_t<std::unordered_map<int, std::string>>>);
+  }
+  // mapped_value_forwarded
+  {
+    static_assert(std::is_same_v<std::string&&, traits::mapped_value_forwarded_t<std::set<std::string>>>);
+    static_assert(std::is_same_v<std::string&, traits::mapped_value_forwarded_t<std::set<std::string>&>>);
+    static_assert(std::is_same_v<const std::string&, traits::mapped_value_forwarded_t<const std::set<std::string>&>>);
+    static_assert(std::is_same_v<std::string&&, traits::mapped_value_forwarded_t<std::unordered_map<int, std::string>>>);
+    static_assert(std::is_same_v<std::string&, traits::mapped_value_forwarded_t<std::unordered_map<int, std::string>&>>);
+    static_assert(std::is_same_v<const std::string&, traits::mapped_value_forwarded_t<const std::unordered_map<int, std::string>&>>);
   }
   // unique_types
   {

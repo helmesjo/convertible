@@ -372,13 +372,8 @@ namespace convertible
       template<typename... arg_ts>
       struct is_mapping<mapping<arg_ts...>>: std::true_type {};
 
-      decltype(auto) get_mapped(concepts::associative_container auto&& cont)
-      {
-        if constexpr(concepts::mapping_container<decltype(cont)>)
-          return std::begin(cont)->second;
-        else
-          return *std::begin(cont);
-      };
+      auto get_mapped(concepts::mapping_container auto&& cont) -> typename std::remove_reference_t<decltype(cont)>::mapped_type;
+      auto get_mapped(concepts::associative_container auto&& cont) -> typename std::remove_reference_t<decltype(cont)>::value_type;
     }
 
     template<typename T>
@@ -393,11 +388,17 @@ namespace convertible
     template<concepts::range range_t>
     using range_value_t = std::remove_reference_t<decltype(*std::begin(std::declval<range_t&>()))>;
 
+    template<concepts::range range_t>
+    using range_value_forwarded_t = traits::like_t<range_t, traits::range_value_t<range_t>>;
+
     template<concepts::fixed_size_container cont_t>
     constexpr auto range_size_v = std::size(std::remove_reference_t<cont_t>{});
 
     template<concepts::associative_container cont_t>
     using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped(std::declval<cont_t>()))>;
+
+    template<concepts::associative_container cont_t>
+    using mapped_value_forwarded_t = traits::like_t<cont_t, traits::mapped_value_t<cont_t>>;
   }
 
   namespace concepts
