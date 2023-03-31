@@ -424,7 +424,7 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       }
     }
   }
-  GIVEN("nested binary serialization/deserialization")
+  GIVEN("binary serialization/deserialization")
   {
     struct type_a
     {
@@ -432,19 +432,16 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       std::int16_t int16_ = 0;
       std::int32_t int32_ = 0;
       std::int64_t int64_ = 0;
-
-      bool operator==(const type_a&) const = default;
-    };
-    struct type_b
-    {
-      std::int8_t int8_ = 0;
-      type_a a = {};
-
-      bool operator==(const type_b&) const = default;
     };
 
     GIVEN("mapping between \n\n\ttype_b <- nested (type_a) -> binary\n")
     {
+      struct type_b
+      {
+        std::int8_t int8_ = 0;
+        type_a a = {};
+      };
+
       mapping_table table_inner{
         mapping(member(&type_a::int8_),  binary<0,0>()),
         mapping(member(&type_a::int16_), binary<1,2>()),

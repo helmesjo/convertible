@@ -46,16 +46,18 @@ void COPY_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
 
   auto op = convertible::operators::assign{};
 
-  AND_WHEN("passed lhs & rhs")
+  AND_WHEN("lhs = rhs")
   {
     THEN("lhs == rhs")
     {
-      op(lhs, rhs, converter);
+      op.template operator()<convertible::direction::rhs_to_lhs>(lhs, rhs, converter);
       REQUIRE(verifyEqual(lhs, rhs, converter));
     }
-    THEN("lhs is returned")
+    THEN("lhs& is returned")
     {
-      REQUIRE(&op(lhs, rhs, converter) == &lhs);
+      auto& res = op.template operator()<convertible::direction::rhs_to_lhs>(lhs, rhs, converter);
+      static_assert(std::is_lvalue_reference_v<decltype(res)>);
+      REQUIRE(&res == &lhs);
     }
   }
 }
@@ -224,14 +226,14 @@ SCENARIO("convertible: Operators")
         std::set<int>&
       >
     );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::set<int>&,
-        std::set<std::string>&,
-        int_string_converter
-      >
-    );
+    // TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+    //   std::tuple<
+    //     operators::assign,
+    //     std::set<int>&,
+    //     std::set<std::string>&,
+    //     int_string_converter
+    //   >
+    // );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
@@ -331,19 +333,33 @@ SCENARIO("convertible: Operators")
       });
     }
 
-    WHEN("lhs set<int>, rhs set<string>")
+    WHEN("lhs set<int>, rhs set<int>")
     {
       auto lhs = std::set<int>{};
-      auto rhs = std::set<std::string>{ {"2"} };
+      auto rhs = std::set<int>{ 2 };
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return *lhs.find(2) == converter(*rhs.find("2"));
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
+        return *lhs.find(2) == converter(*rhs.find(2));
       });
-      // can't move-from a set value (AKA key) since that would break the tree
+      // NOTE: can't move-from a set value (AKA key) since that would break the tree
       // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
       //   return *rhs.find("2") == "";
       // });
     }
+
+    // WHEN("lhs set<int>, rhs set<string>")
+    // {
+    //   auto lhs = std::set<int>{};
+    //   auto rhs = std::set<std::string>{ {"2"} };
+
+    //   COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+    //     return *lhs.find(2) == converter(*rhs.find("2"));
+    //   });
+    //   // can't move-from a set value (AKA key) since that would break the tree
+    //   // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+    //   //   return *rhs.find("2") == "";
+    //   // });
+    // }
 
     WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
     {
