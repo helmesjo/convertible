@@ -76,7 +76,7 @@ void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
 
   AND_WHEN("passed lhs & rhs (r-value)")
   {
-    op(lhs, std::move(rhs), converter);
+    op.template operator()<convertible::direction::rhs_to_lhs>(lhs, std::move(rhs), converter);
 
     THEN("b is moved from")
     {
