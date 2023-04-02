@@ -431,7 +431,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
     using lhs_t = std::string;
     using rhs_t = std::string;
 
-    auto map = mapping(custom<std::string>(custom_reader{}), adapter());
+    auto map = mapping(custom(custom_reader{}), adapter());
 
     auto lhs = lhs_t{"hello"};
     auto rhs = rhs_t{"world"};

@@ -849,13 +849,11 @@ namespace convertible
     return adapter(adaptee, reader::composed(FWD(adapters)...));
   }
 
-  template<typename adaptee_t = details::any>
   constexpr auto custom(auto&& reader, concepts::readable<decltype(reader)> auto&&... adaptee)
   {
     return adapter(FWD(adaptee)..., FWD(reader));
   }
 
-  template<typename adaptee_t = details::any>
   constexpr auto custom(auto&& reader, concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
