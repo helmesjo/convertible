@@ -1149,7 +1149,15 @@ namespace convertible
           [this, &lhs, &rhs, &converter](auto&& key) mutable {
             auto lhsInserter = associative_inserter(FWD(lhs), key);
             auto rhsInserter = associative_inserter(FWD(rhs), key);
-            this->template operator()<dir>(lhsInserter, rhsInserter, converter);
+            using lhs_inserter_forward_t = traits::like_t<decltype(lhs), decltype(lhsInserter)>;
+            using rhs_inserter_forward_t = traits::like_t<decltype(rhs), decltype(rhsInserter)>;
+            using to_mapped_t = traits::mapped_value_t<traits::lhs_t<dir, decltype(lhs), decltype(rhs)>>;
+            using cast_t = explicit_cast<to_mapped_t, converter_t>;
+            this->template operator()<dir, lhs_inserter_forward_t, rhs_inserter_forward_t, converter_t, cast_t>(
+              std::forward<lhs_inserter_forward_t>(lhsInserter),
+              std::forward<rhs_inserter_forward_t>(rhsInserter),
+              converter
+            );
           }
         );
 
