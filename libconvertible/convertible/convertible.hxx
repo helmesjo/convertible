@@ -996,6 +996,10 @@ namespace convertible
       using const_reference_t = typename container_t::const_reference;
       using mapped_value_t = traits::mapped_value_t<container_t>;
 
+      container_t& cont_;
+      std::insert_iterator<container_t> inserter_;
+      std::conditional_t<concepts::mapping_container<container_t>, key_t, value_t> key_;
+
       template<std::common_reference_with<key_t> _key_t, typename _mapped_t>
       associative_inserter(concepts::associative_container auto&& cont, const std::pair<_key_t, _mapped_t>& pair)
       : cont_(cont),
@@ -1012,38 +1016,34 @@ namespace convertible
       operator mapped_forward_t()
         requires concepts::mapping_container<container_t>
       {
-        auto&& [key, value] = *cont_.find(key_);
-        return std::forward<mapped_forward_t>(value);
+        return std::forward<mapped_forward_t>(cont_[key_]);
       }
 
       operator mapped_forward_t() const
         requires (!concepts::mapping_container<container_t>)
       {
-        return std::forward<mapped_forward_t>(*cont_.find(key_));
+        return std::forward<mapped_forward_t>(cont_.at(key_));
       }
 
-      auto& operator=(std::common_reference_with<mapped_value_t> auto&& value)
+      auto& operator=(auto&& value)
+        requires requires
+                 {
+                   this->inserter_ = { this->key_, FWD(value) };
+                 }
       {
-        // key-value pair (map etc.)
-        if constexpr(concepts::mapping_container<container_t>)
-        {
-          if constexpr(std::is_rvalue_reference_v<decltype(value)>)
-            inserter_ = { key_, std::move(value) };
-          else
-            inserter_ = { key_, value };
-        }
-        // value (set etc.)
-        else
-        {
-          inserter_ = FWD(value);
-        }
-
+        inserter_ = { key_, FWD(value) };
         return *this;
       }
 
-      container_t& cont_;
-      std::insert_iterator<container_t> inserter_;
-      std::conditional_t<concepts::mapping_container<container_t>, const key_t&, const value_t&> key_;
+      auto& operator=(auto&& value)
+        requires requires
+                 {
+                   this->inserter_ = FWD(value);
+                 }
+      {
+        inserter_ = FWD(value);
+        return *this;
+      }
     };
     template<concepts::associative_container cont_t>
     associative_inserter(cont_t&& cont, auto&&)
