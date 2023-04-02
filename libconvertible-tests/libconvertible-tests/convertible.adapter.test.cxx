@@ -17,11 +17,72 @@ namespace
   {
     invalid_type() = delete;
   };
+
+  struct type_m{};
+  struct type_implicitly_convertible_to_m
+  {
+    // deliberately return references to verify
+    // adapter does not create a copy when converting
+    operator const type_m&() const &   { return m; }
+    operator type_m&() &               { return m; }
+    operator const type_m&&() const && { return std::move(m); }
+    operator type_m&&() &&             { return std::move(m); }
+    type_m m;
+  };
+  static_assert(convertible::concepts::castable_to<type_implicitly_convertible_to_m&, type_m&>);
+
+  struct reader_invocable_with_type_m
+  {
+    decltype(auto) operator()(auto&& arg) const
+      requires std::same_as<type_m, std::remove_cvref_t<decltype(arg)>>
+    {
+      return std::forward<decltype(arg)>(arg);
+    }
+  };
 }
 
 SCENARIO("convertible: Adapters")
 {
   using namespace convertible;
+
+  // implicit conversion
+  GIVEN("an adapter with a reader accepting type_m")
+  {
+    auto adapter = convertible::adapter(type_m{}, reader_invocable_with_type_m{});
+    WHEN("adapter is invoked with type_implicitly_convertible_to_m")
+    {
+      THEN("adapter implicitly converts the argument")
+      {
+        auto input = type_implicitly_convertible_to_m{};
+        decltype(auto) returned = adapter(input);
+        REQUIRE(&returned == &input.m);
+      }
+      THEN("const input& returns const type_m&")
+      {
+        const auto input = type_implicitly_convertible_to_m{};
+        decltype(auto) returned = adapter(input);
+        static_assert(std::is_same_v<decltype(returned), const type_m&>);
+      }
+      THEN("const input&& returns const type_m&&")
+      {
+        const auto input = type_implicitly_convertible_to_m{};
+        decltype(auto) returned = adapter(std::move(input));
+        static_assert(std::is_same_v<decltype(returned), const type_m&&>);
+      }
+      THEN("input& returns type_m&")
+      {
+        auto input = type_implicitly_convertible_to_m{};
+        decltype(auto) returned = adapter(input);
+        static_assert(std::is_same_v<decltype(returned), type_m&>);
+      }
+      THEN("input&& returns type_m&&")
+      {
+        auto input = type_implicitly_convertible_to_m{};
+        decltype(auto) returned = adapter(std::move(input));
+        static_assert(std::is_same_v<decltype(returned), type_m&&>);
+      }
+    }
+  }
 
   GIVEN("identity adapter")
   {

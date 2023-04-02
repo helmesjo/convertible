@@ -832,8 +832,18 @@ namespace convertible
       return reader_(FWD(obj));
     }
 
+    // allow implicit/explicit conversion to adaptee_t (preserving type qualifiers of `obj`)
+    template<typename obj_t>
+    constexpr decltype(auto) operator()(obj_t&& obj) const
+      requires (!concepts::readable<decltype(obj), reader_t>)
+            && concepts::castable_to<obj_t, traits::like_t<decltype(obj), adaptee_t>>
+            && concepts::readable<traits::like_t<decltype(obj), adaptee_t>, reader_t>
+    {
+      return reader_(static_cast<traits::like_t<decltype(obj), adaptee_t>>(FWD(obj)));
+    }
+
     constexpr auto defaulted_adaptee() const
-      requires (!std::is_same_v<adaptee_value_t, details::any>)
+      requires (!accepts_any_adaptee)
     {
       return adaptee_;
     }
