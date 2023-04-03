@@ -375,8 +375,10 @@ namespace convertible
       template<typename... arg_ts>
       struct is_mapping<mapping<arg_ts...>>: std::true_type {};
 
-      auto get_mapped(concepts::mapping_container auto&& cont) -> typename std::remove_reference_t<decltype(cont)>::mapped_type;
-      auto get_mapped(concepts::associative_container auto&& cont) -> typename std::remove_reference_t<decltype(cont)>::value_type;
+      template<concepts::mapping_container cont_t>
+      auto get_mapped() -> typename std::remove_reference_t<cont_t>::mapped_type;
+      template<concepts::associative_container cont_t>
+      auto get_mapped() -> typename std::remove_reference_t<cont_t>::value_type;
     }
 
     template<typename T>
@@ -398,7 +400,7 @@ namespace convertible
     constexpr auto range_size_v = std::size(std::remove_reference_t<cont_t>{});
 
     template<concepts::associative_container cont_t>
-    using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped(std::declval<cont_t>()))>;
+    using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped<cont_t>())>;
 
     template<concepts::associative_container cont_t>
     using mapped_value_forwarded_t = traits::like_t<cont_t, traits::mapped_value_t<cont_t>>;
@@ -537,7 +539,8 @@ namespace convertible
         value_t defaultedValue_{};
         std::remove_reference_t<object_t> defaulted_{ value_t{} };
       };
-      maybe_wrapper(concepts::dereferencable auto&& obj) -> maybe_wrapper<decltype(obj)>;
+      template<concepts::dereferencable obj_t>
+      maybe_wrapper(obj_t&& obj) -> maybe_wrapper<decltype(obj)>;
 
       template<concepts::dereferencable object_t,
                                typename value_t = std::remove_cvref_t<decltype(*std::declval<object_t>())>>
@@ -964,17 +967,17 @@ namespace convertible
       template<typename arg_t>
       using converted_t = traits::converted_t<converter_t, arg_t>;
 
-      constexpr decltype(auto) operator()(auto&& val) const
-        requires std::is_assignable_v<to_t&, converted_t<decltype(val)>>
-              || concepts::castable_to<converted_t<decltype(val)>, to_t>
+      constexpr decltype(auto) operator()(auto&& obj) const
+        requires std::is_assignable_v<to_t&, converted_t<decltype(obj)>>
+              || concepts::castable_to<converted_t<decltype(obj)>, to_t>
       {
-        if constexpr(std::is_assignable_v<to_t&, converted_t<decltype(val)>>)
+        if constexpr(std::is_assignable_v<to_t&, converted_t<decltype(obj)>>)
         {
-          return converter_(FWD(val));
+          return converter_(FWD(obj));
         }
         else
         {
-          return static_cast<to_t>(converter_(FWD(val)));
+          return static_cast<to_t>(converter_(FWD(obj)));
         }
       }
 
