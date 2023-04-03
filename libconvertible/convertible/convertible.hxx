@@ -21,29 +21,11 @@
 
 namespace convertible
 {
-  // Workaround for MSVC bug: https://developercommunity2.visualstudio.com/t/Concept-satisfaction-failure-for-member/1489332
-#if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
-#define DIR_DECL(...) int
-#define DIR_READ(...) msvc_unpack_enum<__VA_ARGS__> // For bug with enum var used in requires-clause
-
-  namespace direction
-  {
-    static constexpr int lhs_to_rhs = 0;
-    static constexpr int rhs_to_lhs = 1;
-  }
-
-  template<DIR_DECL(direction) dir>
-    constexpr auto msvc_unpack_enum = dir;
-#else
-#define DIR_DECL(...) __VA_ARGS__
-#define DIR_READ(...) __VA_ARGS__
-
   enum class direction
   {
     lhs_to_rhs,
     rhs_to_lhs
   };
-#endif
 
   namespace details
   {
@@ -141,10 +123,10 @@ namespace convertible
     template<typename T>
     constexpr bool is_adapter_v = details::is_adapter<std::remove_cvref_t<T>>::value;
 
-    template<DIR_DECL(direction) dir, typename arg1_t, typename arg2_t>
+    template<direction dir, typename arg1_t, typename arg2_t>
     using lhs_t = std::conditional_t<dir == direction::rhs_to_lhs, arg1_t, arg2_t>;
 
-    template<DIR_DECL(direction) dir, typename arg1_t, typename arg2_t>
+    template<direction dir, typename arg1_t, typename arg2_t>
     using rhs_t = std::conditional_t<dir == direction::rhs_to_lhs, arg2_t, arg1_t>;
 
     template<typename... arg_ts>
@@ -197,7 +179,7 @@ namespace convertible
     template<typename adapter_t>
     concept adaptee_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::adaptee_t, details::any>);
 
-    template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
+    template<typename mapping_t, typename lhs_t, typename rhs_t, direction dir>
     concept mappable = requires(mapping_t map)
     {
       requires (dir == direction::rhs_to_lhs
@@ -205,31 +187,31 @@ namespace convertible
                 || requires { { map(std::declval<lhs_t>()) }; };
     };
 
-    template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
+    template<typename mapping_t, typename lhs_t, typename rhs_t, direction dir>
     concept mappable_assign = requires(mapping_t map, lhs_t lhs, rhs_t rhs)
     {
       map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
     };
 
-    template<typename mapping_t, typename lhs_t, typename rhs_t, DIR_DECL(direction) dir>
+    template<typename mapping_t, typename lhs_t, typename rhs_t, direction dir>
     concept mappable_equal = requires(mapping_t map, lhs_t lhs, rhs_t rhs)
     {
       map.template equal<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
     };
 
-    template<DIR_DECL(direction) dir, typename callable_t, typename arg1_t, typename arg2_t, typename converter_t>
+    template<direction dir, typename callable_t, typename arg1_t, typename arg2_t, typename converter_t>
     concept executable_with = requires(callable_t callable, traits::lhs_t<dir, arg1_t, arg2_t> l, traits::rhs_t<dir, arg1_t, arg2_t> r, converter_t converter)
     {
       { callable.template operator()<dir>(l, r, converter) };
     };
 
-    template<DIR_DECL(direction) dir, typename lhs_t, typename rhs_t, typename converter_t>
+    template<direction dir, typename lhs_t, typename rhs_t, typename converter_t>
     concept assignable_from_converted = requires(traits::lhs_t<dir, lhs_t, rhs_t> lhs, traits::converted_t<converter_t, traits::rhs_t<dir, lhs_t, rhs_t>> rhs)
     {
       { lhs = rhs };
     };
 
-    template<DIR_DECL(direction) dir, typename lhs_t, typename rhs_t, typename converter_t>
+    template<direction dir, typename lhs_t, typename rhs_t, typename converter_t>
     concept equality_comparable_with_converted = requires(traits::lhs_t<dir, lhs_t, rhs_t> lhs, traits::converted_t<converter_t, traits::rhs_t<dir, lhs_t, rhs_t>> rhs)
     {
       { lhs == rhs } -> std::convertible_to<bool>;
@@ -994,7 +976,7 @@ namespace convertible
     associative_inserter(cont_t&& cont, auto&&)
       -> associative_inserter<std::remove_reference_t<decltype(cont)>, std_ext::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
 
-    template<DIR_DECL(direction) dir>
+    template<direction dir>
     inline constexpr decltype(auto) ordered_lhs_rhs(auto&& lhs, auto&& rhs)
     {
       if constexpr(dir == direction::rhs_to_lhs)
@@ -1006,14 +988,14 @@ namespace convertible
     struct assign
     {
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<DIR_DECL(direction) dir = direction::rhs_to_lhs, typename lhs_t, typename rhs_t,
+      template<direction dir = direction::rhs_to_lhs, typename lhs_t, typename rhs_t,
         typename converter_t = converter::identity,
         typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>
       constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
         requires (concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), cast_t>
               || requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
       {
-        auto&& [to, from] = ordered_lhs_rhs<DIR_READ(dir)>(FWD(lhs), FWD(rhs));
+        auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
         if constexpr(concepts::mapping<converter_t>)
         {
           (void)from;
@@ -1027,7 +1009,7 @@ namespace convertible
       }
 
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<DIR_DECL(direction) dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
+      template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
         typename converter_t = converter::identity>
       constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
         requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
@@ -1065,7 +1047,7 @@ namespace convertible
       }
 
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<DIR_DECL(direction) dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
+      template<direction dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
         typename converter_t = converter::identity>
       constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
         requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
@@ -1105,7 +1087,7 @@ namespace convertible
     struct equal
     {
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<DIR_DECL(direction) dir = direction::rhs_to_lhs, typename lhs_t, typename rhs_t,
+      template<direction dir = direction::rhs_to_lhs, typename lhs_t, typename rhs_t,
         typename converter_t = converter::identity,
         typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>
       constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
@@ -1118,13 +1100,13 @@ namespace convertible
         }
         else
         {
-          auto&& [to, from] = ordered_lhs_rhs<DIR_READ(dir)>(FWD(lhs), FWD(rhs));
+          auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
           return FWD(to) == cast_t(converter)(FWD(from));
         }
       }
 
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<DIR_DECL(direction) dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
+      template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
         typename converter_t = converter::identity,
         typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
       constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
@@ -1152,7 +1134,7 @@ namespace convertible
       }
 
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-      template<DIR_DECL(direction) dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
+      template<direction dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
         typename converter_t = converter::identity,
         typename cast_t = explicit_cast<traits::mapped_value_t<lhs_t>, converter_t>>
       constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
@@ -1188,7 +1170,7 @@ namespace convertible
       converter_(std::move(converter))
     {}
 
-    template<DIR_DECL(direction) dir>
+    template<direction dir>
     constexpr void assign(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
       requires requires(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter)
       {
@@ -1198,7 +1180,7 @@ namespace convertible
       operators::assign{}.template operator()<dir>(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)), converter_);
     }
 
-    template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
+    template<direction dir = direction::rhs_to_lhs>
     constexpr bool equal(concepts::adaptable<lhs_adapter_t> auto&& lhs, concepts::adaptable<rhs_adapter_t> auto&& rhs) const
       requires requires(lhs_adapter_t lhsAdapter, rhs_adapter_t rhsAdapter, converter_t converter)
       {
@@ -1296,7 +1278,7 @@ namespace convertible
     {
     }
 
-    template<DIR_DECL(direction) dir, typename lhs_t, typename rhs_t>
+    template<direction dir, typename lhs_t, typename rhs_t>
     constexpr void assign(lhs_t&& lhs, rhs_t&& rhs) const
       requires (concepts::mappable_assign<mapping_ts, lhs_t, rhs_t, dir> || ...)
     {
@@ -1309,7 +1291,7 @@ namespace convertible
       }, mappings_);
     }
 
-    template<DIR_DECL(direction) dir = direction::rhs_to_lhs>
+    template<direction dir = direction::rhs_to_lhs>
     constexpr bool equal(const auto& lhs, const auto& rhs) const
       requires (concepts::mappable_equal<mapping_ts, decltype(lhs), decltype(rhs), direction::rhs_to_lhs> || ...)
     {
@@ -1396,5 +1378,3 @@ namespace convertible
 }
 
 #undef FWD
-#undef DIR_DECL
-#undef DIR_READ
