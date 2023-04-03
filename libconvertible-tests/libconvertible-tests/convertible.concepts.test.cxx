@@ -2,11 +2,9 @@
 #include <doctest/doctest.h>
 
 #include <array>
-#include <concepts>
 #include <list>
 #include <set>
 #include <string>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 

@@ -1,7 +1,7 @@
-#include <bitset>
 #include <convertible/convertible.hxx>
 #include <doctest/doctest.h>
 
+#include <bitset>
 #include <cstddef>
 #include <memory>
 #include <ostream>
