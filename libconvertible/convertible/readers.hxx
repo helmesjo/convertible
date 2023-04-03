@@ -6,6 +6,7 @@
 #include <cstring>
 #include <functional>
 #include <stdexcept>
+#include <string>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
