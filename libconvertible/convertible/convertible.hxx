@@ -455,7 +455,7 @@ namespace convertible
         // MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
         //            when 'obj' is r-value reference (in combination with above 'requires' etc.)
         if constexpr(std::is_member_object_pointer_v<member_ptr_t>)
-          return FWD(obj).*ptr_;
+          return std::forward<traits::like_t<decltype(obj), decltype(obj.*ptr_)>>(obj.*ptr_);
         if constexpr(std::is_member_function_pointer_v<member_ptr_t>)
           return (FWD(obj).*ptr_)();
       }
