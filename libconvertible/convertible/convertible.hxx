@@ -15,60 +15,9 @@
 #include <utility>
 #include <version>
 
+#include <convertible/concepts.hxx>
+
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
-
-// Workarounds for unimplemented concepts & type traits (specifically with libc++)
-// NOTE: Intentionally placed in 'std' to be easily removed when no longer needed
-//       since below definitions aren't as conforming as std equivalents).
-#if defined(__clang__) && defined(_LIBCPP_VERSION) // libc++
-
-namespace std
-{
-#if ((__clang_major__ < 13 || (__clang_major__ == 13 && __clang_minor__ == 0)) && (defined(__APPLE__) || defined(__EMSCRIPTEN__))) || __clang_major__ < 13
-  // Credit: https://en.cppreference.com
-
-  template<class lhs_t, class rhs_t>
-  concept assignable_from =
-    std::is_lvalue_reference_v<lhs_t> &&
-    requires(lhs_t lhs, rhs_t && rhs) {
-      { lhs = std::forward<rhs_t>(rhs) } -> std::same_as<lhs_t>;
-    };
-
-  template<class Derived, class Base>
-  concept derived_from =
-    std::is_base_of_v<Base, Derived> &&
-    std::is_convertible_v<const volatile Derived*, const volatile Base*>;
-
-  template<class from_t, class to_t>
-  concept convertible_to =
-    std::is_convertible_v<from_t, to_t> &&
-    requires { static_cast<to_t>(std::declval<from_t>()); };
-
-  template<class T, class U>
-  concept equality_comparable_with =
-    requires(const std::remove_reference_t<T>&t,
-        const std::remove_reference_t<U>&u) {
-      { t == u } -> convertible_to<bool>;
-      { t != u } -> convertible_to<bool>;
-      { u == t } -> convertible_to<bool>;
-      { u != t } -> convertible_to<bool>;
-    };
-
-  template<class F, class... Args>
-  concept invocable =
-    requires(F&& f, Args&&... args) {
-      std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
-      /* not required to be equality preserving */
-    };
-#endif
-}
-#endif
-
-namespace std
-{
-  template<typename rhs_t, typename lhs_t>
-  concept assignable_to = std::assignable_from<lhs_t, rhs_t>;
-}
 
 namespace convertible
 {
@@ -95,30 +44,6 @@ namespace convertible
     rhs_to_lhs
   };
 #endif
-
-  namespace std_ext
-  {
-    // Credit: https://en.cppreference.com/w/cpp/utility/forward_like
-    template<class T, class U>
-    [[nodiscard]] constexpr auto&& forward_like(U&& x) noexcept
-    {
-      constexpr bool is_adding_const = std::is_const_v<std::remove_reference_t<T>>;
-      if constexpr (std::is_lvalue_reference_v<T&&>)
-      {
-        if constexpr (is_adding_const)
-          return std::as_const(x);
-        else
-          return static_cast<U&>(x);
-      }
-      else
-      {
-        if constexpr (is_adding_const)
-          return std::move(std::as_const(x));
-        else
-          return std::move(x);
-      }
-    }
-  }
 
   namespace details
   {
@@ -230,9 +155,6 @@ namespace convertible
 
     template<typename converter_t, typename arg_t>
     using converted_t = std::invoke_result_t<converter_t, arg_t>;
-
-    template<typename as_t, typename with_t>
-    using like_t = decltype(std_ext::forward_like<as_t>(std::declval<with_t>()));
   }
 
   namespace concepts
@@ -394,7 +316,7 @@ namespace convertible
     using range_value_t = std::remove_reference_t<decltype(*std::begin(std::declval<range_t&>()))>;
 
     template<concepts::range range_t>
-    using range_value_forwarded_t = traits::like_t<range_t, traits::range_value_t<range_t>>;
+    using range_value_forwarded_t = std_ext::like_t<range_t, traits::range_value_t<range_t>>;
 
     template<concepts::fixed_size_container cont_t>
     constexpr auto range_size_v = std::size(std::remove_reference_t<cont_t>{});
@@ -403,7 +325,7 @@ namespace convertible
     using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped<cont_t>())>;
 
     template<concepts::associative_container cont_t>
-    using mapped_value_forwarded_t = traits::like_t<cont_t, traits::mapped_value_t<cont_t>>;
+    using mapped_value_forwarded_t = std_ext::like_t<cont_t, traits::mapped_value_t<cont_t>>;
   }
 
   namespace concepts
@@ -455,7 +377,7 @@ namespace convertible
         // MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
         //            when 'obj' is r-value reference (in combination with above 'requires' etc.)
         if constexpr(std::is_member_object_pointer_v<member_ptr_t>)
-          return std::forward<traits::like_t<decltype(obj), decltype(obj.*ptr_)>>(obj.*ptr_);
+          return std::forward<std_ext::like_t<decltype(obj), decltype(obj.*ptr_)>>(obj.*ptr_);
         if constexpr(std::is_member_function_pointer_v<member_ptr_t>)
           return (FWD(obj).*ptr_)();
       }
@@ -572,7 +494,7 @@ namespace convertible
       struct binary_proxy
       {
         using storage_value_t = traits::range_value_t<std::remove_reference_t<storage_t>>;
-        using byte_t = std::remove_reference_t<traits::like_t<storage_value_t, std::byte>>;
+        using byte_t = std::remove_reference_t<std_ext::like_t<storage_value_t, std::byte>>;
         using const_byte_t = std::add_const_t<byte_t>;
 
         static constexpr bool dynamic = (!concepts::fixed_size_container<storage_t>);
@@ -753,7 +675,7 @@ namespace convertible
       template<concepts::trivially_copyable obj_t, std::size_t _first = first, std::size_t _last = last>
         requires (!concepts::range<obj_t>)
       binary_proxy(obj_t&) ->
-        binary_proxy<std::span<std::remove_reference_t<traits::like_t<obj_t, std::byte>>>, _first, _last>;
+        binary_proxy<std::span<std::remove_reference_t<std_ext::like_t<obj_t, std::byte>>>, _first, _last>;
 
       // sequence container (dynamic or fixed size)
       template<concepts::sequence_container bytes_t, std::size_t _first = first, std::size_t _last = last>
@@ -839,10 +761,10 @@ namespace convertible
     template<typename obj_t>
     constexpr decltype(auto) operator()(obj_t&& obj) const
       requires (!concepts::readable<decltype(obj), reader_t>)
-            && concepts::castable_to<obj_t, traits::like_t<decltype(obj), adaptee_t>>
-            && concepts::readable<traits::like_t<decltype(obj), adaptee_t>, reader_t>
+            && concepts::castable_to<obj_t, std_ext::like_t<decltype(obj), adaptee_t>>
+            && concepts::readable<std_ext::like_t<decltype(obj), adaptee_t>, reader_t>
     {
-      return reader_(static_cast<traits::like_t<decltype(obj), adaptee_t>>(FWD(obj)));
+      return reader_(static_cast<std_ext::like_t<decltype(obj), adaptee_t>>(FWD(obj)));
     }
 
     constexpr auto defaulted_adaptee() const
@@ -1070,7 +992,7 @@ namespace convertible
     };
     template<concepts::associative_container cont_t>
     associative_inserter(cont_t&& cont, auto&&)
-      -> associative_inserter<std::remove_reference_t<decltype(cont)>, traits::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
+      -> associative_inserter<std::remove_reference_t<decltype(cont)>, std_ext::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
 
     template<DIR_DECL(direction) dir>
     inline constexpr decltype(auto) ordered_lhs_rhs(auto&& lhs, auto&& rhs)
@@ -1164,8 +1086,8 @@ namespace convertible
           [this, &lhs, &rhs, &converter](auto&& key) mutable {
             auto lhsInserter = associative_inserter(FWD(lhs), key);
             auto rhsInserter = associative_inserter(FWD(rhs), key);
-            using lhs_inserter_forward_t = traits::like_t<decltype(lhs), decltype(lhsInserter)>;
-            using rhs_inserter_forward_t = traits::like_t<decltype(rhs), decltype(rhsInserter)>;
+            using lhs_inserter_forward_t = std_ext::like_t<decltype(lhs), decltype(lhsInserter)>;
+            using rhs_inserter_forward_t = std_ext::like_t<decltype(rhs), decltype(rhsInserter)>;
             using to_mapped_t = traits::mapped_value_t<traits::lhs_t<dir, decltype(lhs), decltype(rhs)>>;
             using cast_t = explicit_cast<to_mapped_t, converter_t>;
             this->template operator()<dir, lhs_inserter_forward_t, rhs_inserter_forward_t, converter_t, cast_t>(
