@@ -1066,15 +1066,6 @@ namespace convertible
       -> associative_inserter<std::remove_reference_t<decltype(cont)>, traits::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
 
     template<DIR_DECL(direction) dir>
-    inline constexpr decltype(auto) execute_ordered_lhs_rhs(auto&& callback, auto&& lhs, auto&& rhs)
-    {
-      if constexpr(dir == direction::rhs_to_lhs)
-        return FWD(callback)(FWD(lhs), FWD(rhs));
-      else
-        return FWD(callback)(FWD(rhs), FWD(lhs));
-    }
-
-    template<DIR_DECL(direction) dir>
     inline constexpr decltype(auto) ordered_lhs_rhs(auto&& lhs, auto&& rhs)
     {
       if constexpr(dir == direction::rhs_to_lhs)
@@ -1093,16 +1084,17 @@ namespace convertible
         requires (concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), cast_t>
               || requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
       {
+        auto&& [to, from] = ordered_lhs_rhs<DIR_READ(dir)>(FWD(lhs), FWD(rhs));
         if constexpr(concepts::mapping<converter_t>)
         {
+          (void)from;
           converter.template assign<dir>(FWD(lhs), FWD(rhs));
         }
         else
         {
-          return execute_ordered_lhs_rhs<dir>([&converter](auto&& lhs, auto&& rhs) -> decltype(auto){
-            return FWD(lhs) = cast_t(converter)(FWD(rhs));
-          }, FWD(lhs), FWD(rhs));
+          FWD(to) = cast_t(converter)(FWD(from));
         }
+        return FWD(to);
       }
 
       // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
@@ -1197,9 +1189,8 @@ namespace convertible
         }
         else
         {
-          return execute_ordered_lhs_rhs<dir>([&converter](auto&& lhs, auto&& rhs){
-            return lhs == cast_t(converter)(FWD(rhs));
-          }, FWD(lhs), FWD(rhs));
+          auto&& [to, from] = ordered_lhs_rhs<DIR_READ(dir)>(FWD(lhs), FWD(rhs));
+          return FWD(to) == cast_t(converter)(FWD(from));
         }
       }
 
