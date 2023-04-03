@@ -1389,7 +1389,10 @@ namespace convertible
         {
           return map.equal(lhs, rhs);
         }
-        return true;
+        else
+        {
+          return true;
+        }
       }, mappings_);
     }
 
