@@ -122,7 +122,7 @@ namespace std_ext
   };
 
   template<typename cont_t>
-  concept resizable = requires(std::remove_reference_t<cont_t> container)
+  concept resizable_container = range<cont_t> && requires(std::remove_reference_t<cont_t> container)
   {
     container.resize(std::size_t{0});
   };

@@ -139,7 +139,7 @@ namespace convertible::operators
 
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
 
-      if constexpr(std_ext::resizable<decltype(to)>)
+      if constexpr(std_ext::resizable_container<decltype(to)>)
       {
         to.resize(from.size());
       }
@@ -230,12 +230,12 @@ namespace convertible::operators
                  this->template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
     {
-      if constexpr(dir == direction::rhs_to_lhs && std_ext::resizable<lhs_t>)
+      if constexpr(dir == direction::rhs_to_lhs && std_ext::resizable_container<lhs_t>)
       {
         if(lhs.size() != rhs.size())
           return false;
       }
-      if constexpr(dir == direction::lhs_to_rhs && std_ext::resizable<rhs_t>)
+      if constexpr(dir == direction::lhs_to_rhs && std_ext::resizable_container<rhs_t>)
       {
         if(lhs.size() != rhs.size())
           return false;

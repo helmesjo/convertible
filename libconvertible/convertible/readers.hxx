@@ -191,7 +191,7 @@ namespace convertible::reader
         requires (!std_ext::fixed_size_container<decltype(bytes)>)
       : bytes_(bytes)
       {
-        if constexpr(std_ext::resizable<storage_t>)
+        if constexpr(std_ext::resizable_container<storage_t>)
         {
           if(range_size_bytes(bytes_) < bytes_required)
           {
@@ -305,7 +305,7 @@ namespace convertible::reader
     private:
       constexpr binary_proxy& operator=(std::span<const std::byte> src)
       {
-        if constexpr(std_ext::resizable<storage_t>)
+        if constexpr(std_ext::resizable_container<storage_t>)
         {
           if(src.size() > range_size_bytes(bytes_))
           {
@@ -322,7 +322,7 @@ namespace convertible::reader
 
       constexpr bool operator==(std::span<const std::byte> src) const
       {
-        if constexpr(std_ext::resizable<storage_t>)
+        if constexpr(std_ext::resizable_container<storage_t>)
         {
           if(src.size() > range_size_bytes(bytes_))
           {
