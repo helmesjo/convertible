@@ -37,7 +37,7 @@ namespace convertible
     template<typename obj_t>
     constexpr decltype(auto) operator()(obj_t&& obj) const
       requires (!concepts::readable<decltype(obj), reader_t>)
-            && concepts::castable_to<obj_t, std_ext::like_t<decltype(obj), adaptee_t>>
+            && std_ext::castable_to<obj_t, std_ext::like_t<decltype(obj), adaptee_t>>
             && concepts::readable<std_ext::like_t<decltype(obj), adaptee_t>, reader_t>
     {
       return reader_(static_cast<std_ext::like_t<decltype(obj), adaptee_t>>(FWD(obj)));

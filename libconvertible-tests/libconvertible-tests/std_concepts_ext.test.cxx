@@ -1,0 +1,84 @@
+#include <convertible/std_concepts_ext.hxx>
+#include <convertible/common.hxx>
+
+#include <array>
+#include <list>
+#include <set>
+#include <unordered_map>
+#include <vector>
+
+using namespace convertible;
+
+namespace member_ptr
+{
+  struct type { int member; double& func(int, char*); };
+  static_assert(std_ext::member_ptr<decltype(&type::member)>);
+  static_assert(std_ext::member_ptr<decltype(&type::func)>);
+  static_assert(!std_ext::member_ptr<type>);
+}
+
+namespace indexable
+{
+  struct type { int operator[](std::size_t); int operator[](const char*); };
+  static_assert(std_ext::indexable<std::array<int, 1>&, decltype(details::const_value(1))>);
+  static_assert(std_ext::indexable<type,               decltype(details::const_value("key"))>);
+  static_assert(std_ext::indexable<std::array<int, 1>>);
+  static_assert(std_ext::indexable<int*>);
+  static_assert(!std_ext::indexable<int>);
+}
+
+namespace dereferencable
+{
+  static_assert(std_ext::dereferencable<int*>);
+  static_assert(std_ext::dereferencable<int> == false);
+}
+
+namespace range
+{
+  static_assert(std_ext::range<decltype(std::declval<int[2]>())&>);
+  static_assert(std_ext::range<std::array<int, 0>&>);
+  static_assert(std_ext::range<std::vector<int>&>);
+  static_assert(std_ext::range<std::list<int>&>);
+  static_assert(std_ext::range<std::set<int>&>);
+  static_assert(std_ext::range<std::unordered_map<int, int>&>);
+}
+
+namespace castable_to
+{
+  static_assert(std_ext::castable_to<int, int>);
+  static_assert(std_ext::castable_to<int, float>);
+  static_assert(std_ext::castable_to<float, int>);
+
+  static_assert(!std_ext::castable_to<std::string, int>);
+  static_assert(!std_ext::castable_to<int, std::string>);
+}
+
+namespace fixed_size_container
+{
+  static_assert(std_ext::fixed_size_container<std::array<int, 1>>);
+  static_assert(std_ext::fixed_size_container<int[1]>);
+  static_assert(!std_ext::fixed_size_container<std::vector<int>>);
+  static_assert(!std_ext::fixed_size_container<std::string>);
+  static_assert(!std_ext::fixed_size_container<std::set<int>>);
+}
+namespace sequence_container
+{
+  static_assert(std_ext::sequence_container<std::array<int, 0>>);
+  static_assert(std_ext::sequence_container<std::vector<int>>);
+  static_assert(std_ext::sequence_container<std::list<int>>);
+  static_assert(!std_ext::associative_container<std::array<int, 0>>);
+  static_assert(!std_ext::associative_container<std::vector<int>>);
+  static_assert(!std_ext::associative_container<std::list<int>>);
+}
+namespace associative_container
+{
+  static_assert(std_ext::associative_container<std::set<int>>);
+  static_assert(std_ext::associative_container<std::unordered_map<int, int>>);
+  static_assert(!std_ext::sequence_container<std::set<int>>);
+  static_assert(!std_ext::sequence_container<std::unordered_map<int, int>>);
+}
+namespace mapping_container
+{
+  static_assert(std_ext::mapping_container<std::unordered_map<int, int>>);
+  static_assert(!std_ext::mapping_container<std::set<int>>);
+}

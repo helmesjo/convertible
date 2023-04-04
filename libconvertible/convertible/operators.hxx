@@ -15,7 +15,7 @@ namespace convertible::operators
   template<typename to_t, typename converter_t>
   using explicit_cast = converter::explicit_cast<std::remove_reference_t<to_t>, converter_t>;
 
-  template<concepts::associative_container container_t, std::common_reference_with<traits::mapped_value_t<container_t>> mapped_forward_t>
+  template<std_ext::associative_container container_t, std::common_reference_with<traits::mapped_value_t<container_t>> mapped_forward_t>
   struct associative_inserter
   {
     using key_t = typename container_t::key_type;
@@ -26,42 +26,42 @@ namespace convertible::operators
 
     container_t& cont_;
     std::insert_iterator<container_t> inserter_;
-    std::conditional_t<concepts::mapping_container<container_t>, key_t, value_t> key_;
+    std::conditional_t<std_ext::mapping_container<container_t>, key_t, value_t> key_;
 
     template<std::common_reference_with<key_t> _key_t, typename _mapped_t>
-    associative_inserter(concepts::associative_container auto&& cont, const std::pair<_key_t, _mapped_t>& pair)
+    associative_inserter(std_ext::associative_container auto&& cont, const std::pair<_key_t, _mapped_t>& pair)
     : cont_(cont),
       inserter_(cont, std::begin(cont)),
       key_(pair.first)
     {}
 
-    associative_inserter(concepts::associative_container auto&& cont, const key_t& key)
+    associative_inserter(std_ext::associative_container auto&& cont, const key_t& key)
     : cont_(cont),
       inserter_(cont, std::begin(cont)),
       key_(key)
     {}
 
     operator mapped_forward_t()&
-      requires concepts::mapping_container<container_t>
+      requires std_ext::mapping_container<container_t>
     {
       return std::forward<mapped_forward_t>(cont_[key_]);
     }
 
     operator mapped_forward_t()&&
-      requires concepts::mapping_container<container_t>
+      requires std_ext::mapping_container<container_t>
     {
       return std::forward<mapped_forward_t>(cont_[key_]);
     }
 
     operator mapped_value_t&()&
-      requires concepts::mapping_container<container_t>
+      requires std_ext::mapping_container<container_t>
             && (!std::is_same_v<mapped_value_t&, mapped_forward_t>)
     {
       return cont_[key_];
     }
 
     operator mapped_forward_t()&
-      requires (!concepts::mapping_container<container_t>)
+      requires (!std_ext::mapping_container<container_t>)
     {
       return std::forward<mapped_forward_t>(cont_.at(key_));
     }
@@ -86,7 +86,7 @@ namespace convertible::operators
       return *this;
     }
   };
-  template<concepts::associative_container cont_t>
+  template<std_ext::associative_container cont_t>
   associative_inserter(cont_t&& cont, auto&&)
     -> associative_inserter<std::remove_reference_t<decltype(cont)>, std_ext::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
 
@@ -123,7 +123,7 @@ namespace convertible::operators
     }
 
     // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
+    template<direction dir = direction::rhs_to_lhs, std_ext::sequence_container lhs_t, std_ext::sequence_container rhs_t,
       typename converter_t = converter::identity>
     constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
@@ -139,7 +139,7 @@ namespace convertible::operators
 
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
 
-      if constexpr(concepts::resizable<decltype(to)>)
+      if constexpr(std_ext::resizable<decltype(to)>)
       {
         to.resize(from.size());
       }
@@ -161,7 +161,7 @@ namespace convertible::operators
     }
 
     // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
+    template<direction dir = direction::rhs_to_lhs, std_ext::associative_container lhs_t, std_ext::associative_container rhs_t,
       typename converter_t = converter::identity>
     constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
@@ -220,7 +220,7 @@ namespace convertible::operators
     }
 
     // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
+    template<direction dir = direction::rhs_to_lhs, std_ext::sequence_container lhs_t, std_ext::sequence_container rhs_t,
       typename converter_t = converter::identity,
       typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
     constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
@@ -230,12 +230,12 @@ namespace convertible::operators
                  this->template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
     {
-      if constexpr(dir == direction::rhs_to_lhs && concepts::resizable<lhs_t>)
+      if constexpr(dir == direction::rhs_to_lhs && std_ext::resizable<lhs_t>)
       {
         if(lhs.size() != rhs.size())
           return false;
       }
-      if constexpr(dir == direction::lhs_to_rhs && concepts::resizable<rhs_t>)
+      if constexpr(dir == direction::lhs_to_rhs && std_ext::resizable<rhs_t>)
       {
         if(lhs.size() != rhs.size())
           return false;
@@ -248,7 +248,7 @@ namespace convertible::operators
     }
 
     // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
+    template<direction dir = direction::rhs_to_lhs, std_ext::associative_container lhs_t, std_ext::associative_container rhs_t,
       typename converter_t = converter::identity,
       typename cast_t = explicit_cast<traits::mapped_value_t<lhs_t>, converter_t>>
     constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
@@ -261,7 +261,7 @@ namespace convertible::operators
       return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
         [this, &converter](const auto& lhs, const auto& rhs){
           // key-value pair (map etc.)
-          if constexpr(concepts::mapping_container<rhs_t>)
+          if constexpr(std_ext::mapping_container<rhs_t>)
             return lhs.first == rhs.first && this->template operator()<dir>(lhs.second, rhs.second, converter);
           // value (set etc.)
           else

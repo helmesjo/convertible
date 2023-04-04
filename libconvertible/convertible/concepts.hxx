@@ -2,6 +2,7 @@
 
 #include <convertible/common.hxx>
 #include <convertible/std_concepts_compat.hxx>
+#include <convertible/std_concepts_ext.hxx>
 
 #include <concepts>
 #include <span>
@@ -88,22 +89,6 @@ namespace convertible
 
   namespace concepts
   {
-    template<typename value_t, typename index_t = std::size_t>
-    concept indexable = requires(value_t&& t)
-    {
-      FWD(t)[std::declval<index_t>()];
-    };
-
-    template<typename T>
-    concept dereferencable = requires(T t)
-    {
-      *t;
-      requires (!std::same_as<void, decltype(*t)>);
-    };
-
-    template<typename T>
-    concept reference = std::is_reference_v<T>;
-
     template<typename adaptee_t, typename reader_t>
     concept readable = requires(reader_t reader, adaptee_t&& adaptee)
     {
@@ -154,54 +139,6 @@ namespace convertible
     {
       { lhs == rhs } -> std::convertible_to<bool>;
     };
-
-    // Credit: https://en.cppreference.com/w/cpp/ranges/range
-    template<typename range_t>
-    concept range = requires(std::remove_reference_t<range_t>& r)
-    {
-      std::begin(r); // equality-preserving for forward iterators
-      std::end  (r);
-    };
-
-    template<typename cont_t>
-    concept fixed_size_container = std::is_array_v<std::remove_reference_t<cont_t>> || (range<cont_t> && requires (cont_t c)
-    {
-      requires (decltype(std::span{ c })::extent != std::dynamic_extent);
-    });
-
-    // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
-    template<typename cont_t>
-    concept sequence_container = range<cont_t>
-      && requires(cont_t c){ { c.size() }; }
-      && (requires(cont_t c){ { c.data() }; } || requires(cont_t c){ { c.resize(0) }; });
-
-    // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
-    template<typename cont_t>
-    concept associative_container = range<cont_t> && requires(cont_t container)
-    {
-      typename std::remove_cvref_t<cont_t>::key_type;
-    };
-
-    template<typename obj_t>
-    concept trivially_copyable = std::is_trivially_copyable_v<std::remove_reference_t<obj_t>>;
-
-    template<typename cont_t>
-    concept mapping_container = associative_container<cont_t> && requires
-    {
-      typename std::remove_cvref_t<cont_t>::mapped_type;
-    };
-
-    template<typename cont_t>
-    concept resizable = requires(std::remove_reference_t<cont_t> container)
-    {
-      container.resize(std::size_t{0});
-    };
-
-    template<typename from_t, typename to_t>
-    concept castable_to = requires
-    {
-      static_cast<to_t>(std::declval<from_t>());
-    };
   }
 
   template<concepts::adapter _lhs_adapter_t, concepts::adapter _rhs_adapter_t, typename _converter_t>
@@ -217,9 +154,9 @@ namespace convertible
       template<typename... arg_ts>
       struct is_mapping<mapping<arg_ts...>>: std::true_type {};
 
-      template<concepts::mapping_container cont_t>
+      template<std_ext::mapping_container cont_t>
       auto get_mapped() -> typename std::remove_reference_t<cont_t>::mapped_type;
-      template<concepts::associative_container cont_t>
+      template<std_ext::associative_container cont_t>
       auto get_mapped() -> typename std::remove_reference_t<cont_t>::value_type;
     }
 
@@ -232,19 +169,19 @@ namespace convertible
     template<concepts::adapter adapter_t, typename adaptee_t>
     using adapted_t = converted_t<adapter_t, adaptee_t>;
 
-    template<concepts::range range_t>
+    template<std_ext::range range_t>
     using range_value_t = std::remove_reference_t<decltype(*std::begin(std::declval<range_t&>()))>;
 
-    template<concepts::range range_t>
+    template<std_ext::range range_t>
     using range_value_forwarded_t = std_ext::like_t<range_t, traits::range_value_t<range_t>>;
 
-    template<concepts::fixed_size_container cont_t>
+    template<std_ext::fixed_size_container cont_t>
     constexpr auto range_size_v = std::size(std::remove_reference_t<cont_t>{});
 
-    template<concepts::associative_container cont_t>
+    template<std_ext::associative_container cont_t>
     using mapped_value_t = std::remove_reference_t<decltype(details::get_mapped<cont_t>())>;
 
-    template<concepts::associative_container cont_t>
+    template<std_ext::associative_container cont_t>
     using mapped_value_forwarded_t = std_ext::like_t<cont_t, traits::mapped_value_t<cont_t>>;
   }
 

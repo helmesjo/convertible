@@ -417,7 +417,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
       std::string& str_;
     };
     static_assert(!std::is_assignable_v<std::string&, proxy>);
-    static_assert(concepts::castable_to<proxy&, std::string>);
+    static_assert(std_ext::castable_to<proxy&, std::string>);
 
     struct custom_reader
     {
