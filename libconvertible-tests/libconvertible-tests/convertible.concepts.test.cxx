@@ -252,7 +252,7 @@ SCENARIO("convertible: Concepts")
     static_assert(concepts::indexable<type,               decltype(details::const_value("key"))>);
     static_assert(concepts::indexable<std::array<int, 1>>);
     static_assert(concepts::indexable<int*>);
-    static_assert(concepts::indexable<int> == false);
+    static_assert(!concepts::indexable<int>);
   }
 
   // dereferencable

@@ -92,9 +92,9 @@ namespace convertible
     concept member_ptr = std::is_member_pointer_v<T>;
 
     template<typename value_t, typename index_t = std::size_t>
-    concept indexable = requires(value_t t, index_t index)
+    concept indexable = requires(value_t&& t)
     {
-      t[index];
+      FWD(t)[std::declval<index_t>()];
     };
 
     template<typename T>
