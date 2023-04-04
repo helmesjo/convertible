@@ -9,6 +9,24 @@
 
 using namespace convertible;
 
+/* TRAITS */
+
+namespace member_meta
+{
+  struct type
+  {
+    int member;
+    double& fun(int, char*);
+  };
+
+  static_assert(std::is_same_v<type, std_ext::member_class_t<decltype(&type::member)>>);
+  static_assert(std::is_same_v<int, std_ext::member_value_t<decltype(&type::member)>>);
+  static_assert(std::is_same_v<type, std_ext::member_class_t<decltype(&type::fun)>>);
+  static_assert(std::is_same_v<double&, std_ext::member_value_t<decltype(&type::fun)>>);
+}
+
+/* CONCEPTS */
+
 namespace member_ptr
 {
   struct type { int member; double& func(int, char*); };
@@ -81,4 +99,48 @@ namespace mapping_container
 {
   static_assert(std_ext::mapping_container<std::unordered_map<int, int>>);
   static_assert(!std_ext::mapping_container<std::set<int>>);
+}
+
+namespace range_value_t
+{
+  static_assert(std::is_same_v<std::string, std_ext::range_value_t<std::vector<std::string>>>);
+  static_assert(std::is_same_v<std::string, std_ext::range_value_t<std::vector<std::string>&>>);
+  static_assert(std::is_same_v<std::string, std_ext::range_value_t<std::vector<std::string>&&>>);
+}
+namespace range_value_forwarded_t
+{
+  static_assert(std::is_same_v<std::string&&, std_ext::range_value_forwarded_t<std::vector<std::string>>>);
+  static_assert(std::is_same_v<std::string&, std_ext::range_value_forwarded_t<std::vector<std::string>&>>);
+  static_assert(std::is_same_v<const std::string&&, std_ext::range_value_forwarded_t<const std::vector<std::string>&&>>);
+}
+namespace mapped_value_t
+{
+  static_assert(std::is_same_v<std::string, std_ext::mapped_value_t<std::set<std::string>>>);
+  static_assert(std::is_same_v<std::string, std_ext::mapped_value_t<std::unordered_map<int, std::string>>>);
+}
+namespace mapped_value_forwarded_t
+{
+  static_assert(std::is_same_v<std::string&&, std_ext::mapped_value_forwarded_t<std::set<std::string>>>);
+  static_assert(std::is_same_v<std::string&, std_ext::mapped_value_forwarded_t<std::set<std::string>&>>);
+  static_assert(std::is_same_v<const std::string&, std_ext::mapped_value_forwarded_t<const std::set<std::string>&>>);
+  static_assert(std::is_same_v<std::string&&, std_ext::mapped_value_forwarded_t<std::unordered_map<int, std::string>>>);
+  static_assert(std::is_same_v<std::string&, std_ext::mapped_value_forwarded_t<std::unordered_map<int, std::string>&>>);
+  static_assert(std::is_same_v<const std::string&, std_ext::mapped_value_forwarded_t<const std::unordered_map<int, std::string>&>>);
+}
+
+namespace unique_ts
+{
+  static_assert(std::is_same_v<std::tuple<int, float>, std_ext::unique_ts<int, float, int, float>>);
+  static_assert(std::is_same_v<std::tuple<float, int>, std_ext::unique_ts<int, float, float, int>>);
+}
+namespace unique_derived_ts
+{
+  struct base {};
+  struct derived_a: base {};
+  struct derived_b: derived_a {};
+  struct derived_c: base {};
+
+  static_assert(std::is_same_v<std::tuple<derived_a>, std_ext::unique_derived_ts<base, derived_a>>);
+  static_assert(std::is_same_v<std::tuple<derived_b>, std_ext::unique_derived_ts<base, derived_a, derived_b>>);
+  static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, std_ext::unique_derived_ts<base, derived_a, derived_b, derived_c>>);
 }

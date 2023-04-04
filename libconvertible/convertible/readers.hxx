@@ -32,7 +32,7 @@ namespace convertible::reader
   template<std_ext::member_ptr member_ptr_t>
   struct member
   {
-    using class_t = traits::member_class_t<member_ptr_t>;
+    using class_t = std_ext::member_class_t<member_ptr_t>;
 
     constexpr member(member_ptr_t ptr):
       ptr_(std::move(ptr))
@@ -148,20 +148,20 @@ namespace convertible::reader
   {
     template<std_ext::fixed_size_container cont_t>
     static constexpr std::size_t range_fixed_size_bytes =
-      std::size(std::remove_reference_t<cont_t>{}) * sizeof(traits::range_value_t<cont_t>);
+      std::size(std::remove_reference_t<cont_t>{}) * sizeof(std_ext::range_value_t<cont_t>);
 
     template<std_ext::sequence_container cont_t>
     static constexpr std::size_t range_size_bytes(cont_t&& cont)
     {
-      return std::size(FWD(cont)) * sizeof(traits::range_value_t<cont_t>);
+      return std::size(FWD(cont)) * sizeof(std_ext::range_value_t<cont_t>);
     }
 
     template<std_ext::sequence_container storage_t, std::size_t _first, std::size_t _last>
       requires (_first <= _last)
-            && std_ext::trivially_copyable<traits::range_value_t<std::remove_reference_t<storage_t>>>
+            && std_ext::trivially_copyable<std_ext::range_value_t<std::remove_reference_t<storage_t>>>
     struct binary_proxy
     {
-      using storage_value_t = traits::range_value_t<std::remove_reference_t<storage_t>>;
+      using storage_value_t = std_ext::range_value_t<std::remove_reference_t<storage_t>>;
       using byte_t = std::remove_reference_t<std_ext::like_t<storage_value_t, std::byte>>;
       using const_byte_t = std::add_const_t<byte_t>;
 
@@ -277,7 +277,7 @@ namespace convertible::reader
       // fixed size container
       template<std_ext::fixed_size_container cont_t>
       constexpr binary_proxy& operator=(const cont_t& range)
-        requires std_ext::trivially_copyable<traits::range_value_t<cont_t>> &&
+        requires std_ext::trivially_copyable<std_ext::range_value_t<cont_t>> &&
                  (range_fixed_size_bytes<cont_t> <= byte_count)
       {
         *this = {reinterpret_cast<const std::byte*>(std::data(range)), std::size(range)};
@@ -296,7 +296,7 @@ namespace convertible::reader
       // fixed size container
       template<std_ext::fixed_size_container cont_t>
       constexpr bool operator==(const cont_t& range) const
-        requires std_ext::trivially_copyable<traits::range_value_t<cont_t>> &&
+        requires std_ext::trivially_copyable<std_ext::range_value_t<cont_t>> &&
                  (range_fixed_size_bytes<cont_t> <= byte_count)
       {
         return *this == std::span{reinterpret_cast<const std::byte*>(std::data(range)), std::size(range)};

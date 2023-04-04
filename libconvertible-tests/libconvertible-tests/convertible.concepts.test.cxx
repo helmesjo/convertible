@@ -55,62 +55,6 @@ SCENARIO("convertible: Traits")
     static_assert(std::is_same_v<traits::lhs_t<direction::lhs_to_rhs, int&, double&>, double&>);
     static_assert(std::is_same_v<traits::rhs_t<direction::lhs_to_rhs, int&, double&>, int&>);
   }
-
-  // member pointer
-  {
-    struct type
-    {
-      int member;
-      double& fun(int, char*);
-    };
-
-    static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::member)>>);
-    static_assert(std::is_same_v<int, convertible::traits::member_value_t<decltype(&type::member)>>);
-    static_assert(std::is_same_v<type, convertible::traits::member_class_t<decltype(&type::fun)>>);
-    static_assert(std::is_same_v<double&, convertible::traits::member_value_t<decltype(&type::fun)>>);
-  }
-  // range_value
-  {
-    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>>>);
-    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&>>);
-    static_assert(std::is_same_v<std::string, traits::range_value_t<std::vector<std::string>&&>>);
-  }
-  // range_value_forwarded
-  {
-    static_assert(std::is_same_v<std::string&&, traits::range_value_forwarded_t<std::vector<std::string>>>);
-    static_assert(std::is_same_v<std::string&, traits::range_value_forwarded_t<std::vector<std::string>&>>);
-    static_assert(std::is_same_v<const std::string&&, traits::range_value_forwarded_t<const std::vector<std::string>&&>>);
-  }
-  // mapped_value
-  {
-    static_assert(std::is_same_v<std::string, traits::mapped_value_t<std::set<std::string>>>);
-    static_assert(std::is_same_v<std::string, traits::mapped_value_t<std::unordered_map<int, std::string>>>);
-  }
-  // mapped_value_forwarded
-  {
-    static_assert(std::is_same_v<std::string&&, traits::mapped_value_forwarded_t<std::set<std::string>>>);
-    static_assert(std::is_same_v<std::string&, traits::mapped_value_forwarded_t<std::set<std::string>&>>);
-    static_assert(std::is_same_v<const std::string&, traits::mapped_value_forwarded_t<const std::set<std::string>&>>);
-    static_assert(std::is_same_v<std::string&&, traits::mapped_value_forwarded_t<std::unordered_map<int, std::string>>>);
-    static_assert(std::is_same_v<std::string&, traits::mapped_value_forwarded_t<std::unordered_map<int, std::string>&>>);
-    static_assert(std::is_same_v<const std::string&, traits::mapped_value_forwarded_t<const std::unordered_map<int, std::string>&>>);
-  }
-  // unique_types
-  {
-    static_assert(std::is_same_v<std::tuple<int, float>, traits::unique_types_t<int, float, int, float>>);
-    static_assert(std::is_same_v<std::tuple<float, int>, traits::unique_types_t<int, float, float, int>>);
-  }
-  // unique_derived_types
-  {
-    struct base {};
-    struct derived_a: base {};
-    struct derived_b: derived_a {};
-    struct derived_c: base {};
-
-    static_assert(std::is_same_v<std::tuple<derived_a>, traits::unique_derived_types_t<base, derived_a>>);
-    static_assert(std::is_same_v<std::tuple<derived_b>, traits::unique_derived_types_t<base, derived_a, derived_b>>);
-    static_assert(std::is_same_v<std::tuple<derived_b, derived_c>, traits::unique_derived_types_t<base, derived_a, derived_b, derived_c>>);
-  }
 }
 
 SCENARIO("convertible: Concepts")
