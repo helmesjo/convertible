@@ -503,7 +503,7 @@ SCENARIO("convertible: Operators")
         std::string& str_;
       };
       static_assert(!std::is_assignable_v<std::string&, proxy>);
-      static_assert(std_ext::castable_to<proxy&, std::string>);
+      static_assert(concepts::castable_to<proxy&, std::string>);
 
       auto lhs = std::string{ "hello" };
       std::string str = "world";

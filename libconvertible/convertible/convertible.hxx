@@ -50,13 +50,13 @@ namespace convertible
     return compose(identity(), FWD(inner)...);
   }
 
-  template<std_ext::member_ptr member_ptr_t>
+  template<concepts::member_ptr member_ptr_t>
   constexpr auto member(member_ptr_t ptr, concepts::readable<reader::member<member_ptr_t>> auto&&... adaptee)
   {
-    return adapter<std_ext::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., FWD(ptr));
+    return adapter<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., FWD(ptr));
   }
 
-  template<std_ext::member_ptr member_ptr_t>
+  template<concepts::member_ptr member_ptr_t>
   constexpr auto member(member_ptr_t&& ptr, concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {

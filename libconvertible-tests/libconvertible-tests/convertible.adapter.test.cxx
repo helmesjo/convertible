@@ -29,7 +29,7 @@ namespace
     operator type_m&&() &&             { return std::move(m); }
     type_m m;
   };
-  static_assert(std_ext::castable_to<type_implicitly_convertible_to_m&, type_m&>);
+  static_assert(convertible::concepts::castable_to<type_implicitly_convertible_to_m&, type_m&>);
 
   struct reader_invocable_with_type_m
   {
@@ -798,7 +798,7 @@ SCENARIO("convertible: Adapters (proxies)")
       std::string& str_;
     };
     static_assert(!std::is_assignable_v<std::string&, proxy>);
-    static_assert(std_ext::castable_to<proxy&, std::string>);
+    static_assert(concepts::castable_to<proxy&, std::string>);
 
     struct custom_reader
     {

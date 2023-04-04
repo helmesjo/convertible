@@ -27,7 +27,7 @@ namespace convertible::converter
 
     constexpr decltype(auto) operator()(auto&& obj) const
       requires std::is_assignable_v<to_t&, converted_t<decltype(obj)>>
-            || std_ext::castable_to<converted_t<decltype(obj)>, to_t>
+            || concepts::castable_to<converted_t<decltype(obj)>, to_t>
     {
       if constexpr(std::is_assignable_v<to_t&, converted_t<decltype(obj)>>)
       {

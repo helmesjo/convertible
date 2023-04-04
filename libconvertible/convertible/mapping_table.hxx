@@ -10,8 +10,8 @@ namespace convertible
 template<concepts::mapping... mapping_ts>
   struct mapping_table
   {
-    using lhs_unique_types = std_ext::unique_derived_ts<typename mapping_ts::lhs_adapter_t::adaptee_value_t...>;
-    using rhs_unique_types = std_ext::unique_derived_ts<typename mapping_ts::rhs_adapter_t::adaptee_value_t...>;
+    using lhs_unique_types = traits::unique_derived_ts<typename mapping_ts::lhs_adapter_t::adaptee_value_t...>;
+    using rhs_unique_types = traits::unique_derived_ts<typename mapping_ts::rhs_adapter_t::adaptee_value_t...>;
 
     constexpr lhs_unique_types defaulted_lhs() const
     {
