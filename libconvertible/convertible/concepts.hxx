@@ -118,9 +118,9 @@ namespace convertible
     concept adapter = traits::is_adapter_v<T>;
 
     template<typename arg_t, typename adapter_t>
-    concept adaptable = requires(adapter_t adapter, arg_t adaptee)
+    concept adaptable = requires(adapter_t&& adapter, arg_t&& adaptee)
     {
-      { adapter(adaptee) };
+      { FWD(adapter)(FWD(adaptee)) };
     };
 
     template<typename adapter_t>

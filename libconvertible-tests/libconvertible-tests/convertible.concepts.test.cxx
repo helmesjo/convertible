@@ -119,16 +119,108 @@ SCENARIO("convertible: Concepts")
 
   // adaptable:
   {
-    struct type
+    struct adapter_w_lvalue_arg
     {
-      float& operator()(float& a) { return a; }
-      double operator()(double& a) { return a; }
+      int& operator()(std::string);
+    };
+    struct adapter_w_lvalue_ref_arg
+    {
+      int& operator()(std::string&);
+    };
+    struct adapter_w_lvalue_const_ref_arg
+    {
+      int& operator()(const std::string&);
+    };
+    struct adapter_w_rvalue_ref_arg
+    {
+      int& operator()(std::string&&);
+    };
+    struct adapter_w_rvalue_const_ref_arg
+    {
+      int& operator()(const std::string&&);
     };
 
-    static_assert(concepts::adaptable<int, adapter<>>);
-    static_assert(concepts::adaptable<int, adapter<details::any, adapter<>>>);
-    static_assert(concepts::adaptable<float, type>);
-    static_assert(concepts::adaptable<double, type>);
+    // ref-qualifies call operators
+    struct adapter_lvalue_operator
+    {
+      int& operator()(std::string);
+    };
+    struct adapter_ref_operator
+    {
+      int& operator()(const std::string&) &;
+    };
+    struct adapter_const_ref_operator
+    {
+      int& operator()(const std::string&) const&;
+    };
+    struct adapter_rvalue_ref_operator
+    {
+      int& operator()(const std::string&) &&;
+    };
+    struct adapter_const_rvalue_ref_operator
+    {
+      int& operator()(const std::string&) const&&;
+    };
+
+    // arg qualifies
+    // lvalue
+    static_assert(concepts::adaptable<std::string, adapter_w_lvalue_arg>);
+    static_assert(concepts::adaptable<std::string&, adapter_w_lvalue_arg>);
+    static_assert(concepts::adaptable<std::string&&, adapter_w_lvalue_arg>);
+    static_assert(concepts::adaptable<const std::string&, adapter_w_lvalue_arg>);
+    static_assert(concepts::adaptable<const std::string&&, adapter_w_lvalue_arg>);
+    // lvalue ref
+    static_assert(!concepts::adaptable<std::string, adapter_w_lvalue_ref_arg>);
+    static_assert(concepts::adaptable<std::string&, adapter_w_lvalue_ref_arg>);
+    static_assert(!concepts::adaptable<std::string&&, adapter_w_lvalue_ref_arg>);
+    static_assert(!concepts::adaptable<const std::string&, adapter_w_lvalue_ref_arg>);
+    static_assert(!concepts::adaptable<const std::string&&, adapter_w_lvalue_ref_arg>);
+    // lvalue const ref
+    static_assert(concepts::adaptable<std::string, adapter_w_lvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<std::string&, adapter_w_lvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<std::string&&, adapter_w_lvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<const std::string&, adapter_w_lvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<const std::string&&, adapter_w_lvalue_const_ref_arg>);
+    // rvalue ref
+    static_assert(concepts::adaptable<std::string, adapter_w_rvalue_ref_arg>);
+    static_assert(!concepts::adaptable<std::string&, adapter_w_rvalue_ref_arg>);
+    static_assert(concepts::adaptable<std::string&&, adapter_w_rvalue_ref_arg>);
+    static_assert(!concepts::adaptable<const std::string&, adapter_w_rvalue_ref_arg>);
+    static_assert(!concepts::adaptable<const std::string&&, adapter_w_rvalue_ref_arg>);
+    // rvalue const ref
+    static_assert(concepts::adaptable<std::string, adapter_w_rvalue_const_ref_arg>);
+    static_assert(!concepts::adaptable<std::string&, adapter_w_rvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<std::string&&, adapter_w_rvalue_const_ref_arg>);
+    static_assert(!concepts::adaptable<const std::string&, adapter_w_rvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<const std::string&&, adapter_w_rvalue_const_ref_arg>);
+
+    // adapter qualifiers
+    // lvalue
+    static_assert(concepts::adaptable<std::string, adapter_lvalue_operator>);
+    // lvalue ref
+    static_assert(!concepts::adaptable<std::string, adapter_ref_operator>);
+    static_assert(concepts::adaptable<std::string, adapter_ref_operator&>);
+    static_assert(!concepts::adaptable<std::string, adapter_ref_operator const&>);
+    static_assert(!concepts::adaptable<std::string, adapter_ref_operator&&>);
+    static_assert(!concepts::adaptable<std::string, adapter_ref_operator const &&>);
+    // lvalue const ref
+    static_assert(concepts::adaptable<std::string, adapter_const_ref_operator>);
+    static_assert(concepts::adaptable<std::string, adapter_const_ref_operator&>);
+    static_assert(concepts::adaptable<std::string, adapter_const_ref_operator const&>);
+    static_assert(concepts::adaptable<std::string, adapter_const_ref_operator&&>);
+    static_assert(concepts::adaptable<std::string, adapter_const_ref_operator const &&>);
+    // rvalue ref
+    static_assert(concepts::adaptable<std::string, adapter_rvalue_ref_operator>);
+    static_assert(!concepts::adaptable<std::string, adapter_rvalue_ref_operator&>);
+    static_assert(!concepts::adaptable<std::string, adapter_rvalue_ref_operator const&>);
+    static_assert(concepts::adaptable<std::string, adapter_rvalue_ref_operator&&>);
+    static_assert(!concepts::adaptable<std::string, adapter_rvalue_ref_operator const &&>);
+    // rvalue const ref
+    static_assert(concepts::adaptable<std::string, adapter_const_rvalue_ref_operator>);
+    static_assert(!concepts::adaptable<std::string, adapter_const_rvalue_ref_operator&>);
+    static_assert(!concepts::adaptable<std::string, adapter_const_rvalue_ref_operator const&>);
+    static_assert(concepts::adaptable<std::string, adapter_const_rvalue_ref_operator&&>);
+    static_assert(concepts::adaptable<std::string, adapter_const_rvalue_ref_operator const &&>);
   }
 
   // mappable:
