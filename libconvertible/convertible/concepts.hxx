@@ -61,23 +61,23 @@ namespace convertible
     concept adaptee_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::adaptee_t, details::any>);
 
     template<typename mapping_t, typename lhs_t, typename rhs_t, direction dir>
-    concept mappable = requires(mapping_t map)
+    concept mappable = requires(mapping_t&& map)
     {
       requires (dir == direction::rhs_to_lhs
-                && requires { { map(std::declval<rhs_t>()) }; })
-                || requires { { map(std::declval<lhs_t>()) }; };
+                && requires { { FWD(map)(std::declval<rhs_t>()) }; })
+                || requires { { FWD(map)(std::declval<lhs_t>()) }; };
     };
 
     template<typename mapping_t, typename lhs_t, typename rhs_t, direction dir>
-    concept mappable_assign = requires(mapping_t map, lhs_t lhs, rhs_t rhs)
+    concept mappable_assign = requires(mapping_t&& map, lhs_t&& lhs, rhs_t&& rhs)
     {
-      map.template assign<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
+      FWD(map).template assign<dir>(FWD(lhs), FWD(rhs));
     };
 
     template<typename mapping_t, typename lhs_t, typename rhs_t, direction dir>
-    concept mappable_equal = requires(mapping_t map, lhs_t lhs, rhs_t rhs)
+    concept mappable_equal = requires(mapping_t&& map, lhs_t&& lhs, rhs_t&& rhs)
     {
-      map.template equal<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
+      FWD(map).template equal<dir>(FWD(lhs), FWD(rhs));
     };
 
     template<direction dir, typename lhs_t, typename rhs_t, typename converter_t>
@@ -87,9 +87,9 @@ namespace convertible
     };
 
     template<direction dir, typename lhs_t, typename rhs_t, typename converter_t>
-    concept equality_comparable_with_converted = requires(traits::lhs_t<dir, lhs_t, rhs_t> lhs, traits::converted_t<converter_t, traits::rhs_t<dir, lhs_t, rhs_t>> rhs)
+    concept equality_comparable_with_converted = requires(traits::lhs_t<dir, lhs_t, rhs_t>&& lhs, traits::converted_t<converter_t, traits::rhs_t<dir, lhs_t, rhs_t>>&& rhs)
     {
-      { lhs == rhs } -> std::convertible_to<bool>;
+      { FWD(lhs) == FWD(rhs) } -> std::convertible_to<bool>;
     };
   }
 
