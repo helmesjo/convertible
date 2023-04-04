@@ -42,20 +42,14 @@ namespace convertible
   namespace concepts
   {
     template<typename adaptee_t, typename reader_t>
-    concept readable = requires(reader_t reader, adaptee_t&& adaptee)
+    concept adaptable = requires(reader_t&& reader, adaptee_t&& adaptee)
     {
-      { reader(FWD(adaptee)) };
-      requires (!std::same_as<void, decltype(reader(FWD(adaptee)))>);
+      { FWD(reader)(FWD(adaptee)) };
+      requires (!std::same_as<void, decltype(FWD(reader)(FWD(adaptee)))>);
     };
 
     template<typename T>
     concept adapter = traits::is_adapter_v<T>;
-
-    template<typename arg_t, typename adapter_t>
-    concept adaptable = requires(adapter_t&& adapter, arg_t&& adaptee)
-    {
-      { FWD(adapter)(FWD(adaptee)) };
-    };
 
     template<typename adapter_t>
     concept adaptee_type_known = (adapter<adapter_t> && !std::same_as<typename adapter_t::adaptee_t, details::any>);

@@ -105,6 +105,15 @@ SCENARIO("convertible: Concepts")
     {
       int& operator()(const std::string&) const&&;
     };
+    struct type
+    {
+      int operator()(int);
+      void operator()(std::string);
+    };
+
+    // must return a value
+    static_assert(concepts::adaptable<int, type>);
+    static_assert(!concepts::adaptable<std::string, type>);
 
     // arg qualifies
     // lvalue

@@ -28,7 +28,7 @@ namespace convertible
 
   template<typename adaptee_t>
   constexpr auto custom(auto&& reader, adaptee_t&& adaptee)
-    requires concepts::readable<adaptee_t, decltype(reader)>
+    requires concepts::adaptable<adaptee_t, decltype(reader)>
   {
     return adapter(FWD(adaptee), FWD(reader));
   }
@@ -39,7 +39,7 @@ namespace convertible
     return compose(custom(FWD(reader)), FWD(inner)...);
   }
 
-  constexpr auto identity(concepts::readable<reader::identity<>> auto&&... adaptee)
+  constexpr auto identity(concepts::adaptable<reader::identity<>> auto&&... adaptee)
   {
     return adapter(FWD(adaptee)..., reader::identity<std::remove_reference_t<decltype(adaptee)>...>{});
   }
@@ -51,7 +51,7 @@ namespace convertible
   }
 
   template<concepts::member_ptr member_ptr_t>
-  constexpr auto member(member_ptr_t ptr, concepts::readable<reader::member<member_ptr_t>> auto&&... adaptee)
+  constexpr auto member(member_ptr_t ptr, concepts::adaptable<reader::member<member_ptr_t>> auto&&... adaptee)
   {
     return adapter<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., FWD(ptr));
   }
@@ -64,7 +64,7 @@ namespace convertible
   }
 
   template<details::const_value i>
-  constexpr auto index(concepts::readable<reader::index<i>> auto&&... adaptee)
+  constexpr auto index(concepts::adaptable<reader::index<i>> auto&&... adaptee)
   {
     return adapter(FWD(adaptee)..., reader::index<i>{});
   }
@@ -76,7 +76,7 @@ namespace convertible
     return compose(index<i>(), FWD(inner)...);
   }
 
-  constexpr auto deref(concepts::readable<reader::deref> auto&&... adaptee)
+  constexpr auto deref(concepts::adaptable<reader::deref> auto&&... adaptee)
   {
     return adapter(FWD(adaptee)..., reader::deref{});
   }
@@ -87,7 +87,7 @@ namespace convertible
     return compose(deref(), FWD(inner)...);
   }
 
-  constexpr auto maybe(concepts::readable<reader::maybe> auto&&... adaptee)
+  constexpr auto maybe(concepts::adaptable<reader::maybe> auto&&... adaptee)
   {
     return adapter(FWD(adaptee)..., reader::maybe{});
   }
@@ -100,7 +100,7 @@ namespace convertible
 
   template<std::size_t first, std::size_t last>
     requires (first <= last)
-  constexpr auto binary(concepts::readable<reader::binary<first, last>> auto&&... adaptee)
+  constexpr auto binary(concepts::adaptable<reader::binary<first, last>> auto&&... adaptee)
   {
     return adapter(FWD(adaptee)..., reader::binary<first, last>{});
   }
