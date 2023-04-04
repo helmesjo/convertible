@@ -261,19 +261,6 @@ SCENARIO("convertible: Concepts")
     static_assert(concepts::dereferencable<int> == false);
   }
 
-  // member_ptr:
-  {
-    struct type
-    {
-      int member;
-      double& fun(int, char*);
-    };
-
-    static_assert(concepts::member_ptr<decltype(&type::member)>);
-    static_assert(concepts::member_ptr<decltype(&type::fun)>);
-    static_assert(concepts::member_ptr<type> == false);
-  }
-
   // range
   {
     static_assert(concepts::range<int[2]>);

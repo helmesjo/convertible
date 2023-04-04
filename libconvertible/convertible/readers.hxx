@@ -2,6 +2,7 @@
 
 #include <convertible/concepts.hxx>
 #include <convertible/common.hxx>
+#include <convertible/std_concepts_ext.hxx>
 
 #include <cstring>
 #include <functional>
@@ -28,7 +29,7 @@ namespace convertible::reader
     }
   };
 
-  template<concepts::member_ptr member_ptr_t>
+  template<std_ext::member_ptr member_ptr_t>
   struct member
   {
     using class_t = traits::member_class_t<member_ptr_t>;

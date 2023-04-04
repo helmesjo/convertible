@@ -8,6 +8,8 @@
 #include <convertible/operators.hxx>
 #include <convertible/readers.hxx>
 
+#include <convertible/std_concepts_ext.hxx>
+
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
 namespace convertible
@@ -48,13 +50,13 @@ namespace convertible
     return compose(identity(), FWD(inner)...);
   }
 
-  template<concepts::member_ptr member_ptr_t>
+  template<std_ext::member_ptr member_ptr_t>
   constexpr auto member(member_ptr_t ptr, concepts::readable<reader::member<member_ptr_t>> auto&&... adaptee)
   {
     return adapter<traits::member_class_t<member_ptr_t>, reader::member<member_ptr_t>>(FWD(adaptee)..., FWD(ptr));
   }
 
-  template<concepts::member_ptr member_ptr_t>
+  template<std_ext::member_ptr member_ptr_t>
   constexpr auto member(member_ptr_t&& ptr, concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
