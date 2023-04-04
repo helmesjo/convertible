@@ -146,12 +146,6 @@ namespace convertible
       map.template equal<dir>(std::forward<lhs_t>(lhs), std::forward<rhs_t>(rhs));
     };
 
-    template<direction dir, typename callable_t, typename arg1_t, typename arg2_t, typename converter_t>
-    concept executable_with = requires(callable_t callable, traits::lhs_t<dir, arg1_t, arg2_t> l, traits::rhs_t<dir, arg1_t, arg2_t> r, converter_t converter)
-    {
-      { callable.template operator()<dir>(l, r, converter) };
-    };
-
     template<direction dir, typename lhs_t, typename rhs_t, typename converter_t>
     concept assignable_from_converted = requires(traits::lhs_t<dir, lhs_t, rhs_t> lhs, traits::converted_t<converter_t, traits::rhs_t<dir, lhs_t, rhs_t>> rhs)
     {
