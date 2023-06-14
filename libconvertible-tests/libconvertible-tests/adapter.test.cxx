@@ -1,8 +1,8 @@
 #include <convertible/convertible.hxx>
-#include <cstdint>
 #include <doctest/doctest.h>
 
 #include <array>
+#include <cstdint>
 #include <cstring>
 #include <optional>
 #include <string>
