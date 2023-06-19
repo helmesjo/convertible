@@ -8,7 +8,7 @@
 
 namespace convertible
 {
-template<concepts::adapter _lhs_adapter_t, concepts::adapter _rhs_adapter_t, typename _converter_t = converter::identity>
+  template<concepts::adapter _lhs_adapter_t, concepts::adapter _rhs_adapter_t, typename _converter_t = converter::identity>
   struct mapping
   {
     using lhs_adapter_t = _lhs_adapter_t;

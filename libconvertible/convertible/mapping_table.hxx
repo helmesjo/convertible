@@ -7,7 +7,7 @@
 
 namespace convertible
 {
-template<concepts::mapping... mapping_ts>
+  template<concepts::mapping... mapping_ts>
   struct mapping_table
   {
     using lhs_unique_types = traits::unique_derived_ts<typename mapping_ts::lhs_adapter_t::adaptee_value_t...>;
