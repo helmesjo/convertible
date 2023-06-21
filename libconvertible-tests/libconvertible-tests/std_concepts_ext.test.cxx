@@ -19,10 +19,19 @@ namespace member_meta
     double& fun(int, char*);
   };
 
-  static_assert(std::is_same_v<type, traits::member_class_t<decltype(&type::member)>>);
-  static_assert(std::is_same_v<int, traits::member_value_t<decltype(&type::member)>>);
-  static_assert(std::is_same_v<type, traits::member_class_t<decltype(&type::fun)>>);
+  static_assert(std::is_same_v<type,    traits::member_class_t<decltype(&type::member)>>);
+  static_assert(std::is_same_v<int,     traits::member_value_t<decltype(&type::member)>>);
+  static_assert(std::is_same_v<type,    traits::member_class_t<decltype(&type::fun)>>);
   static_assert(std::is_same_v<double&, traits::member_value_t<decltype(&type::fun)>>);
+}
+
+namespace as_container_t
+{
+  static_assert(std::is_same_v<std::vector<int>&,               traits::as_container_t<std::vector<std::string>&,             int>>);
+  static_assert(std::is_same_v<const std::vector<int>&,         traits::as_container_t<const std::vector<std::string>&,       int>>);
+  static_assert(std::is_same_v<std::list<int>&,                 traits::as_container_t<std::list<std::string>&,               int>>);
+  static_assert(std::is_same_v<std::set<float>&,                traits::as_container_t<std::set<std::string>&,                float>>);
+  static_assert(std::is_same_v<std::unordered_map<int, float>&, traits::as_container_t<std::unordered_map<int, std::string>&, float>>);
 }
 
 /* CONCEPTS */
@@ -39,7 +48,7 @@ namespace indexable
 {
   struct type { int operator[](std::size_t); int operator[](const char*); };
   static_assert(concepts::indexable<std::array<int, 1>&, decltype(details::const_value(1))>);
-  static_assert(concepts::indexable<type,               decltype(details::const_value("key"))>);
+  static_assert(concepts::indexable<type,                decltype(details::const_value("key"))>);
   static_assert(concepts::indexable<std::array<int, 1>>);
   static_assert(concepts::indexable<int*>);
   static_assert(!concepts::indexable<int>);

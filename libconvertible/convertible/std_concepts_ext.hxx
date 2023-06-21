@@ -153,6 +153,46 @@ namespace convertible
 
     template<concepts::associative_container cont_t>
     using mapped_value_forwarded_t = like_t<cont_t, mapped_value_t<cont_t>>;
+
+    namespace details
+    {
+      template<typename T>
+      struct container_meta
+      {
+      };
+
+      template<template<typename, typename...> typename cont_t, typename... _arg_ts>
+        requires concepts::sequence_container<cont_t<_arg_ts...>>
+      struct container_meta<cont_t<_arg_ts...>>
+      {
+        template<typename new_elem_t>
+        using with_elem_t = decltype(cont_t{std::declval<new_elem_t>()});
+      };
+
+      template<template<typename, typename...> typename cont_t, typename... _arg_ts>
+        requires concepts::associative_container<cont_t<_arg_ts...>>
+      struct container_meta<cont_t<_arg_ts...>>
+      {
+        template<typename new_elem_t>
+        using with_elem_t = decltype(cont_t{std::declval<new_elem_t>()});
+      };
+
+      template<template<typename, typename...> typename cont_t, typename... _arg_ts>
+        requires concepts::mapping_container<cont_t<_arg_ts...>>
+      struct container_meta<cont_t<_arg_ts...>>
+      {
+        using key_t = typename std::remove_reference_t<cont_t<_arg_ts...>>::key_type;
+
+        template<typename new_elem_t>
+        using with_elem_t = decltype(cont_t{std::declval<std::pair<key_t, new_elem_t>>()});
+      };
+    }
+
+    template<typename cont_t, typename new_elem_t>
+    using as_container_t =
+      traits::like_t<cont_t,
+        typename details::container_meta<std::remove_cvref_t<cont_t>>::template with_elem_t<new_elem_t>
+    >;
   }
 }
 
