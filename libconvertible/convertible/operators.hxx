@@ -44,30 +44,37 @@ namespace convertible::operators
     operator mapped_forward_t()
       requires concepts::mapping_container<container_t>
     {
-      return std::forward<mapped_forward_t>(cont_[key_]);
+      if constexpr(std::is_const_v<container_t>)
+      {
+        return std::forward<mapped_forward_t>(cont_.at(key_));
+      }
+      else
+      {
+        return std::forward<mapped_forward_t>(cont_[key_]);
+      }
     }
 
-    operator const_reference_t() const
+    operator const mapped_value_t&() const
+      requires concepts::mapping_container<container_t>
+    {
+      return cont_.find(key_)->second;
+    }
+
+    operator const mapped_value_t&() const
       requires (!concepts::mapping_container<container_t>)
     {
-      return std::forward<const_reference_t>(*cont_.find(key_));
+      return *cont_.find(key_);
     }
 
     auto& operator=(auto&& value)
-      requires requires
-               {
-                 this->inserter_ = { this->key_, FWD(value) };
-               }
+      requires requires { this->inserter_ = { this->key_, FWD(value) }; }
     {
       inserter_ = { key_, FWD(value) };
       return *this;
     }
 
     auto& operator=(auto&& value)
-      requires requires
-               {
-                 this->inserter_ = FWD(value);
-               }
+      requires requires { this->inserter_ = FWD(value); }
     {
       inserter_ = FWD(value);
       return *this;
