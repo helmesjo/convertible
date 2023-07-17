@@ -82,32 +82,33 @@ namespace castable_to
 
 namespace fixed_size_container
 {
-  static_assert(concepts::fixed_size_container<std::array<int, 1>>);
-  static_assert(concepts::fixed_size_container<int[1]>);
-  static_assert(!concepts::fixed_size_container<std::vector<int>>);
-  static_assert(!concepts::fixed_size_container<std::string>);
-  static_assert(!concepts::fixed_size_container<std::set<int>>);
+  static_assert(concepts::fixed_size_container<const std::array<int, 1>&>);
+  static_assert(concepts::fixed_size_container<const int[1]>);
+  static_assert(!concepts::fixed_size_container<const std::vector<int>&>);
+  static_assert(!concepts::fixed_size_container<const std::string&>);
+  static_assert(!concepts::fixed_size_container<const std::set<int>&>);
 }
 namespace sequence_container
 {
-  static_assert(concepts::sequence_container<std::array<int, 0>>);
-  static_assert(concepts::sequence_container<std::vector<int>>);
-  static_assert(concepts::sequence_container<std::list<int>>);
-  static_assert(!concepts::associative_container<std::array<int, 0>>);
-  static_assert(!concepts::associative_container<std::vector<int>>);
-  static_assert(!concepts::associative_container<std::list<int>>);
+  static_assert(concepts::sequence_container<const std::array<int, 0>&>);
+  static_assert(concepts::sequence_container<const std::vector<int>&>);
+  static_assert(concepts::sequence_container<const std::list<int>&>);
+  static_assert(!concepts::associative_container<const std::array<int, 0>&>);
+  static_assert(!concepts::associative_container<const std::vector<int>&>);
+  static_assert(!concepts::associative_container<const std::list<int>&>);
 }
 namespace associative_container
 {
-  static_assert(concepts::associative_container<std::set<int>>);
-  static_assert(concepts::associative_container<std::unordered_map<int, int>>);
-  static_assert(!concepts::sequence_container<std::set<int>>);
-  static_assert(!concepts::sequence_container<std::unordered_map<int, int>>);
+  static_assert(concepts::associative_container<const std::set<int>&>);
+  static_assert(concepts::associative_container<const std::unordered_map<int, int>&>);
+  static_assert(!concepts::sequence_container<const std::set<int>&>);
+  static_assert(!concepts::sequence_container<const std::unordered_map<int, int>&>);
 }
 namespace mapping_container
 {
-  static_assert(concepts::mapping_container<std::unordered_map<int, int>>);
-  static_assert(!concepts::mapping_container<std::set<int>>);
+  static_assert(concepts::mapping_container<const std::unordered_map<int, int>&>);
+  static_assert(concepts::mapping_container<const std::unordered_map<int, int>&>);
+  static_assert(!concepts::mapping_container<const std::set<int>&>);
 }
 
 namespace range_value_t

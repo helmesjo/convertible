@@ -29,11 +29,15 @@ TEST_CASE_TEMPLATE_DEFINE("it's invocable with types", arg_tuple_t, invocable_wi
   if constexpr(std::tuple_size_v<arg_tuple_t> > 3)
   {
     using converter_t = std::tuple_element_t<3, arg_tuple_t>;
-    static_assert(std::invocable<operator_t, lhs_t, rhs_t, converter_t>);
+    static_assert(std::invocable<operator_t, lhs_t&, rhs_t&, converter_t>);
+    static_assert(std::invocable<operator_t, lhs_t&, rhs_t&&, converter_t>);
+    static_assert(std::invocable<operator_t, lhs_t&, const rhs_t&, converter_t>);
   }
   else
   {
-    static_assert(std::invocable<operator_t, lhs_t, rhs_t>);
+    static_assert(std::invocable<operator_t, lhs_t&, rhs_t&>);
+    static_assert(std::invocable<operator_t, lhs_t&, rhs_t&&>);
+    static_assert(std::invocable<operator_t, lhs_t&, const rhs_t&>);
   }
 }
 
@@ -134,41 +138,22 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        int&,
-        int&
+        int,
+        int
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        int&,
-        const int&
+        enum_a,
+        enum_b
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        int&,
-        int&&
-      >,
-      std::tuple<
-        operators::assign,
-        int&,
-        const int&
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        enum_a&,
-        enum_b&
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        int&,
-        std::string&,
+        int,
+        std::string,
         int_string_converter
       >
     );
@@ -176,45 +161,45 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::array<int, 0>&,
-        std::array<int, 0>&
+        std::array<int, 0>,
+        std::array<int, 0>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::array<int, 0>&,
-        std::array<std::string, 0>&,
+        std::array<int, 0>,
+        std::array<std::string, 0>,
         int_string_converter
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::vector<int>&,
-        std::vector<int>&
+        std::vector<int>,
+        std::vector<int>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::vector<int>&,
-        std::vector<std::string>&,
+        std::vector<int>,
+        std::vector<std::string>,
         int_string_converter
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::list<int>&,
-        std::list<int>&
+        std::list<int>,
+        std::list<int>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::list<int>&,
-        std::list<std::string>&,
+        std::list<int>,
+        std::list<std::string>,
         int_string_converter
       >
     );
@@ -222,30 +207,30 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::set<int>&,
-        std::set<int>&
+        std::set<int>,
+        std::set<int>
       >
     );
     // TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
     //   std::tuple<
     //     operators::assign,
-    //     std::set<int>&,
-    //     std::set<std::string>&,
+    //     std::set<int>,
+    //     std::set<std::string>,
     //     int_string_converter
     //   >
     // );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::unordered_map<int, int>&,
-        std::unordered_map<int, int>&
+        std::unordered_map<int, int>,
+        std::unordered_map<int, int>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::assign,
-        std::unordered_map<int, int>&,
-        std::unordered_map<int, std::string>&,
+        std::unordered_map<int, int>,
+        std::unordered_map<int, std::string>,
         int_string_converter
       >
     );
@@ -524,82 +509,68 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        int&,
-        int&
+        int,
+        int
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        int&&,
-        int&&
+        enum_a,
+        enum_b
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        int&&,
-        int&
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        int&,
-        std::string&,
+        int,
+        std::string,
         int_string_converter
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        enum_a&,
-        enum_b&
       >
     );
     // sequence containers
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::array<int, 0>&,
-        std::array<int, 0>&
+        std::array<int, 0>,
+        std::array<int, 0>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::array<int, 0>&,
-        std::array<std::string, 0>&,
+        std::array<int, 0>,
+        std::array<std::string, 0>,
         int_string_converter
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::vector<int>&,
-        std::vector<int>&
+        std::vector<int>,
+        std::vector<int>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::vector<int>&,
-        std::vector<std::string>&,
+        std::vector<int>,
+        std::vector<std::string>,
         int_string_converter
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::list<int>&,
-        std::list<int>&
+        std::list<int>,
+        std::list<int>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::list<int>&,
-        std::list<std::string>&,
+        std::list<int>,
+        std::list<std::string>,
         int_string_converter
       >
     );
@@ -607,30 +578,30 @@ SCENARIO("convertible: Operators")
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::set<int>&,
-        std::set<int>&
+        std::set<int>,
+        std::set<int>
+      >
+    );
+    // TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+    //   std::tuple<
+    //     operators::equal,
+    //     std::set<int>,
+    //     std::set<std::string>,
+    //     int_string_converter
+    //   >
+    // );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::unordered_map<int, int>,
+        std::unordered_map<int, int>
       >
     );
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
         operators::equal,
-        std::set<int>&,
-        std::set<std::string>&,
-        int_string_converter
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::unordered_map<int, int>&,
-        std::unordered_map<int, int>&
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::unordered_map<int, int>&,
-        std::unordered_map<int, std::string>&,
+        std::unordered_map<int, int>,
+        std::unordered_map<int, std::string>,
         int_string_converter
       >
     );
