@@ -103,11 +103,17 @@ namespace convertible
       requires (decltype(std::span{ c })::extent != std::dynamic_extent);
     });
 
+    template<typename cont_t>
+    concept resizable_container = range<cont_t> && requires(std::remove_reference_t<cont_t> c)
+    {
+      c.resize(std::size_t{0});
+    };
+
     // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
     concept sequence_container = range<cont_t>
-      && requires(cont_t c){ { c.size() }; }
-      && (requires(cont_t c){ { c.data() }; } || requires(cont_t c){ { c.resize(0) }; });
+      && requires(cont_t c){ { std::size(c) }; }
+      && (requires(cont_t c){ { std::data(c) }; } || requires(std::remove_cvref_t<cont_t> c){ { c.resize(0) }; });
 
     // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
@@ -120,12 +126,6 @@ namespace convertible
     concept mapping_container = associative_container<cont_t> && requires
     {
       typename std::remove_cvref_t<cont_t>::mapped_type;
-    };
-
-    template<typename cont_t>
-    concept resizable_container = range<cont_t> && requires(std::remove_reference_t<cont_t> container)
-    {
-      container.resize(std::size_t{0});
     };
   }
 
