@@ -171,6 +171,7 @@ namespace convertible
 
       template<template<typename, typename...> typename cont_t, typename... _arg_ts>
         requires concepts::associative_container<cont_t<_arg_ts...>>
+              && (!concepts::mapping_container<cont_t<_arg_ts...>>)
       struct container_meta<cont_t<_arg_ts...>>
       {
         template<typename new_elem_t>
