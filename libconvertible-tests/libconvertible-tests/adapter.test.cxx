@@ -654,39 +654,42 @@ SCENARIO("convertible: Adapters")
     struct type_a
     {
       bool operator==(const type_a&) const = default;
-      // std::string& operator*() &
-      // {
-      //   return val;
-      // }
-      // // support 'move from' deref
-      // std::string&& operator*() &&
-      // {
-      //   return std::move(val);
-      // }
-      std::optional<std::string> val;
+      std::string& operator*() &
+      {
+        return val;
+      }
+      // support 'move from' deref
+      std::string&& operator*() &&
+      {
+        return std::move(val);
+      }
+      std::string val{};
+    };
+    struct type_b
+    {
+      bool operator==(const type_b&) const = default;
+      type_a a{};
     };
 
-    type_a adaptee = type_a{"hello"};
-    auto innerAdapter = member(&type_a::val, adaptee);
-    auto middleAdapter = maybe();
+    type_b adaptee = {type_a{"hello"}};
+    auto innerAdapter = member(&type_b::a, adaptee);
     auto outerAdapter = deref();
-    // auto adapter = compose(outerAdapter, middleAdapter, innerAdapter);
-    auto adapter = deref(maybe(member(&type_a::val, adaptee)));
-    static_assert(concepts::adaptable<type_a, decltype(adapter)>);
+    auto adapter = compose(outerAdapter, innerAdapter);
+    static_assert(concepts::adaptable<type_b, decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
-    // static_assert(!concepts::adaptable<type_a, decltype(adapter)>);
+    static_assert(!concepts::adaptable<type_a, decltype(adapter)>);
 
     THEN("it's constexpr constructible")
     {
       struct type_x{ int* x; };
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = compose(deref(), maybe(), member(&type_x::x, tmp));
+      static constexpr auto constexprAdapter = compose(deref(), member(&type_x::x, tmp));
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
     {
       adapter(adaptee) = "world";
-      REQUIRE(adaptee.val == "world");
+      REQUIRE(adaptee.a.val == "world");
     }
     THEN("it implicitly converts to type")
     {
@@ -697,7 +700,7 @@ SCENARIO("convertible: Adapters")
     {
       const std::string movedTo = adapter(std::move(adaptee));
       REQUIRE(movedTo == "hello");
-      REQUIRE(adaptee.val == "");
+      REQUIRE(adaptee.a.val == "");
 
       std::string fromStr = "world";
       adapter(adaptee) = std::move(fromStr);
@@ -712,8 +715,8 @@ SCENARIO("convertible: Adapters")
     {
       auto copy = adapter.defaulted_adaptee();
       static_assert(std::same_as<decltype(copy), typename decltype(adapter)::adaptee_value_t>);
-      INFO("adaptee.val: ", *adaptee.val);
-      INFO("copy.val: ", *copy.val);
+      INFO("adaptee.a.val: ", adaptee.a.val);
+      INFO("copy.a.val: ", copy.a.val);
       REQUIRE(copy == adaptee);
     }
   }
