@@ -95,9 +95,14 @@ namespace convertible::reader
       auto& object_or_defaulted()
       {
         if(obj_)
+        {
           return obj_;
+        }
         else
-          return defaulted_;
+        {
+          thread_local std::remove_reference_t<object_t> defaulted;
+          return defaulted = value_t{};
+        }
       }
       const auto& object_or_defaulted() const
       {
@@ -106,15 +111,7 @@ namespace convertible::reader
 
       decltype(auto) operator*()
       {
-        if(obj_)
-        {
-          return *std::forward<object_t>(obj_);
-        }
-        else
-        {
-          defaulted_ = value_t{};
-          return *std::forward<object_t>(defaulted_);
-        }
+        return *std::forward<object_t>(object_or_defaulted());
       }
 
       constexpr operator object_t&() { return object_or_defaulted(); }
@@ -126,8 +123,6 @@ namespace convertible::reader
       decltype(auto) operator=(auto&& rhs) { return obj_ = FWD(rhs); }
 
       object_ref_t obj_;
-      value_t defaultedValue_{};
-      std::remove_reference_t<object_t> defaulted_{ value_t{} };
     };
     template<concepts::dereferencable obj_t>
     maybe_wrapper(obj_t&& obj) -> maybe_wrapper<decltype(obj)>;
