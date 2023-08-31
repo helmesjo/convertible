@@ -104,7 +104,7 @@ namespace convertible::operators
             || requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
     {
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
-      if constexpr(concepts::mapping<converter_t>)
+      if constexpr(requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
       {
         (void)from;
         converter.template assign<dir>(FWD(lhs), FWD(rhs));
