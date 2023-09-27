@@ -125,6 +125,20 @@ namespace convertible::operators
       concepts::sequence_container rhs_t,
       typename converter_t = converter::identity
     >
+    constexpr auto assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+      -> decltype(assign<dir>(FWD(lhs), FWD(rhs), converter))
+      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
+            && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
+               {
+                 assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+               };
+
+    template<
+      direction dir = direction::rhs_to_lhs,
+      concepts::sequence_container lhs_t,
+      concepts::sequence_container rhs_t,
+      typename converter_t = converter::identity
+    >
     constexpr decltype(auto) assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
       requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
             && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
@@ -159,6 +173,20 @@ namespace convertible::operators
 
       return FWD(to);
     }
+
+    template<
+      direction dir = direction::rhs_to_lhs,
+      concepts::associative_container lhs_t,
+      concepts::associative_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr auto assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+      -> decltype(assign<dir>(FWD(lhs), FWD(rhs), converter))
+      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
+            && requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
+               {
+                 assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+               };
 
     template<
       direction dir = direction::rhs_to_lhs,
@@ -207,43 +235,10 @@ namespace convertible::operators
       direction dir = direction::rhs_to_lhs,
       typename lhs_t,
       typename rhs_t,
-      typename converter_t = converter::identity,
-      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
-    >
-    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
-      requires requires{ details::assign<dir, decltype(lhs), decltype(rhs), converter_t, cast_t>(FWD(lhs), FWD(rhs), converter); }
-    {
-      return details::assign<dir, decltype(lhs), decltype(rhs), converter_t, cast_t>(FWD(lhs), FWD(rhs), converter);
-    }
-
-    template<
-      direction dir = direction::rhs_to_lhs,
-      concepts::sequence_container lhs_t,
-      concepts::sequence_container rhs_t,
       typename converter_t = converter::identity
     >
     constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
-      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
-            && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
-               {
-                 details::assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
-               }
-    {
-      return details::assign<dir>(FWD(lhs), FWD(rhs), converter);
-    }
-
-    template<
-      direction dir = direction::rhs_to_lhs,
-      concepts::associative_container lhs_t,
-      concepts::associative_container rhs_t,
-      typename converter_t = converter::identity
-    >
-    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
-      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
-            && requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
-               {
-                 details::assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
-               }
+      requires requires{ details::assign<dir>(FWD(lhs), FWD(rhs), converter); }
     {
       return details::assign<dir>(FWD(lhs), FWD(rhs), converter);
     }
