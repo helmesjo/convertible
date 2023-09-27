@@ -93,13 +93,16 @@ namespace convertible::operators
       return std::forward_as_tuple(FWD(rhs), FWD(lhs));
   }
 
-  struct assign
+  namespace details
   {
-    // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, typename lhs_t, typename rhs_t,
+    template<
+      direction dir = direction::rhs_to_lhs,
+      typename lhs_t,
+      typename rhs_t,
       typename converter_t = converter::identity,
-      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>
-    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
+    >
+    constexpr decltype(auto) assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
       requires (concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), cast_t>
             || requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
     {
@@ -116,14 +119,17 @@ namespace convertible::operators
       return FWD(to);
     }
 
-    // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
-      typename converter_t = converter::identity>
-    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+    template<
+      direction dir = direction::rhs_to_lhs,
+      concepts::sequence_container lhs_t,
+      concepts::sequence_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr decltype(auto) assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
       requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
             && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
                {
-                 this->template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+                 assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
     {
       // 1. figure out 'from' & 'to'
@@ -142,8 +148,8 @@ namespace convertible::operators
       auto end = std::begin(rhs);
       std::advance(end, size);
       std::for_each(std::begin(rhs), end,
-        [this, lhsItr = std::begin(lhs), &converter](auto&& rhsElem) mutable {
-          this->template operator()<dir>(
+        [lhsItr = std::begin(lhs), &converter](auto&& rhsElem) mutable {
+          assign<dir>(
             std::forward<traits::range_value_forwarded_t<decltype(lhs)>>(*lhsItr++),
             std::forward<traits::range_value_forwarded_t<decltype(rhs)>>(FWD(rhsElem)),
             converter
@@ -154,14 +160,17 @@ namespace convertible::operators
       return FWD(to);
     }
 
-    // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
-      typename converter_t = converter::identity>
-    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+    template<
+      direction dir = direction::rhs_to_lhs,
+      concepts::associative_container lhs_t,
+      concepts::associative_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr decltype(auto) assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
       requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
             && requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
                {
-                 this->template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+                 assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
     {
       // 1. figure out 'from', and use that as 'key range'
@@ -173,14 +182,14 @@ namespace convertible::operators
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
       to.clear();
       std::for_each(std::begin(from), std::end(from),
-        [this, &lhs, &rhs, &converter](auto&& key) mutable {
+        [&lhs, &rhs, &converter](auto&& key) mutable {
           auto lhsInserter = associative_inserter(FWD(lhs), key);
           auto rhsInserter = associative_inserter(FWD(rhs), key);
           using lhs_inserter_forward_t = traits::like_t<decltype(lhs), decltype(lhsInserter)>;
           using rhs_inserter_forward_t = traits::like_t<decltype(rhs), decltype(rhsInserter)>;
           using to_mapped_t = traits::mapped_value_t<traits::lhs_t<dir, decltype(lhs), decltype(rhs)>>;
           using cast_t = explicit_cast<to_mapped_t, converter_t>;
-          this->template operator()<dir, lhs_inserter_forward_t, rhs_inserter_forward_t, converter_t, cast_t>(
+          assign<dir, lhs_inserter_forward_t, rhs_inserter_forward_t, converter_t, cast_t>(
             std::forward<lhs_inserter_forward_t>(lhsInserter),
             std::forward<rhs_inserter_forward_t>(rhsInserter),
             converter
@@ -189,6 +198,54 @@ namespace convertible::operators
       );
 
       return FWD(to);
+    }
+  }
+
+  struct assign
+  {
+    template<
+      direction dir = direction::rhs_to_lhs,
+      typename lhs_t,
+      typename rhs_t,
+      typename converter_t = converter::identity,
+      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
+    >
+    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      requires requires{ details::assign<dir, decltype(lhs), decltype(rhs), converter_t, cast_t>(FWD(lhs), FWD(rhs), converter); }
+    {
+      return details::assign<dir, decltype(lhs), decltype(rhs), converter_t, cast_t>(FWD(lhs), FWD(rhs), converter);
+    }
+
+    template<
+      direction dir = direction::rhs_to_lhs,
+      concepts::sequence_container lhs_t,
+      concepts::sequence_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
+            && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
+               {
+                 details::assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+               }
+    {
+      return details::assign<dir>(FWD(lhs), FWD(rhs), converter);
+    }
+
+    template<
+      direction dir = direction::rhs_to_lhs,
+      concepts::associative_container lhs_t,
+      concepts::associative_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
+            && requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
+               {
+                 details::assign<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+               }
+    {
+      return details::assign<dir>(FWD(lhs), FWD(rhs), converter);
     }
   };
 
