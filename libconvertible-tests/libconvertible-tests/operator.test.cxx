@@ -203,6 +203,15 @@ SCENARIO("convertible: Operators")
         int_string_converter
       >
     );
+    // sequence containers (recursive)
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::assign,
+        std::vector<std::vector<int>>,
+        std::vector<std::vector<std::string>>,
+        int_string_converter
+      >
+    );
     // associative containers
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
@@ -234,6 +243,15 @@ SCENARIO("convertible: Operators")
         int_string_converter
       >
     );
+    // associative containers (recursion)
+    // TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+    //   std::tuple<
+    //     operators::assign,
+    //     std::unordered_map<int, std::unordered_map<int, int>>,
+    //     std::unordered_map<int, std::unordered_map<int, std::string>>,
+    //     int_string_converter
+    //   >
+    // );
 
     WHEN("lhs int, rhs int")
     {
