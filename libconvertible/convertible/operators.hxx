@@ -1,5 +1,6 @@
 #pragma once
 
+#include "convertible/std_concepts_compat.hxx"
 #include <convertible/concepts.hxx>
 #include <convertible/converters.hxx>
 
@@ -247,32 +248,62 @@ namespace convertible::operators
 
       return FWD(to);
     }
-  }
 
-  struct assign
-  {
     template<
-      direction dir = direction::rhs_to_lhs,
+      direction dir,
       typename lhs_t,
       typename rhs_t,
+      typename converter_t = converter::identity,
+      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
+    >
+    constexpr auto equal_dummy(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
+      -> std::enable_if_t<
+        (concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), cast_t> ||
+        requires{ converter.template equal<dir>(FWD(lhs), FWD(rhs)); }),
+        bool
+    >;
+
+    template<
+      direction dir,
+      concepts::sequence_container lhs_t,
+      concepts::sequence_container rhs_t,
       typename converter_t = converter::identity
     >
-    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
-      requires requires{ details::assign<dir>(FWD(lhs), FWD(rhs), converter); }
-    {
-      return details::assign<dir>(FWD(lhs), FWD(rhs), converter);
-    }
-  };
+    constexpr auto equal_dummy(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
+      -> std::enable_if_t<
+        ((!concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>) &&
+        requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
+        {
+          equal_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+        }),
+        bool
+    >;
 
-  struct equal
-  {
-    // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, typename lhs_t, typename rhs_t,
+    template<
+      direction dir,
+      concepts::associative_container lhs_t,
+      concepts::associative_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr auto equal_dummy(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
+      -> std::enable_if_t<
+        ((!concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>) &&
+        requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
+        {
+          equal_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+        }),
+        bool
+    >;
+
+    template<
+      direction dir,
+      typename lhs_t,
+      typename rhs_t,
       typename converter_t = converter::identity,
-      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>
-    constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t&& converter = {}) const
-      requires (concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), cast_t>
-            || requires{ converter.template equal<dir>(FWD(lhs), FWD(rhs)); })
+      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
+    >
+    constexpr bool equal(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+      requires requires{ equal_dummy<dir, lhs_t, rhs_t, converter_t, cast_t>(FWD(lhs), FWD(rhs), converter); }
     {
       if constexpr(concepts::mapping<converter_t>)
       {
@@ -285,15 +316,17 @@ namespace convertible::operators
       }
     }
 
-    // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t, concepts::sequence_container rhs_t,
-      typename converter_t = converter::identity,
-      typename cast_t = explicit_cast<traits::range_value_t<lhs_t>, converter_t>>
-    constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
-      requires (!concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<lhs_t, converter_t>>)
+    template<
+      direction dir,
+      concepts::sequence_container lhs_t,
+      concepts::sequence_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr bool equal(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+      requires (!requires{ equal<dir>(FWD(lhs), FWD(rhs), converter); })
             && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
                {
-                 this->template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+                 equal_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
     {
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
@@ -313,8 +346,8 @@ namespace convertible::operators
       (void)from;
 
       return std::equal(std::cbegin(lhs), std::cend(lhs), std::cbegin(rhs),
-        [this, &converter](const auto& lhs, const auto& rhs){
-          return this->template operator()<dir>(
+        [&converter](auto&& lhs, auto&& rhs){
+          return equal<dir>(
                    FWD(lhs),
                    FWD(rhs),
                    converter
@@ -322,26 +355,64 @@ namespace convertible::operators
         });
     }
 
-    // Workaround for MSVC bug: https://developercommunity.visualstudio.com/t/decltype-on-autoplaceholder-parameters-deduces-wro/1594779
-    template<direction dir = direction::rhs_to_lhs, concepts::associative_container lhs_t, concepts::associative_container rhs_t,
-      typename converter_t = converter::identity,
-      typename cast_t = explicit_cast<traits::mapped_value_t<lhs_t>, converter_t>>
-    constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
-      requires (!concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<lhs_t, converter_t>>)
+    template<
+      direction dir,
+      concepts::associative_container lhs_t,
+      concepts::associative_container rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr bool equal(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+      requires (!requires{ equal<dir>(FWD(lhs), FWD(rhs), converter); })
             && requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
                {
-                 this->template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+                 equal_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
     {
-      return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
-        [this, &converter](const auto& lhs, const auto& rhs){
+      return std::equal(std::cbegin(lhs), std::cend(lhs), std::cbegin(rhs),
+        [&converter](auto&& lhs, auto&& rhs){
           // key-value pair (map etc.)
           if constexpr(concepts::mapping_container<rhs_t>)
-            return lhs.first == rhs.first && this->template operator()<dir>(lhs.second, rhs.second, converter);
+            return lhs.first
+                   ==
+                   rhs.first && equal<dir>(
+                                  std::forward_like<decltype(lhs)>(lhs.second),
+                                  std::forward_like<decltype(lhs)>(rhs.second),
+                                  converter
+                                );
           // value (set etc.)
           else
-            return this->template operator()<dir>(lhs, rhs, converter);
+            return equal<dir>(FWD(lhs), FWD(rhs), converter);
         });
+    }
+  }
+
+  struct assign
+  {
+    template<
+      direction dir = direction::rhs_to_lhs,
+      typename lhs_t,
+      typename rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      requires requires{ details::assign<dir>(FWD(lhs), FWD(rhs), converter); }
+    {
+      return details::assign<dir>(FWD(lhs), FWD(rhs), converter);
+    }
+  };
+
+  struct equal
+  {
+    template<
+      direction dir = direction::rhs_to_lhs,
+      typename lhs_t,
+      typename rhs_t,
+      typename converter_t = converter::identity
+    >
+    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+      requires requires{ details::equal<dir>(FWD(lhs), FWD(rhs), converter); }
+    {
+      return details::equal<dir>(FWD(lhs), FWD(rhs), converter);
     }
   };
 }

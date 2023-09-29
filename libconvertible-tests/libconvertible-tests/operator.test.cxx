@@ -592,6 +592,15 @@ SCENARIO("convertible: Operators")
         int_string_converter
       >
     );
+    // sequence containers (recursive)
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
+      std::tuple<
+        operators::equal,
+        std::vector<std::vector<int>>,
+        std::vector<std::vector<std::string>>,
+        int_string_converter
+      >
+    );
     // associative containers
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
       std::tuple<
