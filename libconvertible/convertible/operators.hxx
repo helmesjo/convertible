@@ -149,8 +149,7 @@ namespace convertible::operators
       typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
     >
     constexpr decltype(auto) assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
-      requires (concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), cast_t>
-            || requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
+      requires requires{ assign_dummy<dir, lhs_t, rhs_t, converter_t, cast_t>(FWD(lhs), FWD(rhs), converter); }
     {
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
       if constexpr(requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
@@ -172,7 +171,7 @@ namespace convertible::operators
       typename converter_t = converter::identity
     >
     constexpr decltype(auto) assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
-      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
+      requires (!requires{ assign<dir>(FWD(lhs), FWD(rhs), converter); })
             && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
                {
                  assign_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
@@ -213,7 +212,7 @@ namespace convertible::operators
       typename converter_t = converter::identity
     >
     constexpr decltype(auto) assign(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
-      requires (!concepts::assignable_from_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>)
+      requires (!requires{ assign<dir>(FWD(lhs), FWD(rhs), converter); })
             && requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
                {
                  assign_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
