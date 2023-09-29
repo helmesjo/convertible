@@ -302,7 +302,7 @@ namespace convertible::operators
       typename converter_t = converter::identity,
       typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
     >
-    constexpr bool equal(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+    constexpr bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
       requires requires{ equal_dummy<dir, lhs_t, rhs_t, converter_t, cast_t>(FWD(lhs), FWD(rhs), converter); }
     {
       if constexpr(concepts::mapping<converter_t>)
@@ -322,7 +322,7 @@ namespace convertible::operators
       concepts::sequence_container rhs_t,
       typename converter_t = converter::identity
     >
-    constexpr bool equal(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+    constexpr bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
       requires (!requires{ equal<dir>(FWD(lhs), FWD(rhs), converter); })
             && requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
                {
@@ -361,7 +361,7 @@ namespace convertible::operators
       concepts::associative_container rhs_t,
       typename converter_t = converter::identity
     >
-    constexpr bool equal(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+    constexpr bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
       requires (!requires{ equal<dir>(FWD(lhs), FWD(rhs), converter); })
             && requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
                {
@@ -372,13 +372,12 @@ namespace convertible::operators
         [&converter](auto&& lhs, auto&& rhs){
           // key-value pair (map etc.)
           if constexpr(concepts::mapping_container<rhs_t>)
-            return lhs.first
-                   ==
-                   rhs.first && equal<dir>(
-                                  std::forward_like<decltype(lhs)>(lhs.second),
-                                  std::forward_like<decltype(lhs)>(rhs.second),
-                                  converter
-                                );
+            return lhs.first == rhs.first &&
+                    equal<dir>(
+                      std::forward_like<decltype(lhs)>(lhs.second),
+                      std::forward_like<decltype(lhs)>(rhs.second),
+                      converter
+                    );
           // value (set etc.)
           else
             return equal<dir>(FWD(lhs), FWD(rhs), converter);
@@ -409,7 +408,7 @@ namespace convertible::operators
       typename rhs_t,
       typename converter_t = converter::identity
     >
-    constexpr decltype(auto) operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
+    constexpr decltype(auto) operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {}) const
       requires requires{ details::equal<dir>(FWD(lhs), FWD(rhs), converter); }
     {
       return details::equal<dir>(FWD(lhs), FWD(rhs), converter);
