@@ -80,6 +80,22 @@ namespace convertible::operators
       inserter_ = FWD(value);
       return *this;
     }
+
+    template<typename container_t_, typename mapped_value_forwarded_t_, template <typename, typename> typename associative_inserter_t>
+    auto& operator=(associative_inserter_t<container_t_, mapped_value_forwarded_t_>&& inserter)
+      requires requires { this->inserter_ = { this->key_, std::declval<mapped_value_forwarded_t_>() }; }
+    {
+      inserter_ = { key_, static_cast<mapped_value_forwarded_t_>(inserter) };
+      return *this;
+    }
+
+    template<typename container_t_, typename mapped_value_forwarded_t_, template <typename, typename> typename associative_inserter_t>
+    auto& operator=(associative_inserter_t<container_t_, mapped_value_forwarded_t_>&& inserter)
+      requires requires { this->inserter_ = std::declval<mapped_value_forwarded_t_>(); }
+    {
+      inserter_ = static_cast<mapped_value_forwarded_t_>(inserter);
+      return *this;
+    }
   };
   template<concepts::associative_container cont_t>
   associative_inserter(cont_t&& cont, auto&&)
@@ -232,15 +248,9 @@ namespace convertible::operators
       to.clear();
       std::for_each(std::begin(from), std::end(from),
         [&lhs, &rhs, &converter](auto&& key) mutable {
-          auto lhsInserter = associative_inserter(FWD(lhs), key);
-          auto rhsInserter = associative_inserter(FWD(rhs), key);
-          using lhs_inserter_forward_t = traits::like_t<decltype(lhs), decltype(lhsInserter)>;
-          using rhs_inserter_forward_t = traits::like_t<decltype(rhs), decltype(rhsInserter)>;
-          using to_mapped_t = traits::mapped_value_t<traits::lhs_t<dir, decltype(lhs), decltype(rhs)>>;
-          using cast_t = explicit_cast<to_mapped_t, converter_t>;
-          assign<dir, lhs_inserter_forward_t, rhs_inserter_forward_t, converter_t, cast_t>(
-            std::forward<lhs_inserter_forward_t>(lhsInserter),
-            std::forward<rhs_inserter_forward_t>(rhsInserter),
+          assign<dir>(
+            std::forward_like<decltype(lhs)>(associative_inserter(FWD(lhs), key)),
+            std::forward_like<decltype(rhs)>(associative_inserter(FWD(rhs), key)),
             converter
           );
         }
