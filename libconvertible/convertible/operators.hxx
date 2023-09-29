@@ -296,20 +296,29 @@ namespace convertible::operators
                  this->template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
     {
-      if constexpr(dir == direction::rhs_to_lhs && concepts::resizable_container<lhs_t>)
+      auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+      if constexpr(!concepts::resizable_container<std::remove_cvref_t<decltype(to)>>
+                 && concepts::resizable_container<std::remove_cvref_t<decltype(from)>>)
       {
-        if(lhs.size() != rhs.size())
+        if(to.size() > from.size())
           return false;
       }
-      if constexpr(dir == direction::lhs_to_rhs && concepts::resizable_container<rhs_t>)
+      if constexpr(!concepts::resizable_container<std::remove_cvref_t<decltype(from)>>
+                 && concepts::resizable_container<std::remove_cvref_t<decltype(to)>>)
       {
-        if(lhs.size() != rhs.size())
+        if(to.size() < from.size())
           return false;
       }
+      (void)to;
+      (void)from;
 
-      return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
+      return std::equal(std::cbegin(lhs), std::cend(lhs), std::cbegin(rhs),
         [this, &converter](const auto& lhs, const auto& rhs){
-          return this->template operator()<dir>(lhs, rhs, converter);
+          return this->template operator()<dir>(
+                   FWD(lhs),
+                   FWD(rhs),
+                   converter
+                 );
         });
     }
 
