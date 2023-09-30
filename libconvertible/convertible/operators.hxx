@@ -1,6 +1,5 @@
 #pragma once
 
-#include "convertible/std_concepts_compat.hxx"
 #include <convertible/concepts.hxx>
 #include <convertible/converters.hxx>
 
@@ -273,13 +272,23 @@ namespace convertible::operators
       direction dir,
       typename lhs_t,
       typename rhs_t,
-      typename converter_t = converter::identity,
-      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
+      typename converter_t = converter::identity
+    >
+    concept equality_comparable_with_converted = 
+      (concepts::equality_comparable_with_converted<dir, lhs_t, rhs_t, explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>> ||
+      requires (lhs_t&& lhs, rhs_t&& rhs, converter_t converter){
+        converter.template equal<dir>(FWD(lhs), FWD(rhs));
+      });
+
+    template<
+      direction dir,
+      typename lhs_t,
+      typename rhs_t,
+      typename converter_t = converter::identity
     >
     constexpr auto equal_dummy(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
       -> std::enable_if_t<
-        (concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), cast_t> ||
-        requires{ converter.template equal<dir>(FWD(lhs), FWD(rhs)); }),
+        equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>,
         bool
     >;
 
@@ -291,11 +300,11 @@ namespace convertible::operators
     >
     constexpr auto equal_dummy(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
       -> std::enable_if_t<
-        ((!concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>) &&
+        (!requires{ equal_dummy<dir>(FWD(lhs), FWD(rhs), converter); }) &&
         requires(traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
         {
           equal_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
-        }),
+        },
         bool
     >;
 
@@ -307,11 +316,11 @@ namespace convertible::operators
     >
     constexpr auto equal_dummy(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
       -> std::enable_if_t<
-        ((!concepts::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>>) &&
+        (!requires{ equal_dummy<dir>(FWD(lhs), FWD(rhs), converter); }) &&
         requires(traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
         {
           equal_dummy<dir>(FWD(lhsElem), FWD(rhsElem), converter);
-        }),
+        },
         bool
     >;
 
@@ -319,11 +328,10 @@ namespace convertible::operators
       direction dir,
       typename lhs_t,
       typename rhs_t,
-      typename converter_t = converter::identity,
-      typename cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>
+      typename converter_t = converter::identity
     >
     constexpr bool equal(const lhs_t& lhs, const rhs_t& rhs, converter_t converter = {})
-      requires requires{ equal_dummy<dir, lhs_t, rhs_t, converter_t, cast_t>(FWD(lhs), FWD(rhs), converter); }
+      requires equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>
     {
       if constexpr(concepts::mapping<converter_t>)
       {
@@ -331,6 +339,7 @@ namespace convertible::operators
       }
       else
       {
+        using cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>;
         auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
         return FWD(to) == cast_t(converter)(FWD(from));
       }
