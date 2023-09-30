@@ -19,18 +19,6 @@ SCENARIO("convertible: Converters")
 {
   using namespace convertible;
 
-  struct int_string_converter
-  {
-    int operator()(std::string s) const
-    {
-      return std::stoi(s);
-    }
-    std::string operator()(int i) const
-    {
-      return std::to_string(i);
-    }
-  } intStringConverter;
-
   enum class enum_a{};
   enum class enum_b{};
 
