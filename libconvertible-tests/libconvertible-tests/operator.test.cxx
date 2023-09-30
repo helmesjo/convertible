@@ -1,4 +1,5 @@
 #include <convertible/operators.hxx>
+#include <libconvertible-tests/test_common.hxx>
 #include <doctest/doctest.h>
 
 #include <array>
@@ -465,54 +466,11 @@ SCENARIO("convertible: Operators")
     }
     WHEN("lhs is std::string, rhs is string proxy type")
     {
-      struct proxy
-      {
-        explicit proxy(std::string& str) :
-          str_(str)
-        {}
-
-        explicit operator std::string() const
-        {
-          return str_;
-        }
-        proxy& operator=(const std::string& rhs)
-        {
-          str_ = rhs;
-          return *this;
-        }
-        proxy& operator=(std::string&& rhs)
-        {
-          str_ = std::move(rhs);
-          return *this;
-        }
-        bool operator==(const proxy& rhs) const
-        {
-          return str_ == rhs.str_;
-        }
-        bool operator!=(const proxy& rhs) const
-        {
-          return !(*this == rhs);
-        }
-        bool operator==(const std::string& rhs) const
-        {
-          return str_ == rhs;
-        }
-        bool operator!=(const std::string& rhs) const
-        {
-          return !(*this == rhs);
-        }
-
-      private:
-        std::string& str_;
-      };
-      static_assert(!std::is_assignable_v<std::string&, proxy>);
-      static_assert(concepts::castable_to<proxy&, std::string>);
-
       auto lhs = std::string{ "hello" };
       std::string str = "world";
       auto rhs = proxy(str);
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const std::string& lhs, const proxy& rhs, const auto& converter){
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const std::string& lhs, const proxy<std::string>& rhs, const auto& converter){
         return converter(rhs) == lhs;
       });
       // Proxy does not support "move from"

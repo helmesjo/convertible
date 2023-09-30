@@ -1,4 +1,5 @@
 #include <convertible/convertible.hxx>
+#include <libconvertible-tests/test_common.hxx>
 #include <doctest/doctest.h>
 
 #include <array>
@@ -757,59 +758,7 @@ SCENARIO("convertible: Adapters (proxies)")
 
   GIVEN("string proxy adapter for custom type")
   {
-    struct proxy
-    {
-      explicit proxy(std::string& str) :
-        str_(str)
-      {}
-
-      explicit operator std::string() const
-      {
-        return str_;
-      }
-      proxy& operator=(const std::string& rhs)
-      {
-        str_ = rhs;
-        return *this;
-      }
-      proxy& operator=(std::string&& rhs)
-      {
-        str_ = std::move(rhs);
-        return *this;
-      }
-      bool operator==(const proxy& rhs) const
-      {
-        return str_ == rhs.str_;
-      }
-      bool operator!=(const proxy& rhs) const
-      {
-        return !(*this == rhs);
-      }
-      bool operator==(const std::string& rhs) const
-      {
-        return str_ == rhs;
-      }
-      bool operator!=(const std::string& rhs) const
-      {
-        return !(*this == rhs);
-      }
-
-    private:
-      std::string& str_;
-    };
-    static_assert(!std::is_assignable_v<std::string&, proxy>);
-    static_assert(concepts::castable_to<proxy&, std::string>);
-
-    struct custom_reader
-    {
-      proxy operator()(std::string& obj) const
-      {
-        return proxy(obj);
-      }
-    };
-    static_assert(concepts::adaptable<std::string&, custom_reader>);
-
-    auto adapter = custom(custom_reader{});
+    auto adapter = custom(proxy_reader{});
     std::string str;
 
     THEN("it implicitly assigns value")

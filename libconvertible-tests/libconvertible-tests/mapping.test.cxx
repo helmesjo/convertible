@@ -1,32 +1,14 @@
 #include <convertible/convertible.hxx>
+#include <libconvertible-tests/test_common.hxx>
 #include <doctest/doctest.h>
 
 #include <cstring>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace
 {
-  struct int_string_converter
-  {
-    int operator()(std::string val) const
-    {
-      try
-      {
-        return std::stoi(val);
-      }
-      catch(const std::exception&)
-      {
-        return 0;
-      }
-    }
-
-    std::string operator()(int val) const
-    {
-      return std::to_string(val);
-    }
-  };
-
   auto verify_empty = [](auto&& rhs){
     return rhs == std::remove_cvref_t<decltype(rhs)>{};
   };
@@ -376,62 +358,10 @@ SCENARIO("convertible: Mapping (misc use-cases)")
   }
   GIVEN("proxy <-> string")
   {
-    struct proxy
-    {
-      explicit proxy(std::string& str) :
-        str_(str)
-      {}
-
-      explicit operator std::string() const
-      {
-        return str_;
-      }
-      proxy& operator=(const std::string& rhs)
-      {
-        str_ = rhs;
-        return *this;
-      }
-      proxy& operator=(std::string&& rhs)
-      {
-        str_ = std::move(rhs);
-        return *this;
-      }
-      bool operator==(const proxy& rhs) const
-      {
-        return str_ == rhs.str_;
-      }
-      bool operator!=(const proxy& rhs) const
-      {
-        return !(*this == rhs);
-      }
-      bool operator==(const std::string& rhs) const
-      {
-        return str_ == rhs;
-      }
-      bool operator!=(const std::string& rhs) const
-      {
-        return !(*this == rhs);
-      }
-
-    private:
-      std::string& str_;
-    };
-    static_assert(!std::is_assignable_v<std::string&, proxy>);
-    static_assert(concepts::castable_to<proxy&, std::string>);
-
-    struct custom_reader
-    {
-      proxy operator()(std::string& obj) const
-      {
-        return proxy(obj);
-      }
-    };
-    static_assert(concepts::adaptable<std::string&, custom_reader>);
-
     using lhs_t = std::string;
     using rhs_t = std::string;
 
-    auto map = mapping(custom(custom_reader{}), adapter());
+    auto map = mapping(custom(proxy_reader{}), adapter());
 
     auto lhs = lhs_t{"hello"};
     auto rhs = rhs_t{"world"};
