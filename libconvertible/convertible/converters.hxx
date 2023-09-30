@@ -1,7 +1,9 @@
 #pragma once
 
+#include <concepts>
 #include <convertible/concepts.hxx>
 #include <convertible/std_concepts_ext.hxx>
+#include <type_traits>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
@@ -15,7 +17,7 @@ namespace convertible::converter
     }
   };
 
-  template<typename to_t, typename converter_t>
+  template<typename target_t, typename converter_t>
   struct explicit_cast
   {
     constexpr explicit_cast(converter_t& converter):
@@ -26,16 +28,16 @@ namespace convertible::converter
     using converted_t = traits::converted_t<converter_t, arg_t>;
 
     constexpr decltype(auto) operator()(auto&& obj) const
-      requires std::is_assignable_v<to_t&, converted_t<decltype(obj)>>
-            || concepts::castable_to<converted_t<decltype(obj)>, to_t>
+      requires std::common_reference_with<std::remove_cvref_t<target_t>, converted_t<decltype(obj)>>
+            || concepts::castable_to<converted_t<decltype(obj)>, target_t>
     {
-      if constexpr(std::is_assignable_v<to_t&, converted_t<decltype(obj)>>)
+      if constexpr(std::common_reference_with<std::remove_cvref_t<target_t>, converted_t<decltype(obj)>>)
       {
         return converter_(FWD(obj));
       }
       else
       {
-        return static_cast<to_t>(converter_(FWD(obj)));
+        return static_cast<target_t>(converter_(FWD(obj)));
       }
     }
 
