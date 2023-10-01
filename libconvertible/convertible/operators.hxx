@@ -357,6 +357,12 @@ namespace convertible::operators
         if(to.size() < from.size())
           return false;
       }
+      if constexpr( concepts::resizable_container<std::remove_cvref_t<decltype(from)>>
+                 && concepts::resizable_container<std::remove_cvref_t<decltype(to)>>)
+      {
+        if(to.size() != from.size())
+          return false;
+      }
       (void)to;
       (void)from;
 

@@ -302,6 +302,19 @@ SCENARIO("convertible: Operators")
       });
     }
 
+    WHEN("lhs vector<vector<int>>, rhs vector<vector<string>>")
+    {
+      auto lhs = std::vector<std::vector<int>>{};
+      auto rhs = std::vector<std::vector<std::string>>{ {"2"} };
+
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+        return lhs[0][0] == converter(rhs[0][0]);
+      });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+        return rhs[0][0] == "";
+      });
+    }
+
     WHEN("lhs array<string>, rhs array<string>")
     {
       auto lhs = std::array<std::string, 1>{};
@@ -660,6 +673,16 @@ SCENARIO("convertible: Operators")
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
       rhs = { "2" };
+      EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+    }
+
+    WHEN("lhs vector<vector<int>>, rhs vector<vector<string>>")
+    {
+      auto lhs = std::vector<std::vector<int>>{ {1} };
+      auto rhs = std::vector<std::vector<std::string>>{ {"1"} };
+
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+      rhs = {{ "2" }};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
