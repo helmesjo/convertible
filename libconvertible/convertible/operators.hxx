@@ -79,22 +79,6 @@ namespace convertible::operators
       inserter_ = FWD(value);
       return *this;
     }
-
-    template<typename container_t_, typename mapped_value_forwarded_t_, template <typename, typename> typename associative_inserter_t>
-    auto& operator=(associative_inserter_t<container_t_, mapped_value_forwarded_t_>&& inserter)
-      requires requires { this->inserter_ = { this->key_, std::declval<mapped_value_forwarded_t_>() }; }
-    {
-      inserter_ = { key_, static_cast<mapped_value_forwarded_t_>(inserter) };
-      return *this;
-    }
-
-    template<typename container_t_, typename mapped_value_forwarded_t_, template <typename, typename> typename associative_inserter_t>
-    auto& operator=(associative_inserter_t<container_t_, mapped_value_forwarded_t_>&& inserter)
-      requires requires { this->inserter_ = std::declval<mapped_value_forwarded_t_>(); }
-    {
-      inserter_ = static_cast<mapped_value_forwarded_t_>(inserter);
-      return *this;
-    }
   };
   template<concepts::associative_container cont_t>
   associative_inserter(cont_t&& cont, auto&&)
@@ -208,7 +192,7 @@ namespace convertible::operators
       // 1. figure out 'from' & 'to'
       // 2. if 'to' is resizeable: to.resize(from.size())
       // 3. iterate values
-      // 4. call self with lhs & rhs respective range values
+      // 4. call assign with lhs & rhs respective range values
 
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
 
@@ -251,17 +235,19 @@ namespace convertible::operators
       // 2. clear 'to'
       // 3. iterate keys
       // 4. create associative_inserter for lhs & rhs using the key
-      // 5. call self with lhs & rhs mapped value respectively (indirectly using inserter)
+      // 5. call assign with lhs & rhs mapped value respectively (indirectly using inserter)
 
       auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
       to.clear();
       std::for_each(std::begin(from), std::end(from),
         [&lhs, &rhs, &converter](auto&& key) mutable {
-          assign<dir>(
-            std::forward_like<decltype(lhs)>(associative_inserter(FWD(lhs), key)),
-            std::forward_like<decltype(rhs)>(associative_inserter(FWD(rhs), key)),
-            converter
-          );
+          auto&& [toElem, _] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+          associative_inserter(FWD(toElem), key) =
+            assign<dir>(
+              std::forward<traits::mapped_value_forwarded_t<lhs_t>>(associative_inserter(FWD(lhs), key)),
+              std::forward<traits::mapped_value_forwarded_t<rhs_t>>(associative_inserter(FWD(rhs), key)),
+              converter
+            );
         }
       );
 
