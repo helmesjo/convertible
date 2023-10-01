@@ -120,18 +120,6 @@ TEST_CASE("mapping_table")
   auto lhs = create_type_a();
   auto rhs = create_type_b();
 
-// #if defined(__clang__)
-//   // CLANG BUG WORKAROUND
-//   auto lhs1 = type_a{};
-//   auto rhs1 = type_b{};
-//   auto adap1 = member(&type_a::val3);
-//   auto adap2 = member(&type_b::val3);
-//   // BUG: For some reason, clang fails if I remove the call to assign on the following line.
-//   //      This was noticed after adding the inline requires clause to the sequence_container call operator overload.
-//   //      Must be some internal parsing bug, or that this causes a template instantiation to take place that it requires.
-//   // operators::assign{}.template operator()<direction::rhs_to_lhs>(adap1(lhs1), adap2(rhs1), int_string_converter{});
-// #endif
-
   bench::Bench b;
   b.warmup(500).relative(true);
 
@@ -166,6 +154,11 @@ TEST_CASE("mapping_table")
           break;
         }
       }
-      bench::doNotOptimizeAway(equal = equal && lhs.val1 == rhs.val1 && lhs.val2 == rhs.val2);
+      bench::doNotOptimizeAway(
+        equal = equal &&
+        lhs.val1 == rhs.val1 &&
+        lhs.val2 == rhs.val2 &&
+        lhs.val4 == rhs.val4
+      );
   });
 }
