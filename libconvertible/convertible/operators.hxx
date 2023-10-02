@@ -12,89 +12,91 @@
 
 namespace convertible::operators
 {
-  template<typename to_t, typename converter_t>
-  using explicit_cast = converter::explicit_cast<std::remove_reference_t<to_t>, converter_t>;
-
-  template<concepts::associative_container container_t, std::common_reference_with<traits::mapped_value_t<container_t>> mapped_forward_t>
-  struct associative_inserter
-  {
-    using key_t = typename container_t::key_type;
-    using value_t = typename container_t::value_type;
-    using reference_t = typename container_t::reference;
-    using const_reference_t = typename container_t::const_reference;
-    using mapped_value_t = traits::mapped_value_t<container_t>;
-
-    container_t& cont_;
-    std::insert_iterator<container_t> inserter_;
-    std::conditional_t<concepts::mapping_container<container_t>, key_t, value_t> key_;
-
-    template<std::common_reference_with<key_t> _key_t, typename _mapped_t>
-    associative_inserter(concepts::associative_container auto&& cont, const std::pair<_key_t, _mapped_t>& pair)
-    : cont_(cont),
-      inserter_(cont, std::begin(cont)),
-      key_(pair.first)
-    {}
-
-    associative_inserter(concepts::associative_container auto&& cont, const key_t& key)
-    : cont_(cont),
-      inserter_(cont, std::begin(cont)),
-      key_(key)
-    {}
-
-    operator mapped_forward_t()
-      requires concepts::mapping_container<container_t>
-    {
-      if constexpr(std::is_const_v<container_t>)
-      {
-        return std::forward<mapped_forward_t>(cont_.at(key_));
-      }
-      else
-      {
-        return std::forward<mapped_forward_t>(cont_[key_]);
-      }
-    }
-
-    operator const mapped_value_t&() const
-      requires concepts::mapping_container<container_t>
-    {
-      return cont_.find(key_)->second;
-    }
-
-    operator const mapped_value_t&() const
-      requires (!concepts::mapping_container<container_t>)
-    {
-      return *cont_.find(key_);
-    }
-
-    auto& operator=(auto&& value)
-      requires requires { this->inserter_ = { this->key_, FWD(value) }; }
-    {
-      inserter_ = { key_, FWD(value) };
-      return *this;
-    }
-
-    auto& operator=(auto&& value)
-      requires requires { this->inserter_ = FWD(value); }
-    {
-      inserter_ = FWD(value);
-      return *this;
-    }
-  };
-  template<concepts::associative_container cont_t>
-  associative_inserter(cont_t&& cont, auto&&)
-    -> associative_inserter<std::remove_reference_t<decltype(cont)>, traits::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
-
-  template<direction dir>
-  inline constexpr decltype(auto) ordered_lhs_rhs(auto&& lhs, auto&& rhs)
-  {
-    if constexpr(dir == direction::rhs_to_lhs)
-      return std::forward_as_tuple(FWD(lhs), FWD(rhs));
-    else
-      return std::forward_as_tuple(FWD(rhs), FWD(lhs));
-  }
-
   namespace details
   {
+    template<typename to_t, typename converter_t>
+    using explicit_cast = converter::explicit_cast<std::remove_reference_t<to_t>, converter_t>;
+
+    template<concepts::associative_container container_t, std::common_reference_with<traits::mapped_value_t<container_t>> mapped_forward_t>
+    struct associative_inserter
+    {
+      using key_t = typename container_t::key_type;
+      using value_t = typename container_t::value_type;
+      using reference_t = typename container_t::reference;
+      using const_reference_t = typename container_t::const_reference;
+      using mapped_value_t = traits::mapped_value_t<container_t>;
+
+      container_t& cont_;
+      std::insert_iterator<container_t> inserter_;
+      std::conditional_t<concepts::mapping_container<container_t>, key_t, value_t> key_;
+
+      template<std::common_reference_with<key_t> _key_t, typename _mapped_t>
+      associative_inserter(concepts::associative_container auto&& cont, const std::pair<_key_t, _mapped_t>& pair)
+      : cont_(cont),
+        inserter_(cont, std::begin(cont)),
+        key_(pair.first)
+      {}
+
+      associative_inserter(concepts::associative_container auto&& cont, const key_t& key)
+      : cont_(cont),
+        inserter_(cont, std::begin(cont)),
+        key_(key)
+      {}
+
+      operator mapped_forward_t()
+        requires concepts::mapping_container<container_t>
+      {
+        if constexpr(std::is_const_v<container_t>)
+        {
+          return std::forward<mapped_forward_t>(cont_.at(key_));
+        }
+        else
+        {
+          return std::forward<mapped_forward_t>(cont_[key_]);
+        }
+      }
+
+      operator const mapped_value_t&() const
+        requires concepts::mapping_container<container_t>
+      {
+        return cont_.find(key_)->second;
+      }
+
+      operator const mapped_value_t&() const
+        requires (!concepts::mapping_container<container_t>)
+      {
+        return *cont_.find(key_);
+      }
+
+      auto& operator=(auto&& value)
+        requires concepts::mapping_container<container_t>
+        && requires { this->inserter_ = { this->key_, FWD(value) }; }
+      {
+        inserter_ = { key_, FWD(value) };
+        return *this;
+      }
+
+      auto& operator=(auto&& value)
+        requires (!concepts::mapping_container<container_t>)
+        && requires { this->inserter_ = FWD(value); }
+      {
+        inserter_ = FWD(value);
+        return *this;
+      }
+    };
+    template<concepts::associative_container cont_t>
+    associative_inserter(cont_t&& cont, auto&&)
+      -> associative_inserter<std::remove_reference_t<decltype(cont)>, traits::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
+
+    template<direction dir>
+    inline constexpr decltype(auto) ordered_lhs_rhs(auto&& lhs, auto&& rhs)
+    {
+      if constexpr(dir == direction::rhs_to_lhs)
+        return std::forward_as_tuple(FWD(lhs), FWD(rhs));
+      else
+        return std::forward_as_tuple(FWD(rhs), FWD(lhs));
+    }
+
     template<
       direction dir,
       typename lhs_t,
@@ -167,7 +169,7 @@ namespace convertible::operators
   constexpr traits::lhs_t<dir, lhs_t&&, rhs_t&&> assign::operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter) const
     requires details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>
   {
-    auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+    auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
     if constexpr(requires{ converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
     {
       (void)from;
@@ -175,7 +177,7 @@ namespace convertible::operators
     }
     else
     {
-      using cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>;
+      using cast_t = details::explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>;
       FWD(to) = cast_t(converter)(FWD(from));
     }
     return FWD(to);
@@ -199,7 +201,7 @@ namespace convertible::operators
     // 3. iterate values
     // 4. call assign with lhs & rhs respective range values
 
-    auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+    auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
 
     if constexpr(concepts::resizable_container<decltype(to)>)
     {
@@ -241,15 +243,15 @@ namespace convertible::operators
       // 4. create associative_inserter for lhs & rhs using the key
       // 5. call assign with lhs & rhs mapped value respectively (indirectly using inserter)
 
-      auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+      auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
       to.clear();
       std::for_each(std::begin(from), std::end(from),
         [this, &lhs, &rhs, &converter](auto&& key) mutable {
-          auto&& [toElem, _] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
-          associative_inserter(FWD(toElem), key) =
+          auto&& [toElem, _] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+          details::associative_inserter(FWD(toElem), key) =
             this->template operator()<dir>(
-              std::forward<traits::mapped_value_forwarded_t<lhs_t>>(associative_inserter(FWD(lhs), key)),
-              std::forward<traits::mapped_value_forwarded_t<rhs_t>>(associative_inserter(FWD(rhs), key)),
+              std::forward<traits::mapped_value_forwarded_t<lhs_t>>(details::associative_inserter(FWD(lhs), key)),
+              std::forward<traits::mapped_value_forwarded_t<rhs_t>>(details::associative_inserter(FWD(rhs), key)),
               converter
             );
         }
@@ -311,8 +313,8 @@ namespace convertible::operators
     }
     else
     {
-      using cast_t = explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>;
-      auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+      using cast_t = details::explicit_cast<traits::lhs_t<dir, lhs_t, rhs_t>, converter_t>;
+      auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
       return FWD(to) == cast_t(converter)(FWD(from));
     }
   }
@@ -330,7 +332,7 @@ namespace convertible::operators
                  op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
                }
   {
-    auto&& [to, from] = ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+    auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
     if constexpr(!concepts::resizable_container<std::remove_cvref_t<decltype(to)>>
                && concepts::resizable_container<std::remove_cvref_t<decltype(from)>>)
     {
