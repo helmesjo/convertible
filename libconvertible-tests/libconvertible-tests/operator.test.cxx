@@ -315,6 +315,19 @@ SCENARIO("convertible: Operators")
       });
     }
 
+    WHEN("lhs vector<unordered_map<int, int>>, rhs vector<unordered_map<int, string>>")
+    {
+      auto lhs = std::vector<std::unordered_map<int, int>>{};
+      auto rhs = std::vector<std::unordered_map<int, std::string>>{ {{1, "2"}} };
+
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+        return lhs[0].at(1) == converter(rhs[0].at(1));
+      });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+        return rhs[0].at(1) == "";
+      });
+    }
+
     WHEN("lhs array<string>, rhs array<string>")
     {
       auto lhs = std::array<std::string, 1>{};
