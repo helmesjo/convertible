@@ -143,7 +143,11 @@ namespace convertible::operators
       requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
             && requires(const assign& op, traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
                {
+#ifdef __GNUC__
+                 op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
                  op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
                };
 
     template<
@@ -156,7 +160,11 @@ namespace convertible::operators
       requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
             && requires(const assign& op, traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
                {
+#ifdef __GNUC__
+                 op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
                  op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
                };
   };
 
@@ -193,7 +201,11 @@ namespace convertible::operators
     requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
           && requires(const assign& op, traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
              {
+#ifdef __GNUC__
+               op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
                op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
              }
   {
     // 1. figure out 'from' & 'to'
@@ -234,7 +246,11 @@ namespace convertible::operators
     requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
           && requires(const assign& op, traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
              {
+#ifdef __GNUC__
+               op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
                op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
              }
   {
       // 1. figure out 'from', and use that as 'key range'
@@ -281,7 +297,11 @@ namespace convertible::operators
       requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
             && requires(const equal& op, traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
                {
+#ifdef __GNUC__
+                 op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
                  op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
                };
 
     template<
@@ -294,7 +314,11 @@ namespace convertible::operators
       requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
             && requires(const equal& op, traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
                {
+#ifdef __GNUC__
+                 op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
                  op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
                };
   };
 
@@ -327,10 +351,14 @@ namespace convertible::operators
   >
   constexpr bool equal::operator()(const lhs_t& lhs, const rhs_t& rhs, converter_t converter) const
     requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
-            && requires(const equal& op, traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
-               {
-                 op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
-               }
+          && requires(const equal& op, traits::range_value_forwarded_t<lhs_t> lhsElem, traits::range_value_forwarded_t<rhs_t> rhsElem)
+             {
+#ifdef __GNUC__
+               op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
+               op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
+             }
   {
     auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
     if constexpr(!concepts::resizable_container<std::remove_cvref_t<decltype(to)>>
@@ -374,7 +402,11 @@ namespace convertible::operators
     requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
           && requires(const equal& op, traits::mapped_value_forwarded_t<lhs_t> lhsElem, traits::mapped_value_forwarded_t<rhs_t> rhsElem)
              {
+#ifdef __GNUC__
+               op(FWD(lhsElem), FWD(rhsElem), converter);
+#else
                op.template operator()<dir>(FWD(lhsElem), FWD(rhsElem), converter);
+#endif
              }
   {
     return std::equal(std::cbegin(lhs), std::cend(lhs), std::cbegin(rhs),
