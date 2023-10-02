@@ -699,6 +699,16 @@ SCENARIO("convertible: Operators")
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
+    WHEN("lhs vector<unordered_map<int, int>>, rhs vector<unordered_map<int, string>>")
+    {
+      auto lhs = std::vector<std::unordered_map<int, int>>{ {{1, 2}} };
+      auto rhs = std::vector<std::unordered_map<int, std::string>>{ {{1, "2"}} };
+
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+      rhs = {{{1, "3"}}};
+      EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+    }
+
     WHEN("lhs array<string>, rhs array<string>")
     {
       auto lhs = std::array<std::string, 1>{ "1" };
