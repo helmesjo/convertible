@@ -1,6 +1,6 @@
 : 1
 name: libconvertible
-version: 0.1.0
+version: 0.1.1-a.0.z
 project: convertible
 summary: convertible C++ library
 license: MIT
