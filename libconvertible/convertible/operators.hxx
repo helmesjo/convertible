@@ -25,9 +25,10 @@ namespace convertible::operators
       using reference_t = typename container_t::reference;
       using const_reference_t = typename container_t::const_reference;
       using mapped_value_t = traits::mapped_value_t<container_t>;
+      using inserter_t = std::insert_iterator<container_t>;
 
       container_t& cont_;
-      std::insert_iterator<container_t> inserter_;
+      inserter_t inserter_;
       std::conditional_t<concepts::mapping_container<container_t>, key_t, value_t> key_;
 
       template<std::common_reference_with<key_t> _key_t, typename _mapped_t>
@@ -70,7 +71,12 @@ namespace convertible::operators
 
       auto& operator=(auto&& value)
         requires concepts::mapping_container<container_t>
+      // Workaround bug with apple-clang & using 'this->' in requires clause.
+#if defined(__clang__) && defined(__APPLE__)
+        && requires (inserter_t inserter, key_t key){ inserter = { key, FWD(value) }; }
+#else
         && requires { this->inserter_ = { this->key_, FWD(value) }; }
+#endif
       {
         inserter_ = { key_, FWD(value) };
         return *this;
@@ -78,7 +84,12 @@ namespace convertible::operators
 
       auto& operator=(auto&& value)
         requires (!concepts::mapping_container<container_t>)
+      // Workaround bug with apple-clang & using 'this->' in requires clause.
+#if defined(__clang__) && defined(__APPLE__)
+        && requires (inserter_t inserter){ inserter = FWD(value); }
+#else
         && requires { this->inserter_ = FWD(value); }
+#endif
       {
         inserter_ = FWD(value);
         return *this;
@@ -129,7 +140,7 @@ namespace convertible::operators
       typename converter_t
     >
     concept invocable_with =
-    // Workaround required for GCC which fails with a  requires-clause refering
+    // Workaround required for GCC which fails with a requires-clause referring
     // to self (check if 'this' can be invoked recursively) if (and only if) a template parameter is used.
 #ifdef __GNUC__
       (dir == direction::rhs_to_lhs && requires(operator_t&& op, lhs_t lhs, rhs_t rhs, converter_t&& converter){
