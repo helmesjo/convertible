@@ -94,6 +94,11 @@ SCENARIO("convertible: Adapters")
     static_assert(concepts::adaptable<decltype(""), decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
+    THEN("it works with const adaptee")
+    {
+      const auto constAdaptee = adaptee;
+      REQUIRE(adapter(constAdaptee) == adaptee);
+    }
     THEN("it's constexpr constructible")
     {
       struct type_x{};
@@ -151,6 +156,11 @@ SCENARIO("convertible: Adapters")
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
+    THEN("it works with const adaptee")
+    {
+      const auto constAdaptee = adaptee;
+      REQUIRE(adapter(constAdaptee) == adaptee.str);
+    }
     THEN("it's constexpr constructible")
     {
       struct type_x{ int x; };
@@ -211,6 +221,12 @@ SCENARIO("convertible: Adapters")
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
+    // can't overload with 'const str()' because of ambiguity
+    // THEN("it works with const adaptee")
+    // {
+    //   const auto constAdaptee = adaptee;
+    //   REQUIRE(adapter(constAdaptee) == adaptee.str());
+    // }
     THEN("it's constexpr constructible")
     {
       struct type_x{ int x() const { return 0; }; };
@@ -278,6 +294,11 @@ SCENARIO("convertible: Adapters")
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
+    THEN("it works with const adaptee")
+    {
+      const auto constAdaptee = adaptee;
+      REQUIRE(adapter(constAdaptee) == adaptee[0]);
+    }
     THEN("it's constexpr constructible")
     {
       static constexpr auto tmp = std::array{""};
@@ -323,6 +344,13 @@ SCENARIO("convertible: Adapters")
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
+    // unordered_map does not have a const index operator
+    // THEN("it works with const adaptee")
+    // {
+    //   const auto constAdaptee = adaptee;
+    //   REQUIRE(adapter(constAdaptee) == adaptee["key"]);
+    // }
+    // unordered_map is not constexpr constructible
     // THEN("it's constexpr constructible")
     // {
     //   static constexpr auto tmp = std::unordered_map<const char*, const char*>{{"", ""}};
@@ -369,6 +397,11 @@ SCENARIO("convertible: Adapters")
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
+    THEN("it works with const adaptee")
+    {
+      const auto constAdaptee = adaptee;
+      REQUIRE(adapter(constAdaptee) == *adaptee);
+    }
     THEN("it's constexpr constructible")
     {
       struct type_x
@@ -440,7 +473,12 @@ SCENARIO("convertible: Adapters")
       REQUIRE(adapter(adaptee));
       REQUIRE(*adapter(adaptee) == "");
     }
-
+    THEN("it works with const adaptee")
+    {
+      const auto constAdaptee = std::optional<std::string>("hello");
+      REQUIRE(adapter(constAdaptee));
+      REQUIRE(*adapter(constAdaptee) == "hello");
+    }
     THEN("it's constexpr constructible")
     {
       struct type_x

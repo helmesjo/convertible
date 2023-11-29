@@ -8,6 +8,7 @@
 #include <functional>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
@@ -92,7 +93,7 @@ namespace convertible::reader
       : obj_(obj)
       {}
 
-      auto& object_or_defaulted()
+      object_ref_t object_or_defaulted()
       {
         if(obj_)
         {
@@ -100,7 +101,7 @@ namespace convertible::reader
         }
         else
         {
-          thread_local std::remove_reference_t<object_t> defaulted;
+          thread_local std::remove_cvref_t<object_t> defaulted;
           return defaulted = value_t{};
         }
       }
@@ -131,7 +132,7 @@ namespace convertible::reader
                              typename value_t = std::remove_cvref_t<decltype(*std::declval<object_t>())>>
     constexpr decltype(auto) operator()(object_t&& obj) const
       requires std::constructible_from<bool, object_t> &&
-               std::is_assignable_v<object_t, value_t>
+               std::is_assignable_v<std::remove_cvref_t<object_t>&, value_t>
     {
       return maybe_wrapper<decltype(obj)>(obj);
     }
