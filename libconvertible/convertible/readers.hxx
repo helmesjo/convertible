@@ -82,59 +82,18 @@ namespace convertible::reader
 
   struct maybe
   {
+    template<concepts::dereferencable object_t>
+    constexpr decltype(auto) operator()(object_t&& obj) const
+      requires std::constructible_from<bool, object_t>
+    {
+      return FWD(obj);
+    }
 
     template<concepts::dereferencable object_t>
-    struct maybe_wrapper
+    constexpr bool enabled(object_t&& obj) const
+      requires std::constructible_from<bool, object_t>
     {
-      using value_t = std::remove_reference_t<decltype(*std::declval<object_t>())>;
-      using object_ref_t = std::remove_reference_t<object_t>&;
-
-      maybe_wrapper(object_ref_t obj)
-      : obj_(obj)
-      {}
-
-      object_ref_t object_or_defaulted()
-      {
-        if(obj_)
-        {
-          return obj_;
-        }
-        else
-        {
-          thread_local std::remove_cvref_t<object_t> defaulted;
-          return defaulted = value_t{};
-        }
-      }
-      const auto& object_or_defaulted() const
-      {
-        return const_cast<maybe_wrapper&>(*this).object_or_defaulted();
-      }
-
-      decltype(auto) operator*()
-      {
-        return *std::forward<object_t>(object_or_defaulted());
-      }
-
-      constexpr operator object_t&() { return object_or_defaulted(); }
-      constexpr operator const object_t&() const { return object_or_defaulted(); }
-      constexpr operator bool() const { return true; }
-      decltype(auto) operator<=>(auto&& rhs) const { return obj_ <=> FWD(rhs); }
-      decltype(auto) operator==(auto&& rhs) const { return obj_ == FWD(rhs); }
-      decltype(auto) operator!=(auto&& rhs) const { return obj_ != FWD(rhs); }
-      decltype(auto) operator=(auto&& rhs) { return obj_ = FWD(rhs); }
-
-      object_ref_t obj_;
-    };
-    template<concepts::dereferencable obj_t>
-    maybe_wrapper(obj_t&& obj) -> maybe_wrapper<decltype(obj)>;
-
-    template<concepts::dereferencable object_t,
-                             typename value_t = std::remove_cvref_t<decltype(*std::declval<object_t>())>>
-    constexpr decltype(auto) operator()(object_t&& obj) const
-      requires std::constructible_from<bool, object_t> &&
-               std::is_assignable_v<std::remove_cvref_t<object_t>&, value_t>
-    {
-      return maybe_wrapper<decltype(obj)>(obj);
+      return bool{FWD(obj)};
     }
   };
 

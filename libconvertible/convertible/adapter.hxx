@@ -15,6 +15,9 @@ namespace convertible
     using adaptee_value_t = std::remove_reference_t<adaptee_t>;
     static constexpr bool accepts_any_adaptee = std::is_same_v<adaptee_value_t, details::any>;
 
+    reader_t reader_;
+    const adaptee_value_t adaptee_{};
+
     constexpr adapter() = default;
     constexpr adapter(const adapter&) = default;
     constexpr adapter(adapter&&) = default;
@@ -43,14 +46,17 @@ namespace convertible
       return reader_(static_cast<traits::like_t<decltype(obj), adaptee_t>>(FWD(obj)));
     }
 
+    constexpr bool enabled(auto&& obj) const
+      requires requires(adapter self){ { self.reader_.enabled(FWD(obj)) }; }
+    {
+      return reader_.enabled(FWD(obj));
+    }
+
     constexpr auto defaulted_adaptee() const
       requires (!accepts_any_adaptee)
     {
       return adaptee_;
     }
-
-    reader_t reader_;
-    const adaptee_value_t adaptee_{};
   };
 }
 

@@ -466,12 +466,11 @@ SCENARIO("convertible: Adapters")
     static_assert(concepts::adaptable<decltype(adaptee), decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
 
-    THEN("it returns defaulted/non-empty if adaptee is empty")
+    THEN("it is considered 'enabled' if adaptee is non-empty")
     {
+      REQUIRE(adapter.enabled(adaptee));
       adaptee = std::nullopt;
-      REQUIRE_FALSE(adaptee);
-      REQUIRE(adapter(adaptee));
-      REQUIRE(*adapter(adaptee) == "");
+      REQUIRE_FALSE(adapter.enabled(adaptee));
     }
     THEN("it works with const adaptee")
     {

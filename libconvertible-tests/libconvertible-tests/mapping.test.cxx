@@ -83,6 +83,75 @@ SCENARIO("convertible: Mapping")
     auto rhs = rhs_t{"world"};
     MAPS_CORRECTLY(lhs, rhs, map);
   }
+  GIVEN("mapping between conditional(a) <-> conditional(b)")
+  {
+    using lhs_t = std::optional<std::string>;
+    using rhs_t = std::optional<std::string>;
+
+    auto map = mapping(maybe(lhs_t{}), maybe(rhs_t{}));
+
+    WHEN("lhs and rhs both contains a value")
+    {
+      auto lhs = lhs_t{"hello"};
+      auto rhs = rhs_t{"world"};
+      // "moved from" optional is not cleard (that is, it still "holds a value")
+      MAPS_CORRECTLY(lhs, rhs, map, [](const auto& val){ return *val == ""; });
+    }
+    WHEN("lhs contains a value, rhs is empty")
+    {
+      auto lhs = lhs_t{"hello"};
+      auto rhs = rhs_t{};
+      // "moved from" optional is not cleard (that is, it still "holds a value")
+      WHEN("assigning rhs to lhs")
+      {
+        map.template assign<direction::rhs_to_lhs>(lhs, rhs);
+
+        THEN("lhs is not assigned")
+        {
+          REQUIRE(*lhs == "hello");
+          REQUIRE_FALSE(map.template equal<direction::rhs_to_lhs>(lhs, rhs));
+          REQUIRE_FALSE(map.template equal<direction::lhs_to_rhs>(lhs, rhs));
+        }
+      }
+      WHEN("assigning lhs to rhs")
+      {
+        map.template assign<direction::lhs_to_rhs>(lhs, rhs);
+
+        THEN("lhs == rhs")
+        {
+          REQUIRE(map.template equal<direction::rhs_to_lhs>(lhs, rhs));
+          REQUIRE(map.template equal<direction::lhs_to_rhs>(lhs, rhs));
+        }
+      }
+    }
+    WHEN("lhs is empty, rhs contains a value, ")
+    {
+      auto lhs = lhs_t{};
+      auto rhs = rhs_t{"world"};
+      // "moved from" optional is not cleared (that is, it still "holds a value")
+      WHEN("assigning rhs to lhs")
+      {
+        map.template assign<direction::rhs_to_lhs>(lhs, rhs);
+
+        THEN("lhs == rhs")
+        {
+          REQUIRE(map.template equal<direction::rhs_to_lhs>(lhs, rhs));
+          REQUIRE(map.template equal<direction::lhs_to_rhs>(lhs, rhs));
+        }
+      }
+      WHEN("assigning lhs to rhs")
+      {
+        map.template assign<direction::lhs_to_rhs>(lhs, rhs);
+
+        THEN("rhs is not assigned")
+        {
+          REQUIRE(*rhs == "world");
+          REQUIRE_FALSE(map.template equal<direction::rhs_to_lhs>(lhs, rhs));
+          REQUIRE_FALSE(map.template equal<direction::lhs_to_rhs>(lhs, rhs));
+        }
+      }
+    }
+  }
   GIVEN("mapping between a <- converter -> b")
   {
     using lhs_t = int;

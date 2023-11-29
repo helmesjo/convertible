@@ -28,6 +28,20 @@ namespace convertible
         operators::assign{}.template operator()<dir>(lhsAdapter(FWD(lhs)), rhsAdapter(FWD(rhs)), converter);
       }
     {
+      if constexpr(dir == direction::lhs_to_rhs && requires{ lhsAdapter_.enabled(FWD(lhs)); })
+      {
+        if(lhsAdapter_.enabled(FWD(lhs)))
+        {
+          operators::assign{}.template operator()<dir>(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)), converter_);
+        }
+      }
+      if constexpr(dir == direction::rhs_to_lhs && requires{ rhsAdapter_.enabled(FWD(rhs)); })
+      {
+        if(rhsAdapter_.enabled(FWD(rhs)))
+        {
+          operators::assign{}.template operator()<dir>(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)), converter_);
+        }
+      }
       operators::assign{}.template operator()<dir>(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)), converter_);
     }
 
@@ -38,6 +52,20 @@ namespace convertible
         operators::equal{}.template operator()<dir>(lhsAdapter(FWD(lhs)), rhsAdapter(FWD(rhs)), converter);
       }
     {
+      if constexpr(requires{ lhsAdapter_.enabled(FWD(lhs)); })
+      {
+        if(!lhsAdapter_.enabled(FWD(lhs)))
+        {
+          return false;
+        }
+      }
+      if constexpr(requires{ rhsAdapter_.enabled(FWD(rhs)); })
+      {
+        if(!rhsAdapter_.enabled(FWD(rhs)))
+        {
+          return false;
+        }
+      }
       return operators::equal{}.template operator()<dir>(lhsAdapter_(FWD(lhs)), rhsAdapter_(FWD(rhs)), converter_);
     }
 
