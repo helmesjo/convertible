@@ -692,6 +692,10 @@ SCENARIO("convertible: Adapters")
     struct type_a
     {
       bool operator==(const type_a&) const = default;
+      operator bool() const
+      {
+        return !val.empty();
+      }
       std::string& operator*() &
       {
         return val;
@@ -709,23 +713,31 @@ SCENARIO("convertible: Adapters")
       type_a a{};
     };
 
-    type_b adaptee = {type_a{"hello"}};
+    auto adaptee = type_b{type_a{"hello"}};
     auto innerAdapter = member(&type_b::a, adaptee);
+    auto middleAdapter = maybe(type_a{});
     auto outerAdapter = deref();
-    auto adapter = compose(outerAdapter, innerAdapter);
+    auto adapter = compose(innerAdapter, middleAdapter, outerAdapter);
     static_assert(concepts::adaptable<type_b, decltype(adapter)>);
     static_assert(!concepts::adaptable<invalid_type, decltype(adapter)>);
     static_assert(!concepts::adaptable<type_a, decltype(adapter)>);
 
+    THEN("it is considered 'enabled' if adaptee is non-empty")
+    {
+      REQUIRE(adapter.enabled(adaptee));
+      adaptee.a.val = "";
+      REQUIRE_FALSE(adapter.enabled(adaptee));
+    }
     THEN("it's constexpr constructible")
     {
       struct type_x{ int* x; };
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = compose(deref(), member(&type_x::x, tmp));
+      static constexpr auto constexprAdapter = compose(member(&type_x::x, tmp), deref());
       (void)constexprAdapter;
     }
     THEN("it implicitly assigns member value")
     {
+      outerAdapter.reader_(middleAdapter.reader_(innerAdapter.reader_(adaptee))) = "world";
       adapter(adaptee) = "world";
       REQUIRE(adaptee.a.val == "world");
     }

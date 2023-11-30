@@ -17,7 +17,7 @@ namespace convertible
   template<concepts::adapter... adapter_ts>
   constexpr auto compose(adapter_ts&&... adapters)
   {
-    auto adaptee = std::get<sizeof...(adapters)-1>(std::tuple{adapters...}).defaulted_adaptee();
+    auto adaptee = std::get<0>(std::tuple{adapters...}).defaulted_adaptee();
     return adapter(adaptee, reader::composed(FWD(adapters)...));
   }
 
@@ -36,7 +36,7 @@ namespace convertible
   constexpr auto custom(auto&& reader, concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
-    return compose(custom(FWD(reader)), FWD(inner)...);
+    return compose(FWD(inner)..., custom(FWD(reader)));
   }
 
   constexpr auto identity(concepts::adaptable<reader::identity<>> auto&&... adaptee)
@@ -47,7 +47,7 @@ namespace convertible
   constexpr auto identity(concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
-    return compose(identity(), FWD(inner)...);
+    return compose(FWD(inner)..., identity());
   }
 
   template<concepts::member_ptr member_ptr_t>
@@ -60,7 +60,7 @@ namespace convertible
   constexpr auto member(member_ptr_t&& ptr, concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
-    return compose(member(FWD(ptr)), FWD(inner)...);
+    return compose(FWD(inner)..., member(FWD(ptr)));
   }
 
   template<details::const_value i>
@@ -73,7 +73,7 @@ namespace convertible
   constexpr auto index(concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
-    return compose(index<i>(), FWD(inner)...);
+    return compose(FWD(inner)..., index<i>());
   }
 
   constexpr auto deref(concepts::adaptable<reader::deref> auto&&... adaptee)
@@ -84,7 +84,7 @@ namespace convertible
   constexpr auto deref(concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
-    return compose(deref(), FWD(inner)...);
+    return compose(FWD(inner)..., deref());
   }
 
   constexpr auto maybe(concepts::adaptable<reader::maybe> auto&&... adaptee)
@@ -95,7 +95,7 @@ namespace convertible
   constexpr auto maybe(concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
-    return compose(maybe(), FWD(inner)...);
+    return compose(FWD(inner)..., maybe());
   }
 
   template<std::size_t first, std::size_t last>
@@ -110,7 +110,7 @@ namespace convertible
   constexpr auto binary(concepts::adapter auto&&... inner)
     requires (sizeof...(inner) > 0)
   {
-    return compose(binary<first, last>(), FWD(inner)...);
+    return compose(FWD(inner)..., binary<first, last>());
   }
 
   template<typename callback_t, typename tuple_t>

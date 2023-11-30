@@ -82,16 +82,14 @@ namespace convertible::reader
 
   struct maybe
   {
-    template<concepts::dereferencable object_t>
-    constexpr decltype(auto) operator()(object_t&& obj) const
-      requires std::constructible_from<bool, object_t>
+    constexpr decltype(auto) operator()(auto&& obj) const
+      requires std::constructible_from<bool, decltype(obj)>
     {
       return FWD(obj);
     }
 
-    template<concepts::dereferencable object_t>
-    constexpr bool enabled(object_t&& obj) const
-      requires std::constructible_from<bool, object_t>
+    constexpr bool enabled(auto&& obj) const
+      requires std::constructible_from<bool, decltype(obj)>
     {
       return bool{FWD(obj)};
     }
@@ -324,23 +322,69 @@ namespace convertible::reader
   template<concepts::adapter... adapter_ts>
   struct composed
   {
+  private:
     using adapters_t = std::tuple<adapter_ts...>;
 
-    constexpr composed(adapter_ts... adapters):
-      adapters_(std::move(adapters)...)
-    {}
-
-    static constexpr decltype(auto) compose(auto&& arg, concepts::adapter auto&& adapter)
-      requires concepts::adaptable<decltype(arg), decltype(adapter)>
+    template<typename arg_t, typename head_t, typename... tail_t>
+    static constexpr bool is_composable()
     {
-      return FWD(adapter)(FWD(arg));
+      if constexpr(sizeof...(tail_t) == 0)
+      {
+        return concepts::adaptable<arg_t, head_t>;
+      }
+      else if constexpr(is_composable<arg_t, head_t>())
+      {
+        return is_composable<traits::adapted_t<head_t, arg_t>, tail_t...>();
+      }
+      else
+      {
+        return false;
+      }
     }
 
     static constexpr decltype(auto) compose(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail)
-      requires requires(){ FWD(head)(compose(FWD(arg), FWD(tail)...)); }
+      requires (is_composable<decltype(arg), decltype(head), decltype(tail)...>())
     {
-      return FWD(head)(compose(FWD(arg), FWD(tail)...));
+      if constexpr(sizeof...(tail) == 0)
+      {
+        return FWD(head)(FWD(arg));
+      }
+      else
+      {
+        return compose(FWD(head)(FWD(arg)), FWD(tail)...);
+      }
     }
+
+    static constexpr bool enabled_impl(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail)
+      requires (is_composable<decltype(arg), decltype(head), decltype(tail)...>())
+    {
+      if constexpr(sizeof...(tail) == 0)
+      {
+        if constexpr(requires{ FWD(head).enabled(FWD(arg)); })
+        {
+          return FWD(head).enabled(FWD(arg));
+        }
+        else
+        {
+          return true;
+        }
+      }
+      else if(enabled_impl(FWD(arg), FWD(head)))
+      {
+        return enabled_impl(compose(FWD(arg), FWD(head)), FWD(tail)...);
+      }
+      else
+      {
+        return false;
+      }
+    }
+
+    adapters_t adapters_;
+
+  public:
+    constexpr composed(adapter_ts... adapters):
+      adapters_(std::move(adapters)...)
+    {}
 
     template<typename arg_t>
     constexpr decltype(auto) operator()(arg_t&& arg) const
@@ -351,7 +395,14 @@ namespace convertible::reader
       }, adapters_);
     }
 
-    adapters_t adapters_;
+    constexpr bool enabled(auto&& arg) const
+      requires requires{ enabled_impl(FWD(arg), std::declval<adapter_ts>()...); }
+    {
+      using arg_t = decltype(arg);
+      return std::apply([&arg](auto&&... adapters) -> bool {
+        return enabled_impl(std::forward<arg_t>(arg), FWD(adapters)...);
+      }, adapters_);
+    }
   };
 }
 

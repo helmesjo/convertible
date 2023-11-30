@@ -382,7 +382,7 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
     };
 
     auto table = extend(tableBase,
-      mapping( deref(member(&type_a::node)), deref(member(&type_b::node)), tableBase )
+      mapping( compose(member(&type_a::node), deref()), compose(member(&type_b::node), deref()), tableBase )
     );
 
     type_a lhs;
