@@ -1,6 +1,6 @@
 : 1
 name: libconvertible-tests
-version: 0.1.4
+version: 0.1.5-a.0.z
 project: convertible
 summary: libconvertible-tests C++ executable
 license: other: proprietary ; Not free/open source.
