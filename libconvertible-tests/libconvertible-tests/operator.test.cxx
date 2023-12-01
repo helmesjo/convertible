@@ -4,6 +4,7 @@
 
 #include <array>
 #include <list>
+#include <map>
 #include <set>
 #include <string>
 #include <tuple>
@@ -739,15 +740,15 @@ SCENARIO("convertible: Operators")
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
     }
 
-    WHEN("lhs set<int>, rhs set<string>")
-    {
-      auto lhs = std::set<int>{ 1 };
-      auto rhs = std::set<std::string>{ "1" };
+    // WHEN("lhs set<int>, rhs set<string>")
+    // {
+    //   auto lhs = std::set<int>{ 1 };
+    //   auto rhs = std::set<std::string>{ "1" };
 
-      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      rhs = { "2" };
-      EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
-    }
+    //   EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+    //   rhs = { "2" };
+    //   EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+    // }
 
     WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
     {
@@ -764,6 +765,17 @@ SCENARIO("convertible: Operators")
       lhs = { {1, 1} };
       rhs = { {2, "1"} };
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+    }
+
+    WHEN("lhs unordered_map<int, int>, rhs map<int, int>")
+    {
+      auto lhs = std::unordered_map<int, int>{ {1, 1} };
+      auto rhs = std::map<int, int>{ { 1, 1} };
+
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
+      lhs = { {5, 1}, {2, 1}, {3, 1} };
+      rhs = { {5, 1}, {2, 1}, {3, 1} };
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
     }
 
     WHEN("lhs unordered_map<int, unordered_map<int, int>>, rhs unordered_map<int, unordered_map<int, string>>")

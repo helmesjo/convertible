@@ -44,29 +44,47 @@ namespace convertible::operators
         key_(key)
       {}
 
-      operator mapped_forward_t()
-        requires concepts::mapping_container<container_t>
+      bool has_value() const
       {
-        if constexpr(std::is_const_v<container_t>)
+        return cont_.contains(key_);
+      }
+
+      operator mapped_forward_t()
+        requires (!std::is_const_v<container_t>)
+      {
+        if constexpr(concepts::mapping_container<container_t>)
+        {
+          return std::forward<mapped_forward_t>(cont_[key_]);
+        }
+        else
+        {
+          return std::forward<mapped_forward_t>(*cont_.find(key_));
+        }
+      }
+
+      operator mapped_forward_t() const
+        requires std::is_const_v<container_t>
+      {
+        if constexpr(concepts::mapping_container<container_t>)
         {
           return std::forward<mapped_forward_t>(cont_.at(key_));
         }
         else
         {
-          return std::forward<mapped_forward_t>(cont_[key_]);
+          return std::forward<mapped_forward_t>(*cont_.find(key_));
         }
       }
 
       operator const mapped_value_t&() const
-        requires concepts::mapping_container<container_t>
       {
-        return cont_.find(key_)->second;
-      }
-
-      operator const mapped_value_t&() const
-        requires (!concepts::mapping_container<container_t>)
-      {
-        return *cont_.find(key_);
+        if constexpr(concepts::mapping_container<container_t>)
+        {
+          return cont_.at(key_);
+        }
+        else
+        {
+          return *cont_.find(key_);
+        }
       }
 
       auto& operator=(auto&& value)
@@ -261,27 +279,26 @@ namespace convertible::operators
       requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
             && details::invocable_with<assign, dir, traits::mapped_value_forwarded_t<lhs_t>, traits::mapped_value_forwarded_t<rhs_t>, converter_t>
   {
-      // 1. figure out 'from', and use that as 'key range'
-      // 2. clear 'to'
-      // 3. iterate keys
-      // 4. create associative_inserter for lhs & rhs using the key
-      // 5. call assign with lhs & rhs mapped value respectively (indirectly using inserter)
+    // 1. figure out 'from', and use that as 'key range'
+    // 2. clear 'to'
+    // 3. iterate keys
+    // 4. create associative_inserter for lhs & rhs using the key
+    // 5. call assign with lhs & rhs mapped value respectively (indirectly using inserter)
 
-      auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
-      to.clear();
-      std::for_each(std::begin(from), std::end(from),
-        [this, &lhs, &rhs, &converter](auto&& key) mutable {
-          auto&& [toElem, _] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
-          details::associative_inserter(FWD(toElem), key) =
-            this->template operator()<dir>(
-              std::forward<traits::mapped_value_forwarded_t<lhs_t>>(details::associative_inserter(FWD(lhs), key)),
-              std::forward<traits::mapped_value_forwarded_t<rhs_t>>(details::associative_inserter(FWD(rhs), key)),
-              converter
-            );
-        }
-      );
+    auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+    to.clear();
+    std::for_each(std::begin(from), std::end(from),
+      [this, &lhs, &rhs, &to, &converter](auto&& key) mutable {
+        details::associative_inserter(FWD(to), key) =
+          this->template operator()<dir>(
+            std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), key)),
+            std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), key)),
+            converter
+          );
+      }
+    );
 
-      return FWD(to);
+    return FWD(to);
   }
 
   struct equal
@@ -389,24 +406,30 @@ namespace convertible::operators
     requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
           && details::invocable_with<equal, dir, traits::mapped_value_forwarded_t<lhs_t>, traits::mapped_value_forwarded_t<rhs_t>, converter_t>
   {
-    return std::equal(std::cbegin(lhs), std::cend(lhs), std::cbegin(rhs),
-      [this, &converter](auto&& lhs, auto&& rhs){
-        // key-value pair (map etc.)
-        if constexpr(concepts::mapping_container<rhs_t>)
-        {
-          return lhs.first == rhs.first &&
-                  this->template operator()<dir>(
-                    std::forward_like<decltype(lhs)>(lhs.second),
-                    std::forward_like<decltype(lhs)>(rhs.second),
-                    converter
-                  );
-        }
-        // value (set etc.)
-        else
-        {
-          return this->template operator()<dir>(FWD(lhs), FWD(rhs), converter);
-        }
-      });
+    // 1. use actual lhs as 'key range'
+    // 2. iterate keys
+    // 3. check that actual rhs contains key
+    // 4. create associative_inserter for lhs & rhs using the key
+    // 5. call equal with lhs & rhs mapped value respectively (indirectly using inserter)
+
+    const auto& [actualLhs, actualRhs] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
+    for(const auto& elem : actualLhs)
+    {
+      if(!details::associative_inserter(FWD(actualRhs), elem).has_value())
+      {
+        return false;
+      }
+
+      if(!this->template operator()<dir>(
+          std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), elem)),
+          std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), elem)),
+          converter
+      ))
+      {
+        return false;
+      }
+    }
+    return true;
   }
 }
 
