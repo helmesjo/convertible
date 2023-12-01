@@ -82,13 +82,23 @@ namespace convertible::reader
 
   struct maybe
   {
-    constexpr decltype(auto) operator()(auto&& obj) const
+    constexpr decltype(auto) operator()(concepts::dereferencable auto&& obj) const
       requires std::constructible_from<bool, decltype(obj)>
     {
+      using object_t = decltype(obj);
+      using value_t = std::remove_cvref_t<decltype(*obj)>;
+
+      if constexpr(std::is_assignable_v<object_t, value_t>)
+      {
+        if(!enabled(FWD(obj)))
+        {
+          FWD(obj) = value_t{};
+        }
+      }
       return FWD(obj);
     }
 
-    constexpr bool enabled(auto&& obj) const
+    constexpr bool enabled(concepts::dereferencable auto&& obj) const
       requires std::constructible_from<bool, decltype(obj)>
     {
       return bool{FWD(obj)};

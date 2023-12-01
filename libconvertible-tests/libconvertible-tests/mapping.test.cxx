@@ -88,20 +88,29 @@ SCENARIO("convertible: Mapping")
     using lhs_t = std::optional<std::string>;
     using rhs_t = std::optional<std::string>;
 
-    auto map = mapping(maybe(lhs_t{}), maybe(rhs_t{}));
+    // wrap in 'deref' so that it crashes in case the conditional
+    // mapping logic is incorrect.
+    auto map = mapping(deref(maybe(lhs_t{})), deref(maybe(rhs_t{})));
 
     WHEN("lhs and rhs both contains a value")
     {
       auto lhs = lhs_t{"hello"};
       auto rhs = rhs_t{"world"};
-      // "moved from" optional is not cleard (that is, it still "holds a value")
+      // "moved from" optional is not cleared (that is, it still "holds a value")
       MAPS_CORRECTLY(lhs, rhs, map, [](const auto& val){ return *val == ""; });
+    }
+    WHEN("lhs and rhs are both empty")
+    {
+      auto lhs = lhs_t{};
+      auto rhs = rhs_t{};
+      // "moved from" optional is not cleared (that is, it still "holds a value")
+      MAPS_CORRECTLY(lhs, rhs, map);
     }
     WHEN("lhs contains a value, rhs is empty")
     {
       auto lhs = lhs_t{"hello"};
       auto rhs = rhs_t{};
-      // "moved from" optional is not cleard (that is, it still "holds a value")
+
       WHEN("assigning rhs to lhs")
       {
         map.template assign<direction::rhs_to_lhs>(lhs, rhs);
@@ -128,7 +137,7 @@ SCENARIO("convertible: Mapping")
     {
       auto lhs = lhs_t{};
       auto rhs = rhs_t{"world"};
-      // "moved from" optional is not cleared (that is, it still "holds a value")
+
       WHEN("assigning rhs to lhs")
       {
         map.template assign<direction::rhs_to_lhs>(lhs, rhs);

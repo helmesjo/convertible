@@ -47,9 +47,15 @@ namespace convertible
     }
 
     constexpr bool enabled(auto&& obj) const
-      requires requires(adapter self){ { self.reader_.enabled(FWD(obj)) }; }
     {
-      return reader_.enabled(FWD(obj));
+      if constexpr(requires{ { reader_.enabled(FWD(obj)) } -> std::convertible_to<bool>; })
+      {
+        return reader_.enabled(FWD(obj));
+      }
+      else
+      {
+        return true;
+      }
     }
 
     constexpr auto defaulted_adaptee() const
