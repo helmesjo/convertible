@@ -44,6 +44,11 @@ namespace convertible::operators
         key_(key)
       {}
 
+      associative_inserter(concepts::associative_container auto&& cont)
+      : cont_(cont),
+        inserter_(cont, std::begin(cont))
+      {}
+
       bool has_value() const
       {
         return cont_.contains(key_);
@@ -51,15 +56,9 @@ namespace convertible::operators
 
       operator mapped_forward_t()
         requires (!std::is_const_v<container_t>)
+              && concepts::mapping_container<container_t>
       {
-        if constexpr(concepts::mapping_container<container_t>)
-        {
-          return std::forward<mapped_forward_t>(cont_[key_]);
-        }
-        else
-        {
-          return std::forward<mapped_forward_t>(*cont_.find(key_));
-        }
+        return std::forward<mapped_forward_t>(cont_[key_]);
       }
 
       operator mapped_forward_t() const
@@ -112,7 +111,21 @@ namespace convertible::operators
         inserter_ = FWD(value);
         return *this;
       }
+
+      bool operator==(auto&& value) const
+      {
+        return cont_.contains(FWD(value));
+      }
+
+      bool operator!=(auto&& value) const
+      {
+        return !(*this == FWD(value));
+      }
     };
+    template<concepts::associative_container cont_t>
+    associative_inserter(cont_t&& cont)
+      -> associative_inserter<std::remove_reference_t<decltype(cont)>, traits::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
+
     template<concepts::associative_container cont_t>
     associative_inserter(cont_t&& cont, auto&&)
       -> associative_inserter<std::remove_reference_t<decltype(cont)>, traits::like_t<decltype(cont), traits::mapped_value_t<cont_t>>>;
@@ -279,6 +292,8 @@ namespace convertible::operators
       requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
             && details::invocable_with<assign, dir, traits::mapped_value_forwarded_t<lhs_t>, traits::mapped_value_forwarded_t<rhs_t>, converter_t>
   {
+    static_assert((concepts::mapping_container<lhs_t> && concepts::mapping_container<rhs_t>)
+              || (!concepts::mapping_container<lhs_t> && !concepts::mapping_container<rhs_t>));
     // 1. figure out 'from', and use that as 'key range'
     // 2. clear 'to'
     // 3. iterate keys
@@ -287,16 +302,27 @@ namespace convertible::operators
 
     auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
     to.clear();
-    std::for_each(std::begin(from), std::end(from),
-      [this, &lhs, &rhs, &to, &converter](auto&& key) mutable {
-        details::associative_inserter(FWD(to), key) =
-          this->template operator()<dir>(
-            std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), key)),
-            std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), key)),
-            converter
-          );
+    for(auto&& elem : from)
+    {
+      if constexpr(concepts::mapping_container<lhs_t>)
+      {
+        this->template operator()<dir>(
+          std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), elem)),
+          std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), elem)),
+          converter
+        );
       }
-    );
+      else
+      {
+        auto toInserter = details::associative_inserter(FWD(to));
+        auto tmp = static_cast<traits::mapped_value_t<decltype(to)>>(toInserter);
+        toInserter = this->template operator()<direction::rhs_to_lhs>(
+                       tmp,
+                       FWD(elem),
+                       converter
+                     );
+      }
+    }
 
     return FWD(to);
   }
@@ -406,6 +432,8 @@ namespace convertible::operators
     requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>)
           && details::invocable_with<equal, dir, traits::mapped_value_forwarded_t<lhs_t>, traits::mapped_value_forwarded_t<rhs_t>, converter_t>
   {
+    static_assert((concepts::mapping_container<lhs_t> && concepts::mapping_container<rhs_t>)
+              || (!concepts::mapping_container<lhs_t> && !concepts::mapping_container<rhs_t>));
     // 1. use actual lhs as 'key range'
     // 2. iterate keys
     // 3. check that actual rhs contains key
@@ -415,18 +443,42 @@ namespace convertible::operators
     const auto& [actualLhs, actualRhs] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
     for(const auto& elem : actualLhs)
     {
-      if(!details::associative_inserter(FWD(actualRhs), elem).has_value())
+      if constexpr(concepts::mapping_container<lhs_t>)
       {
-        return false;
-      }
+        if(!details::associative_inserter(FWD(actualRhs), elem).has_value())
+        {
+          return false;
+        }
 
-      if(!this->template operator()<dir>(
-          std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), elem)),
-          std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), elem)),
-          converter
-      ))
+        if(!this->template operator()<dir>(
+            std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), elem)),
+            std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), elem)),
+            converter
+        ))
+        {
+          return false;
+        }
+      }
+      else
       {
-        return false;
+        // if(!FWD(actualRhs).contains(converter(FWD(elem))))
+        // {
+        //   return false;
+        // }
+        // auto key = converter(FWD(elem));
+        // if(!details::associative_inserter(FWD(actualRhs), key).has_value())
+        // {
+        //   return false;
+        // }
+        auto rhsInserter = details::associative_inserter(FWD(actualRhs));
+        if(!this->template operator()<direction::rhs_to_lhs>(
+                       FWD(elem),
+                       rhsInserter,
+                       converter
+        ))
+        {
+          return false;
+        }
       }
     }
     return true;

@@ -378,19 +378,19 @@ SCENARIO("convertible: Operators")
       // });
     }
 
-    // WHEN("lhs set<int>, rhs set<string>")
-    // {
-    //   auto lhs = std::set<int>{};
-    //   auto rhs = std::set<std::string>{ {"2"} };
+    WHEN("lhs set<int>, rhs set<string>")
+    {
+      auto lhs = std::set<int>{};
+      auto rhs = std::set<std::string>{ {"2"} };
 
-    //   COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-    //     return *lhs.find(2) == converter(*rhs.find("2"));
-    //   });
-    //   // can't move-from a set value (AKA key) since that would break the tree
-    //   // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
-    //   //   return *rhs.find("2") == "";
-    //   // });
-    // }
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+        return *lhs.find(2) == converter(*rhs.find("2"));
+      });
+      // can't move-from a set value (AKA key) since that would break the tree
+      // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
+      //   return *rhs.find("2") == "";
+      // });
+    }
 
     WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
     {
@@ -740,15 +740,15 @@ SCENARIO("convertible: Operators")
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
     }
 
-    // WHEN("lhs set<int>, rhs set<string>")
-    // {
-    //   auto lhs = std::set<int>{ 1 };
-    //   auto rhs = std::set<std::string>{ "1" };
+    WHEN("lhs set<int>, rhs set<string>")
+    {
+      auto lhs = std::set<int>{ 1 };
+      auto rhs = std::set<std::string>{ "1" };
 
-    //   EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-    //   rhs = { "2" };
-    //   EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
-    // }
+      EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
+      rhs = { "2" };
+      EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
+    }
 
     WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
     {
