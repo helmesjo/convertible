@@ -287,16 +287,15 @@ namespace convertible::operators
 
     auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
     to.clear();
-    std::for_each(std::begin(from), std::end(from),
-      [this, &lhs, &rhs, &to, &converter](auto&& key) mutable {
-        details::associative_inserter(FWD(to), key) =
-          this->template operator()<dir>(
-            std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), key)),
-            std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), key)),
-            converter
-          );
-      }
-    );
+    for(decltype(auto) key : FWD(from))
+    {
+      details::associative_inserter(FWD(to), FWD(key)) =
+        this->template operator()<dir>(
+          std::forward<traits::mapped_value_forwarded_t<decltype(lhs)>>(details::associative_inserter(FWD(lhs), key)),
+          std::forward<traits::mapped_value_forwarded_t<decltype(rhs)>>(details::associative_inserter(FWD(rhs), key)),
+          converter
+        );
+    }
 
     return FWD(to);
   }
