@@ -75,18 +75,6 @@ namespace convertible::operators
         }
       }
 
-      operator const mapped_value_t&() const
-      {
-        if constexpr(concepts::mapping_container<container_t>)
-        {
-          return cont_.at(key_);
-        }
-        else
-        {
-          return *cont_.find(key_);
-        }
-      }
-
       auto& operator=(auto&& value)
         requires concepts::mapping_container<container_t>
       // Workaround bug with apple-clang & using 'this->' in requires clause.
