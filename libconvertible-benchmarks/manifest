@@ -1,6 +1,6 @@
 : 1
 name: libconvertible-benchmarks
-version: 0.1.6-a.0.z
+version: 0.1.6
 project: convertible
 summary: libconvertible-benchmarks C++ executable
 license: other: proprietary ; Not free/open source.
