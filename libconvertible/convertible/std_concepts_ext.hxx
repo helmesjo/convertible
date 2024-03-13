@@ -22,10 +22,16 @@ namespace convertible
         using class_t = C;
         using value_t = R;
       };
+
       template<typename class_t, typename return_t>
-      constexpr auto member_ptr_meta(return_t class_t::*) -> member_meta<class_t, return_t>{}
+      constexpr auto
+      member_ptr_meta(return_t class_t::*) -> member_meta<class_t, return_t>
+      {}
+
       template<typename class_t, typename return_t, typename... args_t>
-      constexpr auto member_ptr_meta(return_t (class_t::*)(args_t...)) -> member_meta<class_t, return_t, args_t...>{}
+      constexpr auto
+      member_ptr_meta(return_t (class_t::*)(args_t...)) -> member_meta<class_t, return_t, args_t...>
+      {}
 
       template<typename M>
       using member_ptr_meta_t = decltype(member_ptr_meta(std::declval<M>()));
@@ -36,13 +42,14 @@ namespace convertible
         using type = decltype(std::tuple(std::declval<unique_ts...>()));
       };
 
-      template<template<typename, typename> typename op_t, typename... unique_ts, typename head_t, typename... tail_ts>
+      template<template<typename, typename> typename op_t, typename... unique_ts, typename head_t,
+               typename... tail_ts>
       struct unique_types<op_t, std::tuple<unique_ts...>, head_t, tail_ts...>
       {
-        using type = typename std::conditional_t<(op_t<head_t, tail_ts>::value || ...),
-            unique_types<op_t, std::tuple<unique_ts...>, tail_ts...>,
-            unique_types<op_t, std::tuple<unique_ts..., head_t>, tail_ts...>
-          >::type;
+        using type = typename std::conditional_t<
+          (op_t<head_t, tail_ts>::value || ...),
+          unique_types<op_t, std::tuple<unique_ts...>, tail_ts...>,
+          unique_types<op_t, std::tuple<unique_ts..., head_t>, tail_ts...>>::type;
       };
     }
 
@@ -59,7 +66,8 @@ namespace convertible
     using unique_ts = typename details::unique_types<std::is_same, std::tuple<>, arg_ts...>::type;
 
     template<typename... arg_ts>
-    using unique_derived_ts = typename details::unique_types<std::is_base_of, std::tuple<>, arg_ts...>::type;
+    using unique_derived_ts =
+      typename details::unique_types<std::is_base_of, std::tuple<>, arg_ts...>::type;
   }
 
   namespace concepts
@@ -68,65 +76,68 @@ namespace convertible
     concept trivially_copyable = std::is_trivially_copyable_v<std::remove_reference_t<obj_t>>;
 
     template<typename from_t, typename to_t>
-    concept castable_to = requires
-    {
-      static_cast<to_t>(std::declval<from_t>());
-    };
+    concept castable_to = requires { static_cast<to_t>(std::declval<from_t>()); };
 
     template<typename T>
     concept member_ptr = std::is_member_pointer_v<T>;
 
     // Credit: https://en.cppreference.com/w/cpp/ranges/range
     template<typename T>
-    concept range = requires(T& t)
-    {
-      std::begin(t);
-      std::end  (t);
-    };
+    concept range = requires (T& t) {
+                      std::begin(t);
+                      std::end(t);
+                    };
 
     template<typename T, typename index_t = std::size_t>
-    concept indexable = requires(T& t)
-    {
-      t[std::declval<index_t>()];
-    };
+    concept indexable = requires (T& t) { t[std::declval<index_t>()]; };
 
     template<typename T>
-    concept dereferencable = requires(T t)
-    {
-      *t;
-      requires (!std::same_as<void, decltype(*t)>);
-    };
+    concept dereferencable = requires (T t) {
+                               *t;
+                               requires (!std::same_as<void, decltype(*t)>);
+                             };
 
     template<typename cont_t>
-    concept fixed_size_container = std::is_array_v<std::remove_reference_t<cont_t>> || (range<cont_t> && requires (cont_t c)
-    {
-      requires (decltype(std::span{ c })::extent != std::dynamic_extent);
-    });
+    concept fixed_size_container =
+      std::is_array_v<std::remove_reference_t<cont_t>> ||
+      (range<cont_t> &&
+       requires (cont_t c) { requires (decltype(std::span{c})::extent != std::dynamic_extent); });
 
     template<typename cont_t>
-    concept resizable_container = range<cont_t> && requires(std::remove_reference_t<cont_t> c)
-    {
-      c.resize(std::size_t{0});
-    };
+    concept resizable_container =
+      range<cont_t> && requires (std::remove_reference_t<cont_t> c) { c.resize(std::size_t{0}); };
 
-    // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
+    // Very rudimental concept based on "Member Function Table" here:
+    // https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
-    concept sequence_container = range<cont_t>
-      && requires(cont_t c){ { std::size(c) }; }
-      && (requires(cont_t c){ { std::data(c) }; } || requires(std::remove_cvref_t<cont_t> c){ { c.resize(0) }; });
+    concept sequence_container = range<cont_t> &&
+                                 requires (cont_t c) {
+                                   {
+                                     std::size(c)
+                                   };
+                                 } &&
+                                 (
+                                   requires (cont_t c) {
+                                     {
+                                       std::data(c)
+                                     };
+                                   } ||
+                                   requires (std::remove_cvref_t<cont_t> c) {
+                                     {
+                                       c.resize(0)
+                                     };
+                                   });
 
-    // Very rudimental concept based on "Member Function Table" here: https://en.cppreference.com/w/cpp/container
+    // Very rudimental concept based on "Member Function Table" here:
+    // https://en.cppreference.com/w/cpp/container
     template<typename cont_t>
-    concept associative_container = range<cont_t> && requires(cont_t container)
-    {
-      typename std::remove_cvref_t<cont_t>::key_type;
-    };
+    concept associative_container =
+      range<cont_t> &&
+      requires (cont_t container) { typename std::remove_cvref_t<cont_t>::key_type; };
 
     template<typename cont_t>
-    concept mapping_container = associative_container<cont_t> && requires
-    {
-      typename std::remove_cvref_t<cont_t>::mapped_type;
-    };
+    concept mapping_container = associative_container<cont_t> &&
+                                requires { typename std::remove_cvref_t<cont_t>::mapped_type; };
   }
 
   namespace traits
@@ -158,8 +169,7 @@ namespace convertible
     {
       template<typename T>
       struct container_meta
-      {
-      };
+      {};
 
       template<template<typename, typename...> typename cont_t, typename... _arg_ts>
         requires concepts::sequence_container<cont_t<_arg_ts...>>
@@ -170,8 +180,8 @@ namespace convertible
       };
 
       template<template<typename, typename...> typename cont_t, typename... _arg_ts>
-        requires concepts::associative_container<cont_t<_arg_ts...>>
-              && (!concepts::mapping_container<cont_t<_arg_ts...>>)
+        requires concepts::associative_container<cont_t<_arg_ts...>> &&
+                 (!concepts::mapping_container<cont_t<_arg_ts...>>)
       struct container_meta<cont_t<_arg_ts...>>
       {
         template<typename new_elem_t>
@@ -191,9 +201,8 @@ namespace convertible
 
     template<typename cont_t, typename new_elem_t>
     using as_container_t =
-      traits::like_t<cont_t,
-        typename details::container_meta<std::remove_cvref_t<cont_t>>::template with_elem_t<new_elem_t>
-    >;
+      traits::like_t<cont_t, typename details::container_meta<
+                               std::remove_cvref_t<cont_t>>::template with_elem_t<new_elem_t>>;
   }
 }
 

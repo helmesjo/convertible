@@ -4,8 +4,8 @@
 #include <convertible/concepts.hxx>
 #include <convertible/std_concepts_ext.hxx>
 
-#include <type_traits>
 #include <tuple>
+#include <type_traits>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
@@ -139,7 +139,8 @@ namespace convertible::reader
     }
 
     static constexpr auto
-    compose(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail) -> decltype(auto)
+    compose(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail)
+      -> decltype(auto)
       requires (is_composable<decltype(arg), decltype(head), decltype(tail)...>())
     {
       if constexpr (sizeof...(tail) == 0)
@@ -153,7 +154,8 @@ namespace convertible::reader
     }
 
     static constexpr auto
-    enabled_impl(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail) -> bool
+    enabled_impl(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail)
+      -> bool
       requires (is_composable<decltype(arg), decltype(head), decltype(tail)...>())
     {
       if constexpr (sizeof...(tail) == 0)

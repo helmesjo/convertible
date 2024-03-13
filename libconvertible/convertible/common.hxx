@@ -10,12 +10,14 @@ namespace convertible
   {
     struct any
     {
-      constexpr auto operator[](std::size_t) -> any&
+      constexpr auto
+      operator[](std::size_t) -> any&
       {
         return *this;
       }
 
-      constexpr auto operator*() -> any&
+      constexpr auto
+      operator*() -> any&
       {
         return *this;
       }
@@ -25,15 +27,19 @@ namespace convertible
     struct const_value
     {
       constexpr const_value() = default;
+
       constexpr const_value(value_t val)
         requires std::copy_constructible<value_t>
-      : value(val){}
+        : value(val)
+      {}
 
       constexpr const_value(auto&& str)
-        requires (!std::copy_constructible<value_t>) &&
-        requires { std::begin(str); std::size(str); }
+        requires (!std::copy_constructible<value_t>) && requires {
+                                                          std::begin(str);
+                                                          std::size(str);
+                                                        }
       {
-          std::copy_n(std::begin(str), std::size(str), value);
+        std::copy_n(std::begin(str), std::size(str), value);
       }
 
       template<typename to_t>
@@ -45,8 +51,9 @@ namespace convertible
 
       value_t value;
     };
+
     template<typename elem_t, std::size_t size>
-    const_value(const elem_t (&str)[size]) -> const_value<elem_t[size]>; //NOLINT
+    const_value(elem_t const (&str)[size]) -> const_value<elem_t[size]>; // NOLINT
   }
 
   enum class direction
