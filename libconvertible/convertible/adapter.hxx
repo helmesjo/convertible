@@ -16,8 +16,12 @@ namespace convertible
     static constexpr bool accepts_any_adaptee = std::is_same_v<adaptee_value_t, details::any>;
 
     constexpr adapter() = default;
-    constexpr adapter(const adapter&) = default;
+    constexpr adapter(adapter const&)  = default;
     constexpr adapter(adapter&&) = default;
+    constexpr ~adapter() = default;
+    auto operator=(adapter const&) -> adapter& = delete;
+    auto operator=(adapter&&) -> adapter&      = delete;
+
     constexpr explicit adapter(adaptee_t adaptee, reader_t reader)
       : reader_(FWD(reader)),
         adaptee_(adaptee)
@@ -28,7 +32,7 @@ namespace convertible
     {
     }
 
-    constexpr decltype(auto) operator()(concepts::adaptable<reader_t> auto&& obj) const
+    constexpr auto operator()(concepts::adaptable<reader_t> auto&& obj) const -> decltype(auto)
     {
       return reader_(FWD(obj));
     }
@@ -41,7 +45,7 @@ namespace convertible
 
     // allow implicit/explicit conversion to adaptee_t (preserving type qualifiers of `obj`)
     template<typename obj_t>
-    constexpr decltype(auto) operator()(obj_t&& obj) const
+    constexpr auto operator()(obj_t&& obj) const -> decltype(auto)
       requires (!concepts::adaptable<decltype(obj), reader_t>)
             && concepts::castable_to<obj_t, traits::like_t<decltype(obj), adaptee_t>>
             && concepts::adaptable<traits::like_t<decltype(obj), adaptee_t>, reader_t>
@@ -49,7 +53,7 @@ namespace convertible
       return reader_(static_cast<traits::like_t<decltype(obj), adaptee_t>>(FWD(obj)));
     }
 
-    constexpr bool enabled(auto&& obj) const
+    constexpr auto enabled(auto&& obj) const -> bool
     {
       if constexpr(requires{ { reader_.enabled(FWD(obj)) } -> std::convertible_to<bool>; })
       {

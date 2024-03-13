@@ -10,12 +10,12 @@ namespace convertible
   {
     struct any
     {
-      constexpr any& operator[](std::size_t)
+      constexpr auto operator[](std::size_t) -> any&
       {
         return *this;
       }
 
-      constexpr any& operator*()
+      constexpr auto operator*() -> any&
       {
         return *this;
       }

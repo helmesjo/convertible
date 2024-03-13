@@ -23,9 +23,9 @@ namespace convertible
         using value_t = R;
       };
       template<typename class_t, typename return_t>
-      constexpr member_meta<class_t, return_t> member_ptr_meta(return_t class_t::*){}
+      constexpr auto member_ptr_meta(return_t class_t::*) -> member_meta<class_t, return_t>{}
       template<typename class_t, typename return_t, typename... args_t>
-      constexpr member_meta<class_t, return_t, args_t...> member_ptr_meta(return_t (class_t::*)(args_t...)){}
+      constexpr auto member_ptr_meta(return_t (class_t::*)(args_t...)) -> member_meta<class_t, return_t, args_t...>{}
 
       template<typename M>
       using member_ptr_meta_t = decltype(member_ptr_meta(std::declval<M>()));

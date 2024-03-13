@@ -15,8 +15,8 @@ namespace convertible
     using rhs_unique_types =
       traits::unique_derived_ts<typename mapping_ts::rhs_adapter_t::adaptee_value_t...>;
 
-    constexpr lhs_unique_types
-    defaulted_lhs() const
+    constexpr auto
+    defaulted_lhs() const -> lhs_unique_types
     {
       lhs_unique_types rets;
       for_each(
@@ -40,8 +40,8 @@ namespace convertible
       return rets;
     }
 
-    constexpr rhs_unique_types
-    defaulted_rhs() const
+    constexpr auto
+    defaulted_rhs() const -> rhs_unique_types
     {
       rhs_unique_types rets;
       for_each(
@@ -87,8 +87,8 @@ namespace convertible
     }
 
     template<direction dir = direction::rhs_to_lhs>
-    constexpr bool
-    equal(auto const& lhs, auto const& rhs) const
+    constexpr auto
+    equal(auto const& lhs, auto const& rhs) const -> bool
       requires (
         concepts::mappable_equal<mapping_ts, decltype(lhs), decltype(rhs), direction::rhs_to_lhs> ||
         ...)

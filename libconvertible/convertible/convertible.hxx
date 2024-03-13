@@ -114,13 +114,13 @@ namespace convertible
   }
 
   template<typename callback_t, typename tuple_t>
-  constexpr bool
-  for_each(callback_t&& callback, tuple_t&& pack)
+  constexpr auto
+  for_each(callback_t&& callback, tuple_t&& pack) -> bool
   {
     return std::apply(
       [&](auto&&... args)
       {
-        return (FWD(callback)(FWD(args)) && ...);
+        return (std::forward<callback_t>(callback)(FWD(args)) && ...);
       },
       FWD(pack));
   }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <concepts>
 #include <convertible/concepts.hxx>
 #include <convertible/std_concepts_ext.hxx>
 #include <type_traits>
@@ -11,7 +10,7 @@ namespace convertible::converter
 {
   struct identity
   {
-    constexpr decltype(auto) operator()(auto&& val) const
+    constexpr auto operator()(auto&& val) const -> decltype(auto)
     {
       return FWD(val);
     }
@@ -27,7 +26,7 @@ namespace convertible::converter
     template<typename arg_t>
     using converted_t = traits::converted_t<converter_t, arg_t>;
 
-    constexpr decltype(auto) operator()(auto&& obj) const
+    constexpr auto operator()(auto&& obj) const -> decltype(auto)
       requires std::common_reference_with<std::remove_cvref_t<target_t>, converted_t<decltype(obj)>>
             || concepts::castable_to<converted_t<decltype(obj)>, target_t>
     {

@@ -5,7 +5,6 @@
 #include <convertible/std_concepts_ext.hxx>
 
 #include <concepts>
-#include <span>
 #include <type_traits>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)

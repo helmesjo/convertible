@@ -4,11 +4,8 @@
 #include <convertible/concepts.hxx>
 #include <convertible/std_concepts_ext.hxx>
 
-#include <cstring>
-#include <functional>
-#include <stdexcept>
-#include <string>
 #include <type_traits>
+#include <tuple>
 
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
@@ -17,15 +14,15 @@ namespace convertible::reader
   template<typename adaptee_t = details::any>
   struct identity
   {
-    constexpr decltype(auto)
-    operator()(auto&& obj) const
+    constexpr auto
+    operator()(auto&& obj) const -> decltype(auto)
       requires std::is_same_v<adaptee_t, details::any>
     {
       return FWD(obj);
     }
 
-    constexpr decltype(auto)
-    operator()(auto&& obj) const
+    constexpr auto
+    operator()(auto&& obj) const -> decltype(auto)
       requires std::common_reference_with<adaptee_t, decltype(obj)>
     {
       return FWD(obj);
@@ -43,8 +40,8 @@ namespace convertible::reader
 
     template<typename obj_t>
       requires std::derived_from<std::remove_reference_t<obj_t>, class_t>
-    constexpr decltype(auto)
-    operator()(obj_t&& obj) const
+    constexpr auto
+    operator()(obj_t&& obj) const -> decltype(auto)
     {
       // MSVC bug: 'FWD(obj).*ptr' causes 'fatal error C1001: Internal compiler error'
       //            when 'obj' is r-value reference (in combination with above 'requires' etc.)
@@ -65,8 +62,8 @@ namespace convertible::reader
   template<details::const_value i>
   struct index
   {
-    constexpr decltype(auto)
-    operator()(concepts::indexable<decltype(i)> auto&& obj) const
+    constexpr auto
+    operator()(concepts::indexable<decltype(i)> auto&& obj) const -> decltype(auto)
     {
       // standard containers do not have a 'move from' index operator (for legacy reasons)
       // but here we want to support it for performance reasons.
@@ -83,8 +80,8 @@ namespace convertible::reader
 
   struct deref
   {
-    constexpr decltype(auto)
-    operator()(concepts::dereferencable auto&& obj) const
+    constexpr auto
+    operator()(concepts::dereferencable auto&& obj) const -> decltype(auto)
     {
       return *FWD(obj);
     }
@@ -92,8 +89,8 @@ namespace convertible::reader
 
   struct maybe
   {
-    constexpr decltype(auto)
-    operator()(concepts::dereferencable auto&& obj) const
+    constexpr auto
+    operator()(concepts::dereferencable auto&& obj) const -> decltype(auto)
       requires std::constructible_from<bool, decltype(obj)>
     {
       using object_t = decltype(obj);
@@ -109,8 +106,8 @@ namespace convertible::reader
       return FWD(obj);
     }
 
-    constexpr bool
-    enabled(concepts::dereferencable auto&& obj) const
+    constexpr auto
+    enabled(concepts::dereferencable auto&& obj) const -> bool
       requires std::constructible_from<bool, decltype(obj)>
     {
       return bool{FWD(obj)};
@@ -124,8 +121,8 @@ namespace convertible::reader
     using adapters_t = std::tuple<adapter_ts...>;
 
     template<typename arg_t, typename head_t, typename... tail_t>
-    static constexpr bool
-    is_composable()
+    static constexpr auto
+    is_composable() -> bool
     {
       if constexpr (sizeof...(tail_t) == 0)
       {
@@ -141,8 +138,8 @@ namespace convertible::reader
       }
     }
 
-    static constexpr decltype(auto)
-    compose(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail)
+    static constexpr auto
+    compose(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail) -> decltype(auto)
       requires (is_composable<decltype(arg), decltype(head), decltype(tail)...>())
     {
       if constexpr (sizeof...(tail) == 0)
@@ -155,8 +152,8 @@ namespace convertible::reader
       }
     }
 
-    static constexpr bool
-    enabled_impl(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail)
+    static constexpr auto
+    enabled_impl(auto&& arg, concepts::adapter auto&& head, concepts::adapter auto&&... tail) -> bool
       requires (is_composable<decltype(arg), decltype(head), decltype(tail)...>())
     {
       if constexpr (sizeof...(tail) == 0)
@@ -188,8 +185,8 @@ namespace convertible::reader
     {}
 
     template<typename arg_t>
-    constexpr decltype(auto)
-    operator()(arg_t&& arg) const
+    constexpr auto
+    operator()(arg_t&& arg) const -> decltype(auto)
       requires requires () { compose(FWD(arg), std::declval<adapter_ts>()...); }
     {
       return std::apply(
@@ -200,8 +197,8 @@ namespace convertible::reader
         adapters_);
     }
 
-    constexpr bool
-    enabled(auto&& arg) const
+    constexpr auto
+    enabled(auto&& arg) const -> bool
       requires requires { enabled_impl(FWD(arg), std::declval<adapter_ts>()...); }
     {
       using arg_t = decltype(arg);
