@@ -1,6 +1,5 @@
 #include <convertible/operators.hxx>
 #include <libconvertible-tests/test_common.hxx>
-#include <doctest/doctest.h>
 
 #include <array>
 #include <list>
@@ -11,13 +10,17 @@
 #include <unordered_map>
 #include <vector>
 
+#include <doctest/doctest.h>
+
 namespace
 {
-  auto verify_equal = [](const auto& lhs, const auto& rhs, const auto& converter){
+  auto verify_equal = [](auto const& lhs, auto const& rhs, auto const& converter)
+  {
     return lhs == converter(rhs);
   };
 
-  auto verify_empty = [](auto&& rhs){
+  auto verify_empty = [](auto&& rhs)
+  {
     return rhs == std::remove_cvref_t<decltype(rhs)>{};
   };
 }
@@ -25,26 +28,29 @@ namespace
 TEST_CASE_TEMPLATE_DEFINE("it's invocable with types", arg_tuple_t, invocable_with_types)
 {
   using operator_t = std::tuple_element_t<0, arg_tuple_t>;
-  using lhs_t = std::tuple_element_t<1, arg_tuple_t>;
-  using rhs_t = std::tuple_element_t<2, arg_tuple_t>;
+  using lhs_t      = std::tuple_element_t<1, arg_tuple_t>;
+  using rhs_t      = std::tuple_element_t<2, arg_tuple_t>;
 
-  if constexpr(std::tuple_size_v<arg_tuple_t> > 3)
+  if constexpr (std::tuple_size_v<arg_tuple_t> > 3)
   {
     using converter_t = std::tuple_element_t<3, arg_tuple_t>;
     static_assert(std::invocable<operator_t, lhs_t&, rhs_t&, converter_t>);
     static_assert(std::invocable<operator_t, lhs_t&, rhs_t&&, converter_t>);
-    static_assert(std::invocable<operator_t, lhs_t&, const rhs_t&, converter_t>);
+    static_assert(std::invocable<operator_t, lhs_t&, rhs_t const&, converter_t>);
   }
   else
   {
     static_assert(std::invocable<operator_t, lhs_t&, rhs_t&>);
     static_assert(std::invocable<operator_t, lhs_t&, rhs_t&&>);
-    static_assert(std::invocable<operator_t, lhs_t&, const rhs_t&>);
+    static_assert(std::invocable<operator_t, lhs_t&, rhs_t const&>);
   }
 }
 
-template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity, typename verify_t = decltype(verify_equal)>
-void COPY_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}, verify_t verifyEqual = verify_equal)
+template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity,
+         typename verify_t = decltype(verify_equal)>
+void
+COPY_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {},
+                       verify_t verifyEqual = verify_equal)
 {
   CAPTURE(lhs);
   CAPTURE(rhs);
@@ -68,8 +74,11 @@ void COPY_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
   }
 }
 
-template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity, typename verify_t = decltype(verify_empty)>
-void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}, verify_t verifyMoved = verify_empty)
+template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity,
+         typename verify_t = decltype(verify_empty)>
+void
+MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {},
+                       verify_t verifyMoved = verify_empty)
 {
   CAPTURE(lhs);
   CAPTURE(rhs);
@@ -92,7 +101,9 @@ void MOVE_ASSIGNS_CORRECTLY(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}
 }
 
 template<typename lhs_t, typename rhs_t, typename converter_t = convertible::converter::identity>
-void EQUALITY_COMPARES_CORRECTLY(bool expectedResult, lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {})
+void
+EQUALITY_COMPARES_CORRECTLY(bool expectedResult, lhs_t&& lhs, rhs_t&& rhs,
+                            converter_t converter = {})
 {
   CAPTURE(lhs);
   CAPTURE(rhs);
@@ -100,7 +111,7 @@ void EQUALITY_COMPARES_CORRECTLY(bool expectedResult, lhs_t&& lhs, rhs_t&& rhs, 
 
   auto op = convertible::operators::equal{};
 
-  if(expectedResult)
+  if (expectedResult)
   {
     THEN("lhs == rhs returns true")
     {
@@ -122,106 +133,56 @@ SCENARIO("convertible: Operators")
 
   struct int_string_converter
   {
-    int operator()(std::string s) const
+    int
+    operator()(std::string s) const
     {
       return std::stoi(s);
     }
-    std::string operator()(int i) const
+
+    std::string
+    operator()(int i) const
     {
       return std::to_string(i);
     }
   } intStringConverter;
 
-  enum class enum_a{};
-  enum class enum_b{};
+  enum class enum_a
+  {
+  };
+  enum class enum_b
+  {
+  };
 
   GIVEN("assign operator")
   {
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        int,
-        int
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        enum_a,
-        enum_b
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        int,
-        std::string,
-        int_string_converter
-      >
-    );
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types, std::tuple<operators::assign, int, int>);
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types, std::tuple<operators::assign, enum_a, enum_b>);
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types, std::tuple<operators::assign, int, std::string, int_string_converter>);
     // sequence containers
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types, std::tuple<operators::assign, std::array<int, 0>, std::array<int, 0>>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::array<int, 0>,
-        std::array<int, 0>
-      >
-    );
+                              std::tuple<operators::assign, std::array<int, 0>,
+                                         std::array<std::string, 0>, int_string_converter>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::array<int, 0>,
-        std::array<std::string, 0>,
-        int_string_converter
-      >
-    );
+                              std::tuple<operators::assign, std::vector<int>, std::vector<int>>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::vector<int>,
-        std::vector<int>
-      >
-    );
+                              std::tuple<operators::assign, std::vector<int>,
+                                         std::vector<std::string>, int_string_converter>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::vector<int>,
-        std::vector<std::string>,
-        int_string_converter
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::list<int>,
-        std::list<int>
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::list<int>,
-        std::list<std::string>,
-        int_string_converter
-      >
-    );
+                              std::tuple<operators::assign, std::list<int>, std::list<int>>);
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::assign, std::list<int>, std::list<std::string>, int_string_converter>);
     // sequence containers (recursive)
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::vector<std::vector<int>>,
-        std::vector<std::vector<std::string>>,
-        int_string_converter
-      >
-    );
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::assign, std::vector<std::vector<int>>,
+                 std::vector<std::vector<std::string>>, int_string_converter>);
     // associative containers
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::set<int>,
-        std::set<int>
-      >
-    );
+                              std::tuple<operators::assign, std::set<int>, std::set<int>>);
     // TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
     //   std::tuple<
     //     operators::assign,
@@ -230,30 +191,18 @@ SCENARIO("convertible: Operators")
     //     int_string_converter
     //   >
     // );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::unordered_map<int, int>,
-        std::unordered_map<int, int>
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::unordered_map<int, int>,
-        std::unordered_map<int, std::string>,
-        int_string_converter
-      >
-    );
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::assign, std::unordered_map<int, int>, std::unordered_map<int, int>>);
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types, std::tuple<operators::assign, std::unordered_map<int, int>,
+                                       std::unordered_map<int, std::string>, int_string_converter>);
     // associative containers (recursion)
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::assign,
-        std::unordered_map<int, std::unordered_map<int, int>>,
-        std::unordered_map<int, std::unordered_map<int, std::string>>,
-        int_string_converter
-      >
-    );
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::assign, std::unordered_map<int, std::unordered_map<int, int>>,
+                 std::unordered_map<int, std::unordered_map<int, std::string>>,
+                 int_string_converter>);
 
     WHEN("lhs int, rhs int")
     {
@@ -284,7 +233,7 @@ SCENARIO("convertible: Operators")
     WHEN("lhs vector<string>, rhs vector<string>")
     {
       auto lhs = std::vector<std::string>{};
-      auto rhs = std::vector<std::string>{ "2" };
+      auto rhs = std::vector<std::string>{"2"};
 
       COPY_ASSIGNS_CORRECTLY(lhs, rhs);
       MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs));
@@ -293,46 +242,58 @@ SCENARIO("convertible: Operators")
     WHEN("lhs vector<int>, rhs vector<string>")
     {
       auto lhs = std::vector<int>{};
-      auto rhs = std::vector<std::string>{ "2" };
+      auto rhs = std::vector<std::string>{"2"};
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return lhs[0] == converter(rhs[0]);
-      });
-      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
-        return rhs[0] == "";
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter,
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return lhs[0] == converter(rhs[0]);
+                             });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter,
+                             [](auto const& rhs)
+                             {
+                               return rhs[0] == "";
+                             });
     }
 
     WHEN("lhs vector<vector<int>>, rhs vector<vector<string>>")
     {
       auto lhs = std::vector<std::vector<int>>{};
-      auto rhs = std::vector<std::vector<std::string>>{ {"2"} };
+      auto rhs = std::vector<std::vector<std::string>>{{"2"}};
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return lhs[0][0] == converter(rhs[0][0]);
-      });
-      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
-        return rhs[0][0] == "";
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter,
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return lhs[0][0] == converter(rhs[0][0]);
+                             });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter,
+                             [](auto const& rhs)
+                             {
+                               return rhs[0][0] == "";
+                             });
     }
 
     WHEN("lhs vector<unordered_map<int, int>>, rhs vector<unordered_map<int, string>>")
     {
       auto lhs = std::vector<std::unordered_map<int, int>>{};
-      auto rhs = std::vector<std::unordered_map<int, std::string>>{ {{1, "2"}} };
+      auto rhs = std::vector<std::unordered_map<int, std::string>>{{{1, "2"}}};
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return lhs[0].at(1) == converter(rhs[0].at(1));
-      });
-      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
-        return rhs[0].at(1) == "";
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter,
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return lhs[0].at(1) == converter(rhs[0].at(1));
+                             });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter,
+                             [](auto const& rhs)
+                             {
+                               return rhs[0].at(1) == "";
+                             });
     }
 
     WHEN("lhs array<string>, rhs array<string>")
     {
       auto lhs = std::array<std::string, 1>{};
-      auto rhs = std::array<std::string, 1>{ "2" };
+      auto rhs = std::array<std::string, 1>{"2"};
 
       COPY_ASSIGNS_CORRECTLY(lhs, rhs);
       MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs));
@@ -341,37 +302,47 @@ SCENARIO("convertible: Operators")
     WHEN("lhs array<int>, rhs array<string>")
     {
       auto lhs = std::array<int, 1>{};
-      auto rhs = std::array<std::string, 1>{ "2" };
+      auto rhs = std::array<std::string, 1>{"2"};
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return lhs[0] == converter(rhs[0]);
-      });
-      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
-        return rhs[0] == "";
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter,
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return lhs[0] == converter(rhs[0]);
+                             });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter,
+                             [](auto const& rhs)
+                             {
+                               return rhs[0] == "";
+                             });
     }
 
     WHEN("lhs array<string>, rhs vector<string>")
     {
       auto lhs = std::array<std::string, 1>{};
-      auto rhs = std::vector<std::string>{ "2" };
+      auto rhs = std::vector<std::string>{"2"};
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return lhs[0] == converter(rhs[0]);
-      });
-      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
-        return rhs[0] == "";
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return lhs[0] == converter(rhs[0]);
+                             });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{},
+                             [](auto const& rhs)
+                             {
+                               return rhs[0] == "";
+                             });
     }
 
     WHEN("lhs set<int>, rhs set<int>")
     {
       auto lhs = std::set<int>{};
-      auto rhs = std::set<int>{ 2 };
+      auto rhs = std::set<int>{2};
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return *lhs.find(2) == converter(*rhs.find(2));
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return *lhs.find(2) == converter(*rhs.find(2));
+                             });
       // NOTE: can't move-from a set value (AKA key) since that would break the tree
       // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
       //   return *rhs.find("2") == "";
@@ -383,7 +354,8 @@ SCENARIO("convertible: Operators")
     //   auto lhs = std::set<int>{};
     //   auto rhs = std::set<std::string>{ {"2"} };
 
-    //   COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
+    //   COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs,
+    //   const auto& converter){
     //     return *lhs.find(2) == converter(*rhs.find("2"));
     //   });
     //   // can't move-from a set value (AKA key) since that would break the tree
@@ -395,55 +367,77 @@ SCENARIO("convertible: Operators")
     WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
     {
       auto lhs = std::unordered_map<int, int>{};
-      auto rhs = std::unordered_map<int, std::string>{ {0, "2"} };
+      auto rhs = std::unordered_map<int, std::string>{
+        {0, "2"}
+      };
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return lhs.find(0)->second == converter(rhs.find(0)->second);
-      });
-      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
-        return rhs.find(0)->second == "";
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter,
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return lhs.find(0)->second == converter(rhs.find(0)->second);
+                             });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter,
+                             [](auto const& rhs)
+                             {
+                               return rhs.find(0)->second == "";
+                             });
     }
 
-    WHEN("lhs unordered_map<int, unordered_map<int, int>>, rhs unordered_map<int, unordered_map<int, string>>")
+    WHEN("lhs unordered_map<int, unordered_map<int, int>>, rhs unordered_map<int, "
+         "unordered_map<int, string>>")
     {
       auto lhs = std::unordered_map<int, std::unordered_map<int, int>>{};
-      auto rhs = std::unordered_map<int, std::unordered_map<int, std::string>>{ {0, {{0, "2"}}} };
+      auto rhs = std::unordered_map<int, std::unordered_map<int, std::string>>{
+        {0, {{0, "2"}}}
+      };
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter, [](const auto& lhs, const auto& rhs, const auto& converter){
-        return lhs.find(0)->second.find(0)->second == converter(rhs.find(0)->second.find(0)->second);
-      });
-      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter, [](const auto& rhs){
-        return rhs.find(0)->second.find(0)->second == "";
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, intStringConverter,
+                             [](auto const& lhs, auto const& rhs, auto const& converter)
+                             {
+                               return lhs.find(0)->second.find(0)->second ==
+                                      converter(rhs.find(0)->second.find(0)->second);
+                             });
+      MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), intStringConverter,
+                             [](auto const& rhs)
+                             {
+                               return rhs.find(0)->second.find(0)->second == "";
+                             });
     }
 
     WHEN("lhs is dynamic container, rhs is dynamic container")
     {
       AND_WHEN("lhs size < rhs size")
       {
-        auto lhs = std::vector<std::string>{ "5" };
-        auto rhs = std::vector<std::string>{ "1", "2" };
+        auto lhs = std::vector<std::string>{"5"};
+        auto rhs = std::vector<std::string>{"1", "2"};
 
-        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-          return lhs == converter(rhs);
-        });
-        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
-          return rhs.empty();
-        });
+        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                               [](auto const& lhs, auto const& rhs, auto const& converter)
+                               {
+                                 return lhs == converter(rhs);
+                               });
+        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{},
+                               [](auto const& rhs)
+                               {
+                                 return rhs.empty();
+                               });
       }
 
       AND_WHEN("lhs size > rhs size")
       {
-        auto lhs = std::vector<std::string>{ "5", "6" };
-        auto rhs = std::vector<std::string>{ "1" };
+        auto lhs = std::vector<std::string>{"5", "6"};
+        auto rhs = std::vector<std::string>{"1"};
 
-        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-          return lhs == converter(rhs);
-        });
-        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
-          return rhs.empty();
-        });
+        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                               [](auto const& lhs, auto const& rhs, auto const& converter)
+                               {
+                                 return lhs == converter(rhs);
+                               });
+        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{},
+                               [](auto const& rhs)
+                               {
+                                 return rhs.empty();
+                               });
       }
     }
 
@@ -452,27 +446,35 @@ SCENARIO("convertible: Operators")
       AND_WHEN("lhs size < rhs size")
       {
         auto lhs = std::array<std::string, 1>{};
-        auto rhs = std::vector<std::string>{ "1", "2" };
+        auto rhs = std::vector<std::string>{"1", "2"};
 
-        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-          return lhs[0] == converter(rhs[0]);
-        });
-        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
-          return rhs[0] == "" && rhs[1] == "2";
-        });
+        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                               [](auto const& lhs, auto const& rhs, auto const& converter)
+                               {
+                                 return lhs[0] == converter(rhs[0]);
+                               });
+        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{},
+                               [](auto const& rhs)
+                               {
+                                 return rhs[0] == "" && rhs[1] == "2";
+                               });
       }
 
       AND_WHEN("lhs size > rhs size")
       {
         auto lhs = std::array<std::string, 2>{"5", "6"};
-        auto rhs = std::vector<std::string>{ "1" };
+        auto rhs = std::vector<std::string>{"1"};
 
-        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-          return lhs[0] == converter(rhs[0]) && lhs[1] == "6";
-        });
-        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
-          return rhs[0] == "";
-        });
+        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                               [](auto const& lhs, auto const& rhs, auto const& converter)
+                               {
+                                 return lhs[0] == converter(rhs[0]) && lhs[1] == "6";
+                               });
+        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{},
+                               [](auto const& rhs)
+                               {
+                                 return rhs[0] == "";
+                               });
       }
     }
 
@@ -480,39 +482,51 @@ SCENARIO("convertible: Operators")
     {
       AND_WHEN("lhs size < rhs size")
       {
-        auto lhs = std::vector<std::string>{ "1" };
-        auto rhs = std::array<std::string, 2>{ "1", "2" };
+        auto lhs = std::vector<std::string>{"1"};
+        auto rhs = std::array<std::string, 2>{"1", "2"};
 
-        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-          return lhs.size() == 2 && lhs[0] == converter(rhs[0]) && lhs[1] == converter(rhs[1]);
-        });
-        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
-          return rhs[0] == "" && rhs[1] == "";
-        });
+        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                               [](auto const& lhs, auto const& rhs, auto const& converter)
+                               {
+                                 return lhs.size() == 2 && lhs[0] == converter(rhs[0]) &&
+                                        lhs[1] == converter(rhs[1]);
+                               });
+        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{},
+                               [](auto const& rhs)
+                               {
+                                 return rhs[0] == "" && rhs[1] == "";
+                               });
       }
 
       AND_WHEN("lhs size > rhs size")
       {
-        auto lhs = std::vector<std::string>{ "1", "2" };
-        auto rhs = std::array<std::string, 1>{ "5" };
+        auto lhs = std::vector<std::string>{"1", "2"};
+        auto rhs = std::array<std::string, 1>{"5"};
 
-        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const auto& lhs, const auto& rhs, const auto& converter){
-          return lhs.size() == 1 && lhs[0] == converter(rhs[0]);
-        });
-        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
-          return rhs[0] == "";
-        });
+        COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                               [](auto const& lhs, auto const& rhs, auto const& converter)
+                               {
+                                 return lhs.size() == 1 && lhs[0] == converter(rhs[0]);
+                               });
+        MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{},
+                               [](auto const& rhs)
+                               {
+                                 return rhs[0] == "";
+                               });
       }
     }
     WHEN("lhs is std::string, rhs is string proxy type")
     {
-      auto lhs = std::string{ "hello" };
+      auto        lhs = std::string{"hello"};
       std::string str = "world";
-      auto rhs = proxy(str);
+      auto        rhs = proxy(str);
 
-      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{}, [](const std::string& lhs, const proxy<std::string>& rhs, const auto& converter){
-        return converter(rhs) == lhs;
-      });
+      COPY_ASSIGNS_CORRECTLY(lhs, rhs, converter::identity{},
+                             [](std::string const& lhs, proxy<std::string> const& rhs,
+                                auto const& converter)
+                             {
+                               return converter(rhs) == lhs;
+                             });
       // Proxy does not support "move from"
       // MOVE_ASSIGNS_CORRECTLY(lhs, std::move(rhs), converter::identity{}, [](const auto& rhs){
       //   return rhs == "";
@@ -522,91 +536,34 @@ SCENARIO("convertible: Operators")
 
   GIVEN("equal operator")
   {
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types, std::tuple<operators::equal, int, int>);
+    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types, std::tuple<operators::equal, enum_a, enum_b>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        int,
-        int
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        enum_a,
-        enum_b
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        int,
-        std::string,
-        int_string_converter
-      >
-    );
+                              std::tuple<operators::equal, int, std::string, int_string_converter>);
     // sequence containers
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::array<int, 0>,
-        std::array<int, 0>
-      >
-    );
+                              std::tuple<operators::equal, std::array<int, 0>, std::array<int, 0>>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::array<int, 0>,
-        std::array<std::string, 0>,
-        int_string_converter
-      >
-    );
+                              std::tuple<operators::equal, std::array<int, 0>,
+                                         std::array<std::string, 0>, int_string_converter>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::vector<int>,
-        std::vector<int>
-      >
-    );
+                              std::tuple<operators::equal, std::vector<int>, std::vector<int>>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::vector<int>,
-        std::vector<std::string>,
-        int_string_converter
-      >
-    );
+                              std::tuple<operators::equal, std::vector<int>,
+                                         std::vector<std::string>, int_string_converter>);
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::list<int>,
-        std::list<int>
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::list<int>,
-        std::list<std::string>,
-        int_string_converter
-      >
-    );
+                              std::tuple<operators::equal, std::list<int>, std::list<int>>);
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::equal, std::list<int>, std::list<std::string>, int_string_converter>);
     // sequence containers (recursive)
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::vector<std::vector<int>>,
-        std::vector<std::vector<std::string>>,
-        int_string_converter
-      >
-    );
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::equal, std::vector<std::vector<int>>,
+                 std::vector<std::vector<std::string>>, int_string_converter>);
     // associative containers
     TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::set<int>,
-        std::set<int>
-      >
-    );
+                              std::tuple<operators::equal, std::set<int>, std::set<int>>);
     // TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
     //   std::tuple<
     //     operators::equal,
@@ -615,30 +572,18 @@ SCENARIO("convertible: Operators")
     //     int_string_converter
     //   >
     // );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::unordered_map<int, int>,
-        std::unordered_map<int, int>
-      >
-    );
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::unordered_map<int, int>,
-        std::unordered_map<int, std::string>,
-        int_string_converter
-      >
-    );
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::equal, std::unordered_map<int, int>, std::unordered_map<int, int>>);
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types, std::tuple<operators::equal, std::unordered_map<int, int>,
+                                       std::unordered_map<int, std::string>, int_string_converter>);
     // associative containers (recursion)
-    TEST_CASE_TEMPLATE_INVOKE(invocable_with_types,
-      std::tuple<
-        operators::equal,
-        std::unordered_map<int, std::unordered_map<int, int>>,
-        std::unordered_map<int, std::unordered_map<int, std::string>>,
-        int_string_converter
-      >
-    );
+    TEST_CASE_TEMPLATE_INVOKE(
+      invocable_with_types,
+      std::tuple<operators::equal, std::unordered_map<int, std::unordered_map<int, int>>,
+                 std::unordered_map<int, std::unordered_map<int, std::string>>,
+                 int_string_converter>);
 
     WHEN("lhs int, rhs int")
     {
@@ -666,44 +611,44 @@ SCENARIO("convertible: Operators")
       auto rhs = std::string{"1"};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      rhs = std::string{ "2" };
+      rhs = std::string{"2"};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
     WHEN("lhs vector<string>, rhs vector<string>")
     {
-      auto lhs = std::vector<std::string>{ "hello" };
-      auto rhs = std::vector<std::string>{ "hello" };
+      auto lhs = std::vector<std::string>{"hello"};
+      auto rhs = std::vector<std::string>{"hello"};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
-      rhs = { "world" };
+      rhs = {"world"};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
     }
 
     WHEN("lhs vector<int>, rhs vector<string>")
     {
-      auto lhs = std::vector<int>{ 1 };
-      auto rhs = std::vector<std::string>{ "1" };
+      auto lhs = std::vector<int>{1};
+      auto rhs = std::vector<std::string>{"1"};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      rhs = { "2" };
+      rhs = {"2"};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
     WHEN("lhs vector<vector<int>>, rhs vector<vector<string>>")
     {
-      auto lhs = std::vector<std::vector<int>>{ {1} };
-      auto rhs = std::vector<std::vector<std::string>>{ {"1"} };
+      auto lhs = std::vector<std::vector<int>>{{1}};
+      auto rhs = std::vector<std::vector<std::string>>{{"1"}};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      rhs = {{ "2" }};
+      rhs = {{"2"}};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
     WHEN("lhs vector<unordered_map<int, int>>, rhs vector<unordered_map<int, string>>")
     {
-      auto lhs = std::vector<std::unordered_map<int, int>>{ {{1, 2}} };
-      auto rhs = std::vector<std::unordered_map<int, std::string>>{ {{1, "2"}} };
+      auto lhs = std::vector<std::unordered_map<int, int>>{{{1, 2}}};
+      auto rhs = std::vector<std::unordered_map<int, std::string>>{{{1, "2"}}};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
       rhs = {{{1, "3"}}};
@@ -712,31 +657,31 @@ SCENARIO("convertible: Operators")
 
     WHEN("lhs array<string>, rhs array<string>")
     {
-      auto lhs = std::array<std::string, 1>{ "1" };
-      auto rhs = std::array<std::string, 1>{ "1" };
+      auto lhs = std::array<std::string, 1>{"1"};
+      auto rhs = std::array<std::string, 1>{"1"};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
-      rhs = { "2" };
+      rhs = {"2"};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
     }
 
     WHEN("lhs array<int>, rhs array<string>")
     {
-      auto lhs = std::array<int, 1>{ 1 };
-      auto rhs = std::array<std::string, 1>{ "1" };
+      auto lhs = std::array<int, 1>{1};
+      auto rhs = std::array<std::string, 1>{"1"};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      rhs = { "2" };
+      rhs = {"2"};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
     WHEN("lhs array<string>, rhs vector<string>")
     {
-      auto lhs = std::array<std::string, 1>{ "1" };
-      auto rhs = std::vector<std::string>{ "1" };
+      auto lhs = std::array<std::string, 1>{"1"};
+      auto rhs = std::vector<std::string>{"1"};
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
-      rhs = { "2" };
+      rhs = {"2"};
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
     }
 
@@ -752,46 +697,91 @@ SCENARIO("convertible: Operators")
 
     WHEN("lhs unordered_map<int, int>, rhs unordered_map<int, string>")
     {
-      auto lhs = std::unordered_map<int, int>{ {1, 1} };
-      auto rhs = std::unordered_map<int, std::string>{ { 1, "1"} };
+      auto lhs = std::unordered_map<int, int>{
+        {1, 1}
+      };
+      auto rhs = std::unordered_map<int, std::string>{
+        {1, "1"}
+      };
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      lhs = { {2, 1} };
-      rhs = { {2, "1"} };
+      lhs = {
+        {2, 1}
+      };
+      rhs = {
+        {2, "1"}
+      };
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      lhs = { {1, 1} };
-      rhs = { {1, "2"} };
+      lhs = {
+        {1, 1}
+      };
+      rhs = {
+        {1, "2"}
+      };
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
-      lhs = { {1, 1} };
-      rhs = { {2, "1"} };
+      lhs = {
+        {1, 1}
+      };
+      rhs = {
+        {2, "1"}
+      };
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
     WHEN("lhs unordered_map<int, int>, rhs map<int, int>")
     {
-      auto lhs = std::unordered_map<int, int>{ {1, 1} };
-      auto rhs = std::map<int, int>{ { 1, 1} };
+      auto lhs = std::unordered_map<int, int>{
+        {1, 1}
+      };
+      auto rhs = std::map<int, int>{
+        {1, 1}
+      };
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
-      lhs = { {5, 1}, {2, 1}, {3, 1} };
-      rhs = { {5, 1}, {2, 1}, {3, 1} };
+      lhs = {
+        {5, 1},
+        {2, 1},
+        {3, 1}
+      };
+      rhs = {
+        {5, 1},
+        {2, 1},
+        {3, 1}
+      };
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
     }
 
-    WHEN("lhs unordered_map<int, unordered_map<int, int>>, rhs unordered_map<int, unordered_map<int, string>>")
+    WHEN("lhs unordered_map<int, unordered_map<int, int>>, rhs unordered_map<int, "
+         "unordered_map<int, string>>")
     {
-      auto lhs = std::unordered_map<int, std::unordered_map<int, int>>{ {0, {{1, 1}}} };
-      auto rhs = std::unordered_map<int, std::unordered_map<int, std::string>>{ {0, {{ 1, "1"}}} };
+      auto lhs = std::unordered_map<int, std::unordered_map<int, int>>{
+        {0, {{1, 1}}}
+      };
+      auto rhs = std::unordered_map<int, std::unordered_map<int, std::string>>{
+        {0, {{1, "1"}}}
+      };
 
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      lhs = { {1, {{2, 1}}} };
-      rhs = { {1, {{2, "1"}}} };
+      lhs = {
+        {1, {{2, 1}}}
+      };
+      rhs = {
+        {1, {{2, "1"}}}
+      };
       EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs, intStringConverter);
-      lhs = { {1, {{2, 1}}} };
-      rhs = { {1, {{2, "2"}}} };
+      lhs = {
+        {1, {{2, 1}}}
+      };
+      rhs = {
+        {1, {{2, "2"}}}
+      };
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
-      lhs = { {1, {{2, 1}}} };
-      rhs = { {1, {{1, "2"}}} };
+      lhs = {
+        {1, {{2, 1}}}
+      };
+      rhs = {
+        {1, {{1, "2"}}}
+      };
       EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs, intStringConverter);
     }
 
@@ -799,16 +789,16 @@ SCENARIO("convertible: Operators")
     {
       AND_WHEN("lhs size < rhs size")
       {
-        auto lhs = std::vector<std::string>{ "1" };
-        auto rhs = std::vector<std::string>{ "1", "2" };
+        auto lhs = std::vector<std::string>{"1"};
+        auto rhs = std::vector<std::string>{"1", "2"};
 
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }
 
       AND_WHEN("lhs size > rhs size")
       {
-        auto lhs = std::vector<std::string>{ "5", "6" };
-        auto rhs = std::vector<std::string>{ "5" };
+        auto lhs = std::vector<std::string>{"5", "6"};
+        auto rhs = std::vector<std::string>{"5"};
 
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }
@@ -818,28 +808,28 @@ SCENARIO("convertible: Operators")
     {
       AND_WHEN("lhs size == rhs size")
       {
-        auto lhs = std::array<std::string, 2>{ "1", "2" };
-        auto rhs = std::vector<std::string>{ "1", "2" };
+        auto lhs = std::array<std::string, 2>{"1", "2"};
+        auto rhs = std::vector<std::string>{"1", "2"};
 
         EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
-        rhs = { "2", "1" };
+        rhs = {"2", "1"};
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }
 
       AND_WHEN("lhs size < rhs size")
       {
-        auto lhs = std::array<std::string, 1>{ "1" };
-        auto rhs = std::vector<std::string>{ "1", "2" };
+        auto lhs = std::array<std::string, 1>{"1"};
+        auto rhs = std::vector<std::string>{"1", "2"};
 
         EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
-        rhs = { "2", "1" };
+        rhs = {"2", "1"};
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }
 
       AND_WHEN("lhs size > rhs size")
       {
         auto lhs = std::array<std::string, 2>{"5", "6"};
-        auto rhs = std::vector<std::string>{ "5" };
+        auto rhs = std::vector<std::string>{"5"};
 
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }
@@ -849,26 +839,26 @@ SCENARIO("convertible: Operators")
     {
       AND_WHEN("lhs size == rhs size")
       {
-        auto lhs = std::vector<std::string>{ "1", "2" };
-        auto rhs = std::array<std::string, 2>{ "1", "2" };
+        auto lhs = std::vector<std::string>{"1", "2"};
+        auto rhs = std::array<std::string, 2>{"1", "2"};
 
         EQUALITY_COMPARES_CORRECTLY(true, lhs, rhs);
-        rhs = { "2", "1" };
+        rhs = {"2", "1"};
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }
 
       AND_WHEN("lhs size < rhs size")
       {
-        auto lhs = std::vector<std::string>{ "1" };
-        auto rhs = std::array<std::string, 2>{ "1", "2" };
+        auto lhs = std::vector<std::string>{"1"};
+        auto rhs = std::array<std::string, 2>{"1", "2"};
 
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }
 
       AND_WHEN("lhs size > rhs size")
       {
-        auto lhs = std::vector<std::string>{ "1", "2" };
-        auto rhs = std::array<std::string, 2>{ "1" };
+        auto lhs = std::vector<std::string>{"1", "2"};
+        auto rhs = std::array<std::string, 2>{"1"};
 
         EQUALITY_COMPARES_CORRECTLY(false, lhs, rhs);
       }

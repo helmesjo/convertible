@@ -1,31 +1,34 @@
 #include <convertible/convertible.hxx>
-#include <doctest/doctest.h>
 
 #include <string>
 
+#include <doctest/doctest.h>
+
 #if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
-#define DIR_DECL(...) int
+  #define DIR_DECL(...) int
 #else
-#define DIR_DECL(...) __VA_ARGS__
+  #define DIR_DECL(...) __VA_ARGS__
 #endif
 
 namespace
 {
   struct int_string_converter
   {
-    auto operator()(std::string val) const -> int
+    auto
+    operator()(std::string val) const -> int
     {
       try
       {
         return std::stoi(val);
       }
-      catch(const std::exception&)
+      catch (std::exception const&)
       {
         return 0;
       }
     }
 
-    auto operator()(int val) const -> std::string
+    auto
+    operator()(int val) const -> std::string
     {
       return std::to_string(val);
     }
@@ -62,21 +65,25 @@ SCENARIO("convertible: Concepts")
     {
       auto operator()(std::string) -> int&;
     };
+
     struct adapter_w_lvalue_ref_arg
     {
       auto operator()(std::string&) -> int&;
     };
+
     struct adapter_w_lvalue_const_ref_arg
     {
-      auto operator()(const std::string&) -> int&;
+      auto operator()(std::string const&) -> int&;
     };
+
     struct adapter_w_rvalue_ref_arg
     {
       auto operator()(std::string&&) -> int&;
     };
+
     struct adapter_w_rvalue_const_ref_arg
     {
-      auto operator()(const std::string&&) -> int&;
+      auto operator()(std::string const&&) -> int&;
     };
 
     // ref-qualifies call operators
@@ -84,22 +91,27 @@ SCENARIO("convertible: Concepts")
     {
       auto operator()(std::string) -> int&;
     };
+
     struct adapter_ref_operator
     {
-      auto operator()(const std::string&) & -> int&;
+      auto operator()(std::string const&) & -> int&;
     };
+
     struct adapter_const_ref_operator
     {
-      auto operator()(const std::string&) const& -> int&;
+      auto operator()(std::string const&) const& -> int&;
     };
+
     struct adapter_rvalue_ref_operator
     {
-      auto operator()(const std::string&) && -> int&;
+      auto operator()(std::string const&) && -> int&;
     };
+
     struct adapter_const_rvalue_ref_operator
     {
-      auto operator()(const std::string&) const&& -> int&;
+      auto operator()(std::string const&) const&& -> int&;
     };
+
     struct type
     {
       auto operator()(int) -> int;
@@ -115,32 +127,32 @@ SCENARIO("convertible: Concepts")
     static_assert(concepts::adaptable<std::string, adapter_w_lvalue_arg>);
     static_assert(concepts::adaptable<std::string&, adapter_w_lvalue_arg>);
     static_assert(concepts::adaptable<std::string&&, adapter_w_lvalue_arg>);
-    static_assert(concepts::adaptable<const std::string&, adapter_w_lvalue_arg>);
-    static_assert(concepts::adaptable<const std::string&&, adapter_w_lvalue_arg>);
+    static_assert(concepts::adaptable<std::string const&, adapter_w_lvalue_arg>);
+    static_assert(concepts::adaptable<std::string const&&, adapter_w_lvalue_arg>);
     // lvalue ref
     static_assert(!concepts::adaptable<std::string, adapter_w_lvalue_ref_arg>);
     static_assert(concepts::adaptable<std::string&, adapter_w_lvalue_ref_arg>);
     static_assert(!concepts::adaptable<std::string&&, adapter_w_lvalue_ref_arg>);
-    static_assert(!concepts::adaptable<const std::string&, adapter_w_lvalue_ref_arg>);
-    static_assert(!concepts::adaptable<const std::string&&, adapter_w_lvalue_ref_arg>);
+    static_assert(!concepts::adaptable<std::string const&, adapter_w_lvalue_ref_arg>);
+    static_assert(!concepts::adaptable<std::string const&&, adapter_w_lvalue_ref_arg>);
     // lvalue const ref
     static_assert(concepts::adaptable<std::string, adapter_w_lvalue_const_ref_arg>);
     static_assert(concepts::adaptable<std::string&, adapter_w_lvalue_const_ref_arg>);
     static_assert(concepts::adaptable<std::string&&, adapter_w_lvalue_const_ref_arg>);
-    static_assert(concepts::adaptable<const std::string&, adapter_w_lvalue_const_ref_arg>);
-    static_assert(concepts::adaptable<const std::string&&, adapter_w_lvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<std::string const&, adapter_w_lvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<std::string const&&, adapter_w_lvalue_const_ref_arg>);
     // rvalue ref
     static_assert(concepts::adaptable<std::string, adapter_w_rvalue_ref_arg>);
     static_assert(!concepts::adaptable<std::string&, adapter_w_rvalue_ref_arg>);
     static_assert(concepts::adaptable<std::string&&, adapter_w_rvalue_ref_arg>);
-    static_assert(!concepts::adaptable<const std::string&, adapter_w_rvalue_ref_arg>);
-    static_assert(!concepts::adaptable<const std::string&&, adapter_w_rvalue_ref_arg>);
+    static_assert(!concepts::adaptable<std::string const&, adapter_w_rvalue_ref_arg>);
+    static_assert(!concepts::adaptable<std::string const&&, adapter_w_rvalue_ref_arg>);
     // rvalue const ref
     static_assert(concepts::adaptable<std::string, adapter_w_rvalue_const_ref_arg>);
     static_assert(!concepts::adaptable<std::string&, adapter_w_rvalue_const_ref_arg>);
     static_assert(concepts::adaptable<std::string&&, adapter_w_rvalue_const_ref_arg>);
-    static_assert(!concepts::adaptable<const std::string&, adapter_w_rvalue_const_ref_arg>);
-    static_assert(concepts::adaptable<const std::string&&, adapter_w_rvalue_const_ref_arg>);
+    static_assert(!concepts::adaptable<std::string const&, adapter_w_rvalue_const_ref_arg>);
+    static_assert(concepts::adaptable<std::string const&&, adapter_w_rvalue_const_ref_arg>);
 
     // adapter qualifiers
     // lvalue
@@ -150,31 +162,32 @@ SCENARIO("convertible: Concepts")
     static_assert(concepts::adaptable<std::string, adapter_ref_operator&>);
     static_assert(!concepts::adaptable<std::string, adapter_ref_operator const&>);
     static_assert(!concepts::adaptable<std::string, adapter_ref_operator&&>);
-    static_assert(!concepts::adaptable<std::string, adapter_ref_operator const &&>);
+    static_assert(!concepts::adaptable<std::string, adapter_ref_operator const&&>);
     // lvalue const ref
     static_assert(concepts::adaptable<std::string, adapter_const_ref_operator>);
     static_assert(concepts::adaptable<std::string, adapter_const_ref_operator&>);
     static_assert(concepts::adaptable<std::string, adapter_const_ref_operator const&>);
     static_assert(concepts::adaptable<std::string, adapter_const_ref_operator&&>);
-    static_assert(concepts::adaptable<std::string, adapter_const_ref_operator const &&>);
+    static_assert(concepts::adaptable<std::string, adapter_const_ref_operator const&&>);
     // rvalue ref
     static_assert(concepts::adaptable<std::string, adapter_rvalue_ref_operator>);
     static_assert(!concepts::adaptable<std::string, adapter_rvalue_ref_operator&>);
     static_assert(!concepts::adaptable<std::string, adapter_rvalue_ref_operator const&>);
     static_assert(concepts::adaptable<std::string, adapter_rvalue_ref_operator&&>);
-    static_assert(!concepts::adaptable<std::string, adapter_rvalue_ref_operator const &&>);
+    static_assert(!concepts::adaptable<std::string, adapter_rvalue_ref_operator const&&>);
     // rvalue const ref
     static_assert(concepts::adaptable<std::string, adapter_const_rvalue_ref_operator>);
     static_assert(!concepts::adaptable<std::string, adapter_const_rvalue_ref_operator&>);
     static_assert(!concepts::adaptable<std::string, adapter_const_rvalue_ref_operator const&>);
     static_assert(concepts::adaptable<std::string, adapter_const_rvalue_ref_operator&&>);
-    static_assert(concepts::adaptable<std::string, adapter_const_rvalue_ref_operator const &&>);
+    static_assert(concepts::adaptable<std::string, adapter_const_rvalue_ref_operator const&&>);
   }
 
   // mappable:
   {
     static_assert(concepts::mappable<some_mapping, int, std::string, direction::rhs_to_lhs>);
     static_assert(concepts::mappable<some_mapping, int, std::string, direction::lhs_to_rhs>);
-    // static_assert(!concepts::mappable<some_mapping, std::string, std::string, direction::lhs_to_rhs>);
+    // static_assert(!concepts::mappable<some_mapping, std::string, std::string,
+    // direction::lhs_to_rhs>);
   }
 }

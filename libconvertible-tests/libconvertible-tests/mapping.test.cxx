@@ -1,6 +1,5 @@
 #include <convertible/convertible.hxx>
 #include <libconvertible-tests/test_common.hxx>
-#include <doctest/doctest.h>
 
 #include <cstring>
 #include <optional>
@@ -8,14 +7,18 @@
 #include <type_traits>
 #include <vector>
 
+#include <doctest/doctest.h>
+
 namespace
 {
-  auto verify_empty = [](auto&& rhs){
+  auto verify_empty = [](auto&& rhs)
+  {
     return rhs == std::remove_cvref_t<decltype(rhs)>{};
   };
 
   template<typename verify_t = decltype(verify_empty)>
-  void MAPS_CORRECTLY(auto&& lhs, auto&& rhs, const auto& map, verify_t verifyMoved = verify_empty)
+  void
+  MAPS_CORRECTLY(auto&& lhs, auto&& rhs, auto const& map, verify_t verifyMoved = verify_empty)
   {
     using namespace convertible;
     using map_t = std::remove_cvref_t<decltype(map)>;
@@ -49,7 +52,7 @@ namespace
         REQUIRE(map.template equal<direction::lhs_to_rhs>(lhs, rhs));
       }
     }
-    if constexpr(std::is_invocable_v<typename map_t::lhs_adapter_t, decltype(std::move(lhs))>)
+    if constexpr (std::is_invocable_v<typename map_t::lhs_adapter_t, decltype(std::move(lhs))>)
     {
       WHEN("assigning lhs (r-value) to rhs")
       {
@@ -98,7 +101,11 @@ SCENARIO("convertible: Mapping")
       auto lhs = lhs_t{"hello"};
       auto rhs = rhs_t{"world"};
       // "moved from" optional is not cleared (that is, it still "holds a value")
-      MAPS_CORRECTLY(lhs, rhs, map, [](const auto& val){ return *val == ""; });
+      MAPS_CORRECTLY(lhs, rhs, map,
+                     [](auto const& val)
+                     {
+                       return *val == "";
+                     });
     }
     WHEN("lhs and rhs are both empty")
     {
@@ -171,12 +178,18 @@ SCENARIO("convertible: Mapping")
 
     auto lhs = lhs_t{11};
     auto rhs = rhs_t{"22"};
-    MAPS_CORRECTLY(lhs, rhs, map, [](const auto& obj){
-      if constexpr(std::equality_comparable_with<lhs_t, decltype(obj)>)
-        return obj == 11;
-      else
-        return obj == "";
-    });
+    MAPS_CORRECTLY(lhs, rhs, map,
+                   [](auto const& obj)
+                   {
+                     if constexpr (std::equality_comparable_with<lhs_t, decltype(obj)>)
+                     {
+                       return obj == 11;
+                     }
+                     else
+                     {
+                       return obj == "";
+                     }
+                   });
   }
   GIVEN("nested mapping 'map_ab' between \n\n\ta <-> b\n")
   {
@@ -204,25 +217,32 @@ SCENARIO("convertible: Mapping")
       using lhs_t = type_nested_a;
       using rhs_t = type_b;
 
-      auto lhs = lhs_t{ "hello" };
-      auto rhs = rhs_t{ "world" };
+      auto lhs = lhs_t{"hello"};
+      auto rhs = rhs_t{"world"};
 
       auto map_nb = mapping(member(&type_nested_a::a), adapter<type_b>(), map_ab);
 
-      MAPS_CORRECTLY(lhs, rhs, map_nb, [](const auto& obj){
-        if constexpr(std::common_reference_with<lhs_t, decltype(obj)>)
-          return obj.a.val == "";
-        else
-          return obj.val == "";
-      });
+      MAPS_CORRECTLY(lhs, rhs, map_nb,
+                     [](auto const& obj)
+                     {
+                       if constexpr (std::common_reference_with<lhs_t, decltype(obj)>)
+                       {
+                         return obj.a.val == "";
+                       }
+                       else
+                       {
+                         return obj.val == "";
+                       }
+                     });
     }
   }
   GIVEN("mapping with known lhs & rhs types")
   {
-    int lhsAdaptee = 3;
+    int         lhsAdaptee = 3;
     std::string rhsAdaptee = "hello";
 
-    auto map = mapping(adapter(lhsAdaptee, reader::identity<>{}), adapter(rhsAdaptee, reader::identity<>{}), int_string_converter{});
+    auto map    = mapping(adapter(lhsAdaptee, reader::identity<>{}),
+                          adapter(rhsAdaptee, reader::identity<>{}), int_string_converter{});
     using map_t = decltype(map);
 
     THEN("defaulted lhs type can be constructed")
@@ -246,8 +266,16 @@ SCENARIO("convertible: Mapping constexpr-ness")
 
   WHEN("mapping is constexpr")
   {
-    struct type_a{ int val = 0; };
-    struct type_b{ int val = 0; };
+    struct type_a
+    {
+      int val = 0;
+    };
+
+    struct type_b
+    {
+      int val = 0;
+    };
+
     static constexpr type_a lhsVal;
     static constexpr type_b rhsVal;
 
@@ -296,7 +324,7 @@ SCENARIO("convertible: Mapping as a converter")
 
     WHEN("invoked with a")
     {
-      type_a a = { "hello" };
+      type_a a = {"hello"};
       type_b b = map(a);
       THEN("it returns b")
       {
@@ -305,7 +333,7 @@ SCENARIO("convertible: Mapping as a converter")
     }
     WHEN("invoked with a (r-value)")
     {
-      type_a a = { "hello" };
+      type_a a = {"hello"};
       (void)map(std::move(a));
       THEN("a is moved from")
       {
@@ -314,7 +342,7 @@ SCENARIO("convertible: Mapping as a converter")
     }
     WHEN("invoked with b")
     {
-      type_b b = { "hello" };
+      type_b b = {"hello"};
       type_a a = map(b);
       THEN("it returns a")
       {
@@ -323,7 +351,7 @@ SCENARIO("convertible: Mapping as a converter")
     }
     WHEN("invoked with b (r-value)")
     {
-      type_b b = { "hello" };
+      type_b b = {"hello"};
       (void)map(std::move(b));
       THEN("b is moved from")
       {
@@ -347,8 +375,8 @@ SCENARIO("convertible: Mapping as a converter")
       using lhs_t = type_nested_a;
       using rhs_t = type_b;
 
-      auto lhs = lhs_t{ "hello" };
-      auto rhs = rhs_t{ "world" };
+      auto lhs = lhs_t{"hello"};
+      auto rhs = rhs_t{"world"};
 
       auto map_nb = mapping(member(&type_nested_a::a), adapter<type_b>(), map_ab);
 
@@ -394,8 +422,14 @@ SCENARIO("convertible: Mapping (misc use-cases)")
 
   GIVEN("enum_a <-> enum_b")
   {
-    enum class enum_a{ val = 0 };
-    enum class enum_b{ val = 0 };
+    enum class enum_a
+    {
+      val = 0
+    };
+    enum class enum_b
+    {
+      val = 0
+    };
 
     using lhs_t = enum_a;
     using rhs_t = enum_b;
@@ -404,9 +438,11 @@ SCENARIO("convertible: Mapping (misc use-cases)")
 
     auto lhs = lhs_t::val;
     auto rhs = rhs_t::val;
-    MAPS_CORRECTLY(lhs, rhs, map, [](const auto&){
-      return true;
-    });
+    MAPS_CORRECTLY(lhs, rhs, map,
+                   [](auto const&)
+                   {
+                     return true;
+                   });
   }
   GIVEN("vector<string> <-> vector<string>")
   {
@@ -428,12 +464,22 @@ SCENARIO("convertible: Mapping (misc use-cases)")
 
     auto lhs = lhs_t{"1", "2", "3"};
     auto rhs = rhs_t{1, 2, 3};
-    MAPS_CORRECTLY(lhs, rhs, map, [](const auto& obj){
-      if constexpr(std::equality_comparable_with<lhs_t, decltype(obj)>)
-        return std::all_of(std::begin(obj), std::end(obj), [](const auto& elem){ return elem == ""; });
-      else
-        return obj[0] == 1;
-    });
+    MAPS_CORRECTLY(lhs, rhs, map,
+                   [](auto const& obj)
+                   {
+                     if constexpr (std::equality_comparable_with<lhs_t, decltype(obj)>)
+                     {
+                       return std::all_of(std::begin(obj), std::end(obj),
+                                          [](const auto& elem)
+                                          {
+                                            return elem == "";
+                                          });
+                     }
+                     else
+                     {
+                       return obj[0] == 1;
+                     }
+                   });
   }
   GIVEN("proxy <-> string")
   {
@@ -444,8 +490,10 @@ SCENARIO("convertible: Mapping (misc use-cases)")
 
     auto lhs = lhs_t{"hello"};
     auto rhs = rhs_t{"world"};
-    MAPS_CORRECTLY(lhs, rhs, map, [](const auto&){
-      return true;
-    });
+    MAPS_CORRECTLY(lhs, rhs, map,
+                   [](auto const&)
+                   {
+                     return true;
+                   });
   }
 }

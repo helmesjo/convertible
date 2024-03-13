@@ -1,5 +1,4 @@
 #include <convertible/convertible.hxx>
-#include <doctest/doctest.h>
 
 #include <bitset>
 #include <cstddef>
@@ -8,43 +7,41 @@
 #include <string>
 #include <vector>
 
+#include <doctest/doctest.h>
+
 SCENARIO("convertible: Mapping table")
 {
   using namespace convertible;
 
   struct type_a
   {
-    auto operator==(const type_a&) const -> bool = default;
-    int val1{};
+    auto        operator==(type_a const&) const -> bool = default;
+    int         val1{};
     std::string val2;
   };
 
   struct type_b
   {
-    auto operator==(const type_b&) const -> bool = default;
-    int val1{};
+    auto        operator==(type_b const&) const -> bool = default;
+    int         val1{};
     std::string val2;
   };
 
   struct type_c
   {
-    auto operator==(const type_c&) const -> bool = default;
-    int val1;
+    auto operator==(type_c const&) const -> bool = default;
+    int  val1;
   };
 
   THEN("it's constexpr constructible")
   {
-    constexpr mapping_table table{
-      mapping( adapter(), adapter() )
-    };
+    constexpr mapping_table table{mapping(adapter(), adapter())};
     (void)table;
   }
   GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val2 <-> b.val2\n")
   {
-    mapping_table table{
-      mapping( member(&type_a::val1), member(&type_b::val1) ),
-      mapping( member(&type_a::val2), member(&type_b::val2) )
-    };
+    mapping_table table{mapping(member(&type_a::val1), member(&type_b::val1)),
+                        mapping(member(&type_a::val2), member(&type_b::val2))};
 
     type_a lhs;
     type_b rhs;
@@ -116,14 +113,12 @@ SCENARIO("convertible: Mapping table")
 
   GIVEN("mapping table between \n\n\ta.val1 <-> b.val1\n\ta.val1 <-> c.val1\n")
   {
-    mapping_table table{
-      mapping( member(&type_a::val1), member(&type_b::val1) ),
-      mapping( member(&type_a::val1), member(&type_c::val1) )
-    };
+    mapping_table table{mapping(member(&type_a::val1), member(&type_b::val1)),
+                        mapping(member(&type_a::val1), member(&type_c::val1))};
 
-    type_a lhs_a; //NOLINT
-    type_b rhs_b; //NOLINT
-    type_c rhs_c; //NOLINT
+    type_a lhs_a; // NOLINT
+    type_b rhs_b; // NOLINT
+    type_c rhs_c; // NOLINT
 
     WHEN("assigning lhs (a) to rhs (b)")
     {
@@ -152,26 +147,24 @@ SCENARIO("convertible: Mapping table")
   }
   GIVEN("mapping table with known lhs & rhs types")
   {
-    type_a lhs_a; //NOLINT
+    type_a lhs_a; // NOLINT
     lhs_a.val1 = 3;
     lhs_a.val2 = "hello";
-    type_b rhs_b; //NOLINT
+    type_b rhs_b; // NOLINT
     rhs_b.val1 = 6;
     rhs_b.val2 = "world";
-    type_c rhs_c; //NOLINT
+    type_c rhs_c; // NOLINT
     rhs_c.val1 = 9;
 
-    mapping_table table{
-      mapping( member(&type_a::val1, lhs_a), member(&type_b::val1, rhs_b) ),
-      mapping( member(&type_a::val1, lhs_a), member(&type_c::val1, rhs_c) )
-    };
+    mapping_table table{mapping(member(&type_a::val1, lhs_a), member(&type_b::val1, rhs_b)),
+                        mapping(member(&type_a::val1, lhs_a), member(&type_c::val1, rhs_c))};
     using table_t = decltype(table);
 
     THEN("defaulted lhs type can be constructed")
     {
       auto copy = table.defaulted_lhs();
       static_assert(std::same_as<decltype(copy), typename table_t::lhs_unique_types>);
-      auto copy_a = std::get<0>(copy); //NOLINT
+      auto copy_a = std::get<0>(copy); // NOLINT
 
       static_assert(std::same_as<decltype(copy_a), type_a>);
       INFO("lhs a:  ", lhs_a.val1, ", ", lhs_a.val2);
@@ -182,8 +175,8 @@ SCENARIO("convertible: Mapping table")
     {
       auto copy = table.defaulted_rhs();
       static_assert(std::same_as<decltype(copy), typename table_t::rhs_unique_types>);
-      auto copy_b = std::get<0>(copy); //NOLINT
-      auto copy_c = std::get<1>(copy); //NOLINT
+      auto copy_b = std::get<0>(copy); // NOLINT
+      auto copy_c = std::get<1>(copy); // NOLINT
 
       static_assert(std::same_as<decltype(copy_b), type_b>);
       static_assert(std::same_as<decltype(copy_c), type_c>);
@@ -203,8 +196,16 @@ SCENARIO("convertible: Mapping table constexpr-ness")
 
   WHEN("mapping table is constexpr")
   {
-    struct type_a{ int val = 0; };
-    struct type_b{ int val = 0; };
+    struct type_a
+    {
+      int val = 0;
+    };
+
+    struct type_b
+    {
+      int val = 0;
+    };
+
     static constexpr type_a lhs_val;
     static constexpr type_b rhs_val;
 
@@ -259,13 +260,11 @@ SCENARIO("convertible: Mapping table as a converter")
 
   GIVEN("mapping table between \n\n\ta <-> b\n")
   {
-    mapping_table table{
-      mapping(member(&type_a::val), member(&type_b::val))
-    };
+    mapping_table table{mapping(member(&type_a::val), member(&type_b::val))};
 
     WHEN("invoked with a")
     {
-      type_a a = { "hello" };
+      type_a a = {"hello"};
       type_b b = table(a);
       THEN("it returns b")
       {
@@ -274,7 +273,7 @@ SCENARIO("convertible: Mapping table as a converter")
     }
     WHEN("invoked with b")
     {
-      type_b b = { "hello" };
+      type_b b = {"hello"};
       type_a a = table(b);
       THEN("it returns a")
       {
@@ -284,14 +283,12 @@ SCENARIO("convertible: Mapping table as a converter")
   }
   GIVEN("mapping table between \n\n\ta <-> b\n\tc <-> d\n")
   {
-    mapping_table table{
-      mapping(member(&type_a::val), member(&type_b::val)),
-      mapping(member(&type_c::val), member(&type_d::val))
-    };
+    mapping_table table{mapping(member(&type_a::val), member(&type_b::val)),
+                        mapping(member(&type_c::val), member(&type_d::val))};
 
     WHEN("invoked with a")
     {
-      type_a a = { "hello" };
+      type_a a = {"hello"};
 
       auto [b, d] = table(a);
       static_assert(std::same_as<decltype(b), type_b>);
@@ -305,7 +302,7 @@ SCENARIO("convertible: Mapping table as a converter")
     }
     WHEN("invoked with b")
     {
-      type_b b = { "hello" };
+      type_b b = {"hello"};
 
       auto [a, c] = table(b);
       static_assert(std::same_as<decltype(a), type_a>);
@@ -319,7 +316,7 @@ SCENARIO("convertible: Mapping table as a converter")
     }
     WHEN("invoked with c")
     {
-      type_c c = { "hello" };
+      type_c c = {"hello"};
 
       auto [b, d] = table(c);
       static_assert(std::same_as<decltype(b), type_b>);
@@ -342,12 +339,13 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
   {
     struct type_a
     {
-      int val{};
+      int                     val{};
       std::shared_ptr<type_a> node;
 
-      auto operator==(const type_a& obj) const -> bool
+      auto
+      operator==(type_a const& obj) const -> bool
       {
-        if(node && obj.node)
+        if (node && obj.node)
         {
           return val == obj.val && *node == *obj.node;
         }
@@ -357,14 +355,16 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
         }
       }
     };
+
     struct type_b
     {
-      int val{};
+      int                     val{};
       std::shared_ptr<type_b> node;
 
-      auto operator==(const type_b& obj) const -> bool
+      auto
+      operator==(type_b const& obj) const -> bool
       {
-        if(node && obj.node)
+        if (node && obj.node)
         {
           return val == obj.val && *node == *obj.node;
         }
@@ -375,26 +375,22 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
       }
     };
 
+    mapping_table tableBase{mapping(member(&type_a::val), member(&type_b::val))};
 
-    mapping_table tableBase{
-      mapping( member(&type_a::val), member(&type_b::val) )
-    };
-
-    auto table = extend(tableBase,
-      mapping( compose(member(&type_a::node), deref()), compose(member(&type_b::node), deref()), tableBase )
-    );
+    auto table = extend(tableBase, mapping(compose(member(&type_a::node), deref()),
+                                           compose(member(&type_b::node), deref()), tableBase));
 
     type_a lhs;
     type_b rhs;
 
     WHEN("assigning lhs to rhs")
     {
-      lhs.val = 1;
+      lhs.val      = 1;
       auto lhsNode = std::make_shared<type_a>(type_a{6, nullptr});
-      lhs.node = lhsNode;
-      rhs.val = 5;
+      lhs.node     = lhsNode;
+      rhs.val      = 5;
       auto rhsNode = std::make_shared<type_b>(type_b{7, nullptr});
-      rhs.node = rhsNode;
+      rhs.node     = rhsNode;
       table.assign<direction::rhs_to_lhs>(lhs, rhs);
 
       THEN("lhs == rhs")
@@ -408,12 +404,12 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
     }
     WHEN("not assigning lhs to rhs")
     {
-      lhs.val = 5;
+      lhs.val      = 5;
       auto lhsNode = std::make_shared<type_a>(type_a{6, nullptr});
-      lhs.node = lhsNode;
-      rhs.val = lhs.val;
+      lhs.node     = lhsNode;
+      rhs.val      = lhs.val;
       auto rhsNode = std::make_shared<type_b>(type_b{7, nullptr});
-      rhs.node = rhsNode;
+      rhs.node     = rhsNode;
 
       THEN("lhs != rhs")
       {
@@ -429,10 +425,11 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
 
 namespace std
 {
-  auto operator<<(std::ostream& os, const std::vector<std::byte>& value) -> std::ostream&
+  auto
+  operator<<(std::ostream& os, std::vector<std::byte> const& value) -> std::ostream&
   {
     os << '|';
-    for(std::byte byte : value)
+    for (std::byte byte : value)
     {
       os << std::bitset<8>(std::to_integer<int>(byte)) << '|';
     }

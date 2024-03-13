@@ -9,19 +9,21 @@
 
 struct int_string_converter
 {
-  auto operator()(std::string val) const -> int
+  auto
+  operator()(std::string val) const -> int
   {
     try
     {
       return std::stoi(val);
     }
-    catch(const std::exception&)
+    catch (std::exception const&)
     {
       return 0;
     }
   }
 
-  auto operator()(int val) const -> std::string
+  auto
+  operator()(int val) const -> std::string
   {
     return std::to_string(val);
   }
@@ -32,45 +34,59 @@ struct proxy
 {
   static constexpr bool is_const = std::is_const_v<T>;
 
-  explicit proxy(T& str) :
-    obj_(str)
+  explicit proxy(T& str)
+    : obj_(str)
   {}
-  operator const T&() const
+
+  operator T const&() const
   {
     return obj_;
   }
+
   operator T&()
     requires (!is_const)
   {
     return obj_;
   }
-  auto operator=(const T& rhs) -> proxy&
+
+  auto
+  operator=(T const& rhs) -> proxy&
     requires (!is_const)
   {
     obj_ = rhs;
     return *this;
   }
-  auto operator=(T&& rhs) -> proxy&
+
+  auto
+  operator=(T&& rhs) -> proxy&
     requires (!is_const)
   {
     obj_ = std::move(rhs);
     return *this;
   }
-  auto operator==(const proxy& rhs) const -> bool
+
+  auto
+  operator==(proxy const& rhs) const -> bool
   {
     return obj_ == rhs.obj_;
   }
-  auto operator==(const T& rhs) const -> bool
+
+  auto
+  operator==(T const& rhs) const -> bool
   {
     return obj_ == rhs;
   }
-  friend  auto operator==(const T& lhs, const proxy& rhs) -> bool
+
+  friend auto
+  operator==(T const& lhs, proxy const& rhs) -> bool
   {
     return lhs == static_cast<decltype(lhs)>(rhs);
   }
+
 private:
   T& obj_;
 };
+
 template<typename obj_t>
 proxy(obj_t&& obj) -> proxy<std::remove_reference_t<decltype(obj)>>;
 
@@ -82,13 +98,17 @@ static_assert(convertible::concepts::castable_to<proxy<std::string>, std::string
 
 struct proxy_reader
 {
-  auto operator()(std::string& obj) const
+  auto
+  operator()(std::string& obj) const
   {
     return proxy(obj);
   }
-  auto operator()(const std::string& obj) const
+
+  auto
+  operator()(std::string const& obj) const
   {
     return proxy(obj);
   }
 };
+
 static_assert(convertible::concepts::adaptable<std::string&, proxy_reader>);
