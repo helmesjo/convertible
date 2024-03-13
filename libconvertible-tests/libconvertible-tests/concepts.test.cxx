@@ -1,12 +1,7 @@
 #include <convertible/convertible.hxx>
 #include <doctest/doctest.h>
 
-#include <array>
-#include <list>
-#include <set>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
 #if defined(_WIN32) && _MSC_VER < 1930 // < VS 2022 (17.0)
 #define DIR_DECL(...) int
@@ -18,7 +13,7 @@ namespace
 {
   struct int_string_converter
   {
-    int operator()(std::string val) const
+    auto operator()(std::string val) const -> int
     {
       try
       {
@@ -30,7 +25,7 @@ namespace
       }
     }
 
-    std::string operator()(int val) const
+    auto operator()(int val) const -> std::string
     {
       return std::to_string(val);
     }
@@ -38,8 +33,8 @@ namespace
 
   struct some_mapping
   {
-    int operator()(std::string);
-    std::string operator()(int);
+    auto operator()(std::string) -> int;
+    auto operator()(int) -> std::string;
   };
 }
 
@@ -65,49 +60,49 @@ SCENARIO("convertible: Concepts")
   {
     struct adapter_w_lvalue_arg
     {
-      int& operator()(std::string);
+      auto operator()(std::string) -> int&;
     };
     struct adapter_w_lvalue_ref_arg
     {
-      int& operator()(std::string&);
+      auto operator()(std::string&) -> int&;
     };
     struct adapter_w_lvalue_const_ref_arg
     {
-      int& operator()(const std::string&);
+      auto operator()(const std::string&) -> int&;
     };
     struct adapter_w_rvalue_ref_arg
     {
-      int& operator()(std::string&&);
+      auto operator()(std::string&&) -> int&;
     };
     struct adapter_w_rvalue_const_ref_arg
     {
-      int& operator()(const std::string&&);
+      auto operator()(const std::string&&) -> int&;
     };
 
     // ref-qualifies call operators
     struct adapter_lvalue_operator
     {
-      int& operator()(std::string);
+      auto operator()(std::string) -> int&;
     };
     struct adapter_ref_operator
     {
-      int& operator()(const std::string&) &;
+      auto operator()(const std::string&) & -> int&;
     };
     struct adapter_const_ref_operator
     {
-      int& operator()(const std::string&) const&;
+      auto operator()(const std::string&) const& -> int&;
     };
     struct adapter_rvalue_ref_operator
     {
-      int& operator()(const std::string&) &&;
+      auto operator()(const std::string&) && -> int&;
     };
     struct adapter_const_rvalue_ref_operator
     {
-      int& operator()(const std::string&) const&&;
+      auto operator()(const std::string&) const&& -> int&;
     };
     struct type
     {
-      int operator()(int);
+      auto operator()(int) -> int;
       void operator()(std::string);
     };
 

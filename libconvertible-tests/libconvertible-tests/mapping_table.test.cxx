@@ -3,7 +3,6 @@
 
 #include <bitset>
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -15,21 +14,21 @@ SCENARIO("convertible: Mapping table")
 
   struct type_a
   {
-    bool operator==(const type_a&) const = default;
-    int val1;
+    auto operator==(const type_a&) const -> bool = default;
+    int val1{};
     std::string val2;
   };
 
   struct type_b
   {
-    bool operator==(const type_b&) const = default;
-    int val1;
+    auto operator==(const type_b&) const -> bool = default;
+    int val1{};
     std::string val2;
   };
 
   struct type_c
   {
-    bool operator==(const type_c&) const = default;
+    auto operator==(const type_c&) const -> bool = default;
     int val1;
   };
 
@@ -122,9 +121,9 @@ SCENARIO("convertible: Mapping table")
       mapping( member(&type_a::val1), member(&type_c::val1) )
     };
 
-    type_a lhs_a;
-    type_b rhs_b;
-    type_c rhs_c;
+    type_a lhs_a; //NOLINT
+    type_b rhs_b; //NOLINT
+    type_c rhs_c; //NOLINT
 
     WHEN("assigning lhs (a) to rhs (b)")
     {
@@ -153,13 +152,13 @@ SCENARIO("convertible: Mapping table")
   }
   GIVEN("mapping table with known lhs & rhs types")
   {
-    type_a lhs_a;
+    type_a lhs_a; //NOLINT
     lhs_a.val1 = 3;
     lhs_a.val2 = "hello";
-    type_b rhs_b;
+    type_b rhs_b; //NOLINT
     rhs_b.val1 = 6;
     rhs_b.val2 = "world";
-    type_c rhs_c;
+    type_c rhs_c; //NOLINT
     rhs_c.val1 = 9;
 
     mapping_table table{
@@ -172,7 +171,7 @@ SCENARIO("convertible: Mapping table")
     {
       auto copy = table.defaulted_lhs();
       static_assert(std::same_as<decltype(copy), typename table_t::lhs_unique_types>);
-      auto copy_a = std::get<0>(copy);
+      auto copy_a = std::get<0>(copy); //NOLINT
 
       static_assert(std::same_as<decltype(copy_a), type_a>);
       INFO("lhs a:  ", lhs_a.val1, ", ", lhs_a.val2);
@@ -183,8 +182,8 @@ SCENARIO("convertible: Mapping table")
     {
       auto copy = table.defaulted_rhs();
       static_assert(std::same_as<decltype(copy), typename table_t::rhs_unique_types>);
-      auto copy_b = std::get<0>(copy);
-      auto copy_c = std::get<1>(copy);
+      auto copy_b = std::get<0>(copy); //NOLINT
+      auto copy_c = std::get<1>(copy); //NOLINT
 
       static_assert(std::same_as<decltype(copy_b), type_b>);
       static_assert(std::same_as<decltype(copy_c), type_c>);
@@ -206,13 +205,13 @@ SCENARIO("convertible: Mapping table constexpr-ness")
   {
     struct type_a{ int val = 0; };
     struct type_b{ int val = 0; };
-    static constexpr type_a lhsVal;
-    static constexpr type_b rhsVal;
+    static constexpr type_a lhs_val;
+    static constexpr type_b rhs_val;
 
-    constexpr auto lhsAdapter = member(&type_a::val);
-    constexpr auto rhsAdapter = member(&type_b::val);
+    constexpr auto lhs_adapter = member(&type_a::val);
+    constexpr auto rhs_adapter = member(&type_b::val);
 
-    constexpr auto table = mapping_table(mapping(lhsAdapter, rhsAdapter));
+    constexpr auto table = mapping_table(mapping(lhs_adapter, rhs_adapter));
 
     THEN("constexpr construction")
     {
@@ -229,7 +228,7 @@ SCENARIO("convertible: Mapping table constexpr-ness")
     }
     THEN("constexpr comparison")
     {
-      static_assert(table.equal(lhsVal, rhsVal));
+      static_assert(table.equal(lhs_val, rhs_val));
     }
   }
 }
@@ -343,10 +342,10 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
   {
     struct type_a
     {
-      int val;
+      int val{};
       std::shared_ptr<type_a> node;
 
-      bool operator==(const type_a& obj) const
+      auto operator==(const type_a& obj) const -> bool
       {
         if(node && obj.node)
         {
@@ -360,10 +359,10 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
     };
     struct type_b
     {
-      int val;
+      int val{};
       std::shared_ptr<type_b> node;
 
-      bool operator==(const type_b& obj) const
+      auto operator==(const type_b& obj) const -> bool
       {
         if(node && obj.node)
         {
@@ -430,7 +429,7 @@ SCENARIO("convertible: Mapping table (misc use-cases)")
 
 namespace std
 {
-  std::ostream& operator<<(std::ostream& os, const std::vector<std::byte>& value)
+  auto operator<<(std::ostream& os, const std::vector<std::byte>& value) -> std::ostream&
   {
     os << '|';
     for(std::byte byte : value)

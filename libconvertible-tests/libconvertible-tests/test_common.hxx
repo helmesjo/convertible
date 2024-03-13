@@ -9,7 +9,7 @@
 
 struct int_string_converter
 {
-  int operator()(std::string val) const
+  auto operator()(std::string val) const -> int
   {
     try
     {
@@ -21,7 +21,7 @@ struct int_string_converter
     }
   }
 
-  std::string operator()(int val) const
+  auto operator()(int val) const -> std::string
   {
     return std::to_string(val);
   }
@@ -44,27 +44,27 @@ struct proxy
   {
     return obj_;
   }
-  proxy& operator=(const T& rhs)
+  auto operator=(const T& rhs) -> proxy&
     requires (!is_const)
   {
     obj_ = rhs;
     return *this;
   }
-  proxy& operator=(T&& rhs)
+  auto operator=(T&& rhs) -> proxy&
     requires (!is_const)
   {
     obj_ = std::move(rhs);
     return *this;
   }
-  bool operator==(const proxy& rhs) const
+  auto operator==(const proxy& rhs) const -> bool
   {
     return obj_ == rhs.obj_;
   }
-  bool operator==(const T& rhs) const
+  auto operator==(const T& rhs) const -> bool
   {
     return obj_ == rhs;
   }
-  friend  bool operator==(const T& lhs, const proxy& rhs)
+  friend  auto operator==(const T& lhs, const proxy& rhs) -> bool
   {
     return lhs == static_cast<decltype(lhs)>(rhs);
   }

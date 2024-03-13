@@ -3,14 +3,10 @@
 #include <doctest/doctest.h>
 
 #include <array>
-#include <cstdint>
-#include <cstring>
 #include <optional>
 #include <string>
-#include <tuple>
 #include <type_traits>
 #include <unordered_map>
-#include <vector>
 
 namespace
 {
@@ -34,7 +30,7 @@ namespace
 
   struct reader_invocable_with_type_m
   {
-    decltype(auto) operator()(auto&& arg) const
+    auto operator()(auto&& arg) const -> decltype(auto)
       requires std::same_as<type_m, std::remove_cvref_t<decltype(arg)>>
     {
       return std::forward<decltype(arg)>(arg);
@@ -96,15 +92,15 @@ SCENARIO("convertible: Adapters")
 
     THEN("it works with const adaptee")
     {
-      const auto constAdaptee = adaptee;
-      REQUIRE(adapter(constAdaptee) == adaptee);
+      const auto const_adaptee = adaptee;
+      REQUIRE(adapter(const_adaptee) == adaptee);
     }
     THEN("it's constexpr constructible")
     {
       struct type_x{};
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = convertible::identity(tmp);
-      (void)constexprAdapter;
+      static constexpr auto constexpr_adapter = convertible::identity(tmp);
+      (void)constexpr_adapter;
     }
     THEN("it implicitly assigns value")
     {
@@ -147,7 +143,7 @@ SCENARIO("convertible: Adapters")
   {
     struct type
     {
-      bool operator==(const type&) const = default;
+      auto operator==(const type&) const -> bool = default;
       std::string str;
     } adaptee;
     adaptee.str = "hello";
@@ -158,15 +154,15 @@ SCENARIO("convertible: Adapters")
 
     THEN("it works with const adaptee")
     {
-      const auto constAdaptee = adaptee;
-      REQUIRE(adapter(constAdaptee) == adaptee.str);
+      const auto const_adaptee = adaptee;
+      REQUIRE(adapter(const_adaptee) == adaptee.str);
     }
     THEN("it's constexpr constructible")
     {
       struct type_x{ int x; };
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = member(&type_x::x, tmp);
-      (void)constexprAdapter;
+      static constexpr auto constexpr_adapter = member(&type_x::x, tmp);
+      (void)constexpr_adapter;
     }
     THEN("it implicitly assigns member value")
     {
@@ -180,8 +176,8 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it 'moves from' r-value reference")
     {
-      const std::string movedTo = adapter(std::move(adaptee));
-      REQUIRE(movedTo == "hello");
+      const std::string moved_to = adapter(std::move(adaptee));
+      REQUIRE(moved_to == "hello");
       REQUIRE(adaptee.str == "");
 
       std::string fromStr = "world";
@@ -210,8 +206,8 @@ SCENARIO("convertible: Adapters")
   {
     struct type
     {
-      bool operator==(const type&) const = default;
-      std::string& str(){ return str_; }
+      auto operator==(const type&) const -> bool = default;
+      auto str() -> std::string&{ return str_; }
     private:
       std::string str_;
     } adaptee;
@@ -229,10 +225,10 @@ SCENARIO("convertible: Adapters")
     // }
     THEN("it's constexpr constructible")
     {
-      struct type_x{ int x() const { return 0; }; };
+      struct type_x{ [[nodiscard]] auto x() const -> int { return 0; }; };
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = member(&type_x::x, tmp);
-      (void)constexprAdapter;
+      static constexpr auto constexpr_adapter = member(&type_x::x, tmp);
+      (void)constexpr_adapter;
     }
     THEN("it implicitly assigns member value")
     {
@@ -250,19 +246,19 @@ SCENARIO("convertible: Adapters")
       {
         struct type_rvalue_overload
         {
-          std::string&& str() && { return std::move(str_); }
-          std::string str_;
+          auto str() && -> std::string&& { return std::move(str_mbr); }
+          std::string str_mbr;
         } adaptee;
-        adaptee.str_ = "hello";
+        adaptee.str_mbr = "hello";
         auto adapterRvalueFunc = member(&type_rvalue_overload::str);
-        const std::string movedTo = adapterRvalueFunc(std::move(adaptee));
-        REQUIRE(movedTo == "hello");
-        REQUIRE(adaptee.str_ == "");
+        const std::string moved_to = adapterRvalueFunc(std::move(adaptee));
+        REQUIRE(moved_to == "hello");
+        REQUIRE(adaptee.str_mbr == "");
       }
       WHEN("member function has l-value overload it does NOT move")
       {
-        const std::string movedTo = adapter(std::move(adaptee));
-        REQUIRE(movedTo == "hello");
+        const std::string moved_to = adapter(std::move(adaptee));
+        REQUIRE(moved_to == "hello");
         REQUIRE(adaptee.str() == "hello");
       }
       std::string fromStr = "world";
@@ -296,14 +292,14 @@ SCENARIO("convertible: Adapters")
 
     THEN("it works with const adaptee")
     {
-      const auto constAdaptee = adaptee;
-      REQUIRE(adapter(constAdaptee) == adaptee[0]);
+      const auto const_adaptee = adaptee;
+      REQUIRE(adapter(const_adaptee) == adaptee[0]);
     }
     THEN("it's constexpr constructible")
     {
       static constexpr auto tmp = std::array{""};
-      static constexpr auto constexprAdapter = index<0>(tmp);
-      (void)constexprAdapter;
+      static constexpr auto constexpr_adapter = index<0>(tmp);
+      (void)constexpr_adapter;
     }
     THEN("it implicitly assigns member value")
     {
@@ -317,8 +313,8 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it 'moves from' r-value reference")
     {
-      const std::string movedTo = adapter(std::move(adaptee));
-      REQUIRE(movedTo == "hello");
+      const std::string moved_to = adapter(std::move(adaptee));
+      REQUIRE(moved_to == "hello");
       REQUIRE(adaptee[0] == "");
 
       std::string fromStr = "world";
@@ -369,8 +365,8 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it 'moves from' r-value reference")
     {
-      const std::string movedTo = adapter(std::move(adaptee));
-      REQUIRE(movedTo == "hello");
+      const std::string moved_to = adapter(std::move(adaptee));
+      REQUIRE(moved_to == "hello");
       REQUIRE(adaptee["key"] == "");
 
       std::string fromStr = "world";
@@ -399,22 +395,22 @@ SCENARIO("convertible: Adapters")
 
     THEN("it works with const adaptee")
     {
-      const auto constAdaptee = adaptee;
-      REQUIRE(adapter(constAdaptee) == *adaptee);
+      const auto const_adaptee = adaptee;
+      REQUIRE(adapter(const_adaptee) == *adaptee);
     }
     THEN("it's constexpr constructible")
     {
       struct type_x
       {
-        int operator*() const
+        auto operator*() const -> int
         {
           return *x;
         }
         int* x;
       };
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = deref(tmp);
-      (void)constexprAdapter;
+      static constexpr auto constexpr_adapter = deref(tmp);
+      (void)constexpr_adapter;
     }
     THEN("it implicitly assigns member value")
     {
@@ -474,23 +470,23 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it works with const adaptee")
     {
-      const auto constAdaptee = std::optional<std::string>("hello");
-      REQUIRE(adapter(constAdaptee));
-      REQUIRE(*adapter(constAdaptee) == "hello");
+      const auto const_adaptee = std::optional<std::string>("hello");
+      REQUIRE(adapter(const_adaptee));
+      REQUIRE(*adapter(const_adaptee) == "hello");
     }
     THEN("it's constexpr constructible")
     {
       struct type_x
       {
-        int operator*() const
+        auto operator*() const -> int
         {
           return *x;
         }
         int* x;
       };
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = deref(tmp);
-      (void)constexprAdapter;
+      static constexpr auto constexpr_adapter = deref(tmp);
+      (void)constexpr_adapter;
     }
     THEN("it implicitly assigns member value")
     {
@@ -529,17 +525,17 @@ SCENARIO("convertible: Adapters")
   {
     struct type_a
     {
-      bool operator==(const type_a&) const = default;
+      auto operator==(const type_a&) const -> bool = default;
       operator bool() const
       {
         return !val.empty();
       }
-      std::string& operator*() &
+      auto operator*() & -> std::string&
       {
         return val;
       }
       // support 'move from' deref
-      std::string&& operator*() &&
+      auto operator*() && -> std::string&&
       {
         return std::move(val);
       }
@@ -547,7 +543,7 @@ SCENARIO("convertible: Adapters")
     };
     struct type_b
     {
-      bool operator==(const type_b&) const = default;
+      auto operator==(const type_b&) const -> bool = default;
       type_a a{};
     };
 
@@ -570,8 +566,8 @@ SCENARIO("convertible: Adapters")
     {
       struct type_x{ int* x; };
       static constexpr auto tmp = type_x{};
-      static constexpr auto constexprAdapter = compose(member(&type_x::x, tmp), deref());
-      (void)constexprAdapter;
+      static constexpr auto constexpr_adapter = compose(member(&type_x::x, tmp), deref());
+      (void)constexpr_adapter;
     }
     THEN("it implicitly assigns member value")
     {
@@ -586,8 +582,8 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it 'moves from' r-value reference")
     {
-      const std::string movedTo = adapter(std::move(adaptee));
-      REQUIRE(movedTo == "hello");
+      const std::string moved_to = adapter(std::move(adaptee));
+      REQUIRE(moved_to == "hello");
       REQUIRE(adaptee.a.val == "");
 
       std::string fromStr = "world";
@@ -616,8 +612,8 @@ SCENARIO("convertible: Adapters constexpr-ness")
 
   WHEN("adapter & adaptee are constexpr")
   {
-    static constexpr int intVal = 1;
-    static constexpr float floatVal = 1.0f;
+    static constexpr int int_val = 1;
+    static constexpr float float_val = 1.0f;
 
     constexpr auto adapter = convertible::adapter();
 
@@ -628,13 +624,13 @@ SCENARIO("convertible: Adapters constexpr-ness")
     }
     THEN("constexpr conversion")
     {
-      constexpr int val1 = adapter(intVal);
+      constexpr int val1 = adapter(int_val);
       static_assert(val1 == 1);
     }
     THEN("constexpr comparison")
     {
-      static_assert(adapter(intVal) == intVal);
-      static_assert(adapter(floatVal) == floatVal);
+      static_assert(adapter(int_val) == int_val);
+      static_assert(adapter(float_val) == float_val);
     }
   }
 }
