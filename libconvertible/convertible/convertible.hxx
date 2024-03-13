@@ -113,23 +113,6 @@ namespace convertible
     return compose(FWD(inner)..., maybe());
   }
 
-  template<std::size_t first, std::size_t last>
-    requires (first <= last)
-  constexpr auto
-  binary(concepts::adaptable<reader::binary<first, last>> auto&&... adaptee)
-  {
-    return adapter(FWD(adaptee)..., reader::binary<first, last>{});
-  }
-
-  template<std::size_t first, std::size_t last>
-    requires (first <= last)
-  constexpr auto
-  binary(concepts::adapter auto&&... inner)
-    requires (sizeof...(inner) > 0)
-  {
-    return compose(FWD(inner)..., binary<first, last>());
-  }
-
   template<typename callback_t, typename tuple_t>
   constexpr bool
   for_each(callback_t&& callback, tuple_t&& pack)
