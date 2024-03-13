@@ -1,0 +1,60 @@
+Checks: >
+  bugprone-*,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-macro-usage,
+  modernize-*,
+  readability-identifier-naming,
+  readability-redundant-member-init,
+#  -*,
+# Uncomment above to disable all linting for cpp
+CheckOptions:
+  - key:             modernize-use-default-member-init.UseAssignment
+    value:           1
+  - key:             readability-identifier-naming.ClassCase
+    value:           lower_case
+  - key:             readability-identifier-naming.EnumCase
+    value:           lower_case
+  - key:             readability-identifier-naming.EnumConstantCase
+    value:           lower_case
+  - key:             readability-identifier-naming.FunctionCase
+    value:           lower_case
+  - key:             readability-identifier-naming.GlobalVariableCase
+    value:           lower_case
+  - key:             readability-identifier-naming.GlobalVariableCase
+    value:           lower_case
+  - key:             readability-identifier-naming.PublicMemberCase
+    value:           lower_case
+  - key:             readability-identifier-naming.PrivateMemberCase
+    value:           camelBack
+  - key:             readability-identifier-naming.PrivateMemberSuffix
+    value:           _
+  - key:             readability-identifier-naming.ParameterCase
+    value:           camelBack
+  # - key:             readability-identifier-naming.TemplateParameterCase
+  #   value:           lower_case
+  # - key:             readability-identifier-naming.TemplateParameterSuffix
+  #   value:           "_t"
+  # - key:             readability-identifier-naming.TemplateParameterIgnoredRegexp
+  #   value:           "([A-Z]|[a-z_]+|expr-type)"
+  # - key:             readability-identifier-naming.TemplateTemplateParameterCase
+  #   value:           lower_case
+  # - key:             readability-identifier-naming.TypeAliasCase
+  #   value:           lower_case
+  # - key:             readability-identifier-naming.TypeAliasSuffix
+  #   value:           _t
+  # - key:             readability-identifier-naming.TypeAliasIgnoredRegexp
+  #   value:           "[A-Z]|(iterator_category|iterator_concept|difference_type|value_type|pointer|reference|element_type|promise_type)"
+  - key:             readability-identifier-naming.UnionCase
+    value:           lower_case
+  - key:             readability-identifier-naming.VariableCase
+    value:           camelBack
+  - key:             readability-identifier-naming.ConstantCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ConstexprVariableCase
+    value:           lower_case
+  - key:             readability-identifier-naming.IgnoreMainLikeFunctions
+    value:           1
