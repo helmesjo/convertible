@@ -27,10 +27,6 @@ namespace convertible::operators
       using mapped_value_t = traits::mapped_value_t<container_t>;
       using inserter_t = std::insert_iterator<container_t>;
 
-      container_t& cont_;
-      inserter_t inserter_;
-      std::conditional_t<concepts::mapping_container<container_t>, key_t, value_t> key_;
-
       template<std::common_reference_with<key_t> _key_t, typename _mapped_t>
       associative_inserter(concepts::associative_container auto&& cont, const std::pair<_key_t, _mapped_t>& pair)
       : cont_(cont),
@@ -100,6 +96,11 @@ namespace convertible::operators
         inserter_ = FWD(value);
         return *this;
       }
+
+    private:
+      container_t& cont_; //NOLINT
+      inserter_t inserter_;
+      std::conditional_t<concepts::mapping_container<container_t>, key_t, value_t> key_;
     };
     template<concepts::associative_container cont_t>
     associative_inserter(cont_t&& cont, auto&&)

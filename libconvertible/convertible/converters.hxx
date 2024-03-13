@@ -41,7 +41,7 @@ namespace convertible::converter
       }
     }
 
-    converter_t& converter_;
+    converter_t& converter_; //NOLINT
   };
 }
 

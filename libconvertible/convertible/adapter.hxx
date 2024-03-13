@@ -15,9 +15,6 @@ namespace convertible
     using adaptee_value_t = std::remove_reference_t<adaptee_t>;
     static constexpr bool accepts_any_adaptee = std::is_same_v<adaptee_value_t, details::any>;
 
-    reader_t reader_;
-    const adaptee_value_t adaptee_{};
-
     constexpr adapter() = default;
     constexpr adapter(const adapter&) = default;
     constexpr adapter(adapter&&) = default;
@@ -34,6 +31,12 @@ namespace convertible
     constexpr decltype(auto) operator()(concepts::adaptable<reader_t> auto&& obj) const
     {
       return reader_(FWD(obj));
+    }
+
+    constexpr auto
+    reader() const -> const auto&
+    {
+      return reader_;
     }
 
     // allow implicit/explicit conversion to adaptee_t (preserving type qualifiers of `obj`)
@@ -63,6 +66,10 @@ namespace convertible
     {
       return adaptee_;
     }
+
+  private:
+    reader_t reader_;
+    adaptee_value_t adaptee_{};
   };
 }
 

@@ -737,7 +737,7 @@ SCENARIO("convertible: Adapters")
     }
     THEN("it implicitly assigns member value")
     {
-      outerAdapter.reader_(middleAdapter.reader_(innerAdapter.reader_(adaptee))) = "world";
+      outerAdapter.reader()(middleAdapter.reader()(innerAdapter.reader()(adaptee))) = "world";
       adapter(adaptee) = "world";
       REQUIRE(adaptee.a.val == "world");
     }

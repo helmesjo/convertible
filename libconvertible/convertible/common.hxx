@@ -46,7 +46,7 @@ namespace convertible
       value_t value;
     };
     template<typename elem_t, std::size_t size>
-    const_value(const elem_t (&str)[size]) -> const_value<elem_t[size]>;
+    const_value(const elem_t (&str)[size]) -> const_value<elem_t[size]>; //NOLINT
   }
 
   enum class direction
