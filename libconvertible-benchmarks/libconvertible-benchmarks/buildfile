@@ -1,7 +1,7 @@
 libs =
 import libs += \
   libconvertible%lib{convertible} \
-  doctest%lib{doctest} \
+  doctest%lib{doctest-main} \
   libnanobench%lib{nanobench}
 
 exe{libconvertible-benchmarks}: {hxx ixx txx cxx}{**} $libs
