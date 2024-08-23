@@ -176,13 +176,13 @@ namespace convertible::operators
              typename converter_t = converter::identity>
     constexpr auto operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       -> traits::lhs_t<dir, lhs_t&&, rhs_t&&>
-      requires details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>;
+      requires details::assignable_with_converted<dir, lhs_t&&, rhs_t&&, converter_t>;
 
     template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t,
              concepts::sequence_container rhs_t, typename converter_t = converter::identity>
     constexpr auto operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       -> traits::lhs_t<dir, lhs_t&&, rhs_t&&>
-      requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs),
+      requires (!details::assignable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                     converter_t>) &&
                details::invocable_with<assign, dir, traits::range_value_forwarded_t<lhs_t>,
                                        traits::range_value_forwarded_t<rhs_t>, converter_t>;
@@ -191,7 +191,7 @@ namespace convertible::operators
              concepts::associative_container rhs_t, typename converter_t = converter::identity>
     constexpr auto operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter = {}) const
       -> traits::lhs_t<dir, lhs_t&&, rhs_t&&>
-      requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs),
+      requires (!details::assignable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                     converter_t>) &&
                details::invocable_with<assign, dir, traits::mapped_value_forwarded_t<lhs_t>,
                                        traits::mapped_value_forwarded_t<rhs_t>, converter_t>;
@@ -201,7 +201,7 @@ namespace convertible::operators
   constexpr auto
   assign::operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter) const
     -> traits::lhs_t<dir, lhs_t&&, rhs_t&&>
-    requires details::assignable_with_converted<dir, decltype(lhs), decltype(rhs), converter_t>
+    requires details::assignable_with_converted<dir, lhs_t&&, rhs_t&&, converter_t>
   {
     auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
     if constexpr (requires { converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
@@ -222,7 +222,7 @@ namespace convertible::operators
   constexpr auto
   assign::operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter) const
     -> traits::lhs_t<dir, lhs_t&&, rhs_t&&>
-    requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs),
+    requires (!details::assignable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                   converter_t>) &&
              details::invocable_with<assign, dir, traits::range_value_forwarded_t<lhs_t>,
                                      traits::range_value_forwarded_t<rhs_t>, converter_t>
@@ -259,7 +259,7 @@ namespace convertible::operators
   constexpr auto
   assign::operator()(lhs_t&& lhs, rhs_t&& rhs, converter_t converter) const
     -> traits::lhs_t<dir, lhs_t&&, rhs_t&&>
-    requires (!details::assignable_with_converted<dir, decltype(lhs), decltype(rhs),
+    requires (!details::assignable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                   converter_t>) &&
              details::invocable_with<assign, dir, traits::mapped_value_forwarded_t<lhs_t>,
                                      traits::mapped_value_forwarded_t<rhs_t>, converter_t>
@@ -291,14 +291,14 @@ namespace convertible::operators
              typename converter_t = converter::identity>
     constexpr auto operator()(lhs_t const& lhs, rhs_t const& rhs, converter_t converter = {}) const
       -> bool
-      requires details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs),
+      requires details::equality_comparable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                            converter_t>;
 
     template<direction dir = direction::rhs_to_lhs, concepts::sequence_container lhs_t,
              concepts::sequence_container rhs_t, typename converter_t = converter::identity>
     constexpr auto operator()(lhs_t const& lhs, rhs_t const& rhs, converter_t converter = {}) const
       -> bool
-      requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs),
+      requires (!details::equality_comparable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                              converter_t>) &&
                details::invocable_with<equal, dir, traits::range_value_forwarded_t<lhs_t>,
                                        traits::range_value_forwarded_t<rhs_t>, converter_t>;
@@ -307,7 +307,7 @@ namespace convertible::operators
              concepts::associative_container rhs_t, typename converter_t = converter::identity>
     constexpr auto operator()(lhs_t const& lhs, rhs_t const& rhs, converter_t converter = {}) const
       -> bool
-      requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs),
+      requires (!details::equality_comparable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                              converter_t>) &&
                details::invocable_with<equal, dir, traits::mapped_value_forwarded_t<lhs_t>,
                                        traits::mapped_value_forwarded_t<rhs_t>, converter_t>;
@@ -316,7 +316,7 @@ namespace convertible::operators
   template<direction dir, typename lhs_t, typename rhs_t, typename converter_t>
   constexpr auto
   equal::operator()(lhs_t const& lhs, rhs_t const& rhs, converter_t converter) const -> bool
-    requires details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs),
+    requires details::equality_comparable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                          converter_t>
   {
     if constexpr (concepts::mapping<converter_t>)
@@ -335,7 +335,7 @@ namespace convertible::operators
            typename converter_t>
   constexpr auto
   equal::operator()(lhs_t const& lhs, rhs_t const& rhs, converter_t converter) const -> bool
-    requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs),
+    requires (!details::equality_comparable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                            converter_t>) &&
              details::invocable_with<equal, dir, traits::range_value_forwarded_t<lhs_t>,
                                      traits::range_value_forwarded_t<rhs_t>, converter_t>
@@ -379,7 +379,7 @@ namespace convertible::operators
            concepts::associative_container rhs_t, typename converter_t>
   constexpr auto
   equal::operator()(lhs_t const& lhs, rhs_t const& rhs, converter_t converter) const -> bool
-    requires (!details::equality_comparable_with_converted<dir, decltype(lhs), decltype(rhs),
+    requires (!details::equality_comparable_with_converted<dir, lhs_t&&, rhs_t&&,
                                                            converter_t>) &&
              details::invocable_with<equal, dir, traits::mapped_value_forwarded_t<lhs_t>,
                                      traits::mapped_value_forwarded_t<rhs_t>, converter_t>
