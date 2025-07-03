@@ -160,7 +160,8 @@ namespace convertible::reader
     {
       if constexpr (sizeof...(tail) == 0)
       {
-        if constexpr (requires { FWD(head).enabled(FWD(arg)); })
+        constexpr auto ok = requires { FWD(head).enabled(FWD(arg)); };
+        if constexpr (ok)
         {
           return FWD(head).enabled(FWD(arg));
         }

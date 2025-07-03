@@ -57,9 +57,10 @@ namespace convertible
     constexpr auto
     enabled(auto&& obj) const -> bool
     {
-      if constexpr (requires {
-                      { reader_.enabled(FWD(obj)) } -> std::convertible_to<bool>;
-                    })
+      constexpr auto ok = requires {
+                            { reader_.enabled(FWD(obj)) } -> std::convertible_to<bool>;
+                          };
+      if constexpr (ok)
       {
         return reader_.enabled(FWD(obj));
       }

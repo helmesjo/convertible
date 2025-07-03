@@ -189,7 +189,8 @@ namespace convertible::operators
     requires details::assignable_with_converted<dir, lhs_t&&, rhs_t&&, converter_t>
   {
     auto&& [to, from] = details::ordered_lhs_rhs<dir>(FWD(lhs), FWD(rhs));
-    if constexpr (requires { converter.template assign<dir>(FWD(lhs), FWD(rhs)); })
+    constexpr auto ok = requires { converter.template assign<dir>(FWD(lhs), FWD(rhs)); };
+    if constexpr (ok)
     {
       (void)from;
       converter.template assign<dir>(FWD(lhs), FWD(rhs));

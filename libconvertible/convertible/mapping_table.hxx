@@ -121,9 +121,10 @@ namespace convertible
       for_each(
         [&](auto&& rhs) -> bool
         {
-          if constexpr (requires {
-                          { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs) };
-                        })
+          constexpr auto ok = requires {
+                                { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs) };
+                              };
+          if constexpr (ok)
           {
             assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs);
           }
@@ -153,9 +154,10 @@ namespace convertible
       for_each(
         [&](auto&& lhs) -> bool
         {
-          if constexpr (requires {
-                          { assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs)) };
-                        })
+          constexpr auto ok = requires {
+                                { assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs)) };
+                              };
+          if constexpr (ok)
           {
             assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs));
           }
