@@ -122,9 +122,7 @@ namespace convertible
         [&](auto&& rhs) -> bool
         {
           if constexpr (requires {
-                          {
-                            assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs)
-                          };
+                          { assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs) };
                         })
           {
             assign<direction::lhs_to_rhs>(std::forward<lhs_t>(lhs), rhs);
@@ -156,9 +154,7 @@ namespace convertible
         [&](auto&& lhs) -> bool
         {
           if constexpr (requires {
-                          {
-                            assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs))
-                          };
+                          { assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs)) };
                         })
           {
             assign<direction::rhs_to_lhs>(lhs, std::forward<rhs_t>(rhs));

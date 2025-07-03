@@ -36,18 +36,10 @@ namespace std
   template<class T, class U>
   concept equality_comparable_with =
     requires (std::remove_reference_t<T> const& t, std::remove_reference_t<U> const& u) {
-      {
-        t == u
-      } -> convertible_to<bool>;
-      {
-        t != u
-      } -> convertible_to<bool>;
-      {
-        u == t
-      } -> convertible_to<bool>;
-      {
-        u != t
-      } -> convertible_to<bool>;
+      { t == u } -> convertible_to<bool>;
+      { t != u } -> convertible_to<bool>;
+      { u == t } -> convertible_to<bool>;
+      { u != t } -> convertible_to<bool>;
     };
 
   template<class F, class... Args>

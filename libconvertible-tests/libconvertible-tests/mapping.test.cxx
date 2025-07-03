@@ -470,7 +470,7 @@ SCENARIO("convertible: Mapping (misc use-cases)")
                      if constexpr (std::equality_comparable_with<lhs_t, decltype(obj)>)
                      {
                        return std::all_of(std::begin(obj), std::end(obj),
-                                          [](const auto& elem)
+                                          [](auto const& elem)
                                           {
                                             return elem == "";
                                           });
