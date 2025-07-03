@@ -76,12 +76,8 @@ namespace convertible::operators
       auto
       operator=(auto&& value) -> auto&
         requires concepts::mapping_container<container_t>
-      // Workaround bug with apple-clang & using 'this->' in requires clause.
-#if defined(__clang__) && defined(__APPLE__)
+                 // Workaround bug with apple-clang & using 'this->' in requires clause.
                  && requires (inserter_t inserter, key_t key) { inserter = {key, FWD(value)}; }
-#else
-                 && requires { this->inserter_ = {this->key_, FWD(value)}; }
-#endif
       {
         inserter_ = {key_, FWD(value)};
         return *this;
@@ -89,13 +85,8 @@ namespace convertible::operators
 
       auto
       operator=(auto&& value) -> auto&
-        requires (!concepts::mapping_container<container_t>)
-      // Workaround bug with apple-clang & using 'this->' in requires clause.
-#if defined(__clang__) && defined(__APPLE__)
-                 && requires (inserter_t inserter) { inserter = FWD(value); }
-#else
-                 && requires { this->inserter_ = FWD(value); }
-#endif
+        requires (!concepts::mapping_container<container_t>) &&
+                 requires (inserter_t inserter) { inserter = FWD(value); }
       {
         inserter_ = FWD(value);
         return *this;
