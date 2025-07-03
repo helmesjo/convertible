@@ -51,7 +51,7 @@ namespace std
 }
 #endif
 
-#if !defined(__cpp_lib_forward_like)
+#if __cpp_lib_forward_like < 202207L
 namespace std
 {
   // Credit: https://en.cppreference.com/w/cpp/utility/forward_like
